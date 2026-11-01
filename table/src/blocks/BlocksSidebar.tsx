@@ -4,7 +4,8 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { blocksDebug } from "../debug/BlocksDebug";
-import { Play } from "lucide-react";
+import { CAMERA_BLOCK_TYPE, registerCameraBlock } from "./cameraBlock";
+import { Camera, Play } from "lucide-react";
 import { agentClient } from "../chat/AgentClient";
 import * as Blockly from "blockly/core";
 import * as Zh from "blockly/msg/zh-hans";
@@ -19,6 +20,9 @@ export function BlocksSidebar() {
   const [notice, setNotice] = useState("");
   const [running, setRunning] = useState(false);
   const runLock = useRef(false);
+  const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
+  const [cameraAdded, setCameraAdded] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!host.current) return;
@@ -33,21 +37,26 @@ export function BlocksSidebar() {
         if (!response.ok) throw new Error("机械臂限位加载失败");
         const limits = parseModelLimits(await response.text());
         if (abort.signal.aborted) return;
-        Blockly.setLocale(Zh);
+        Blockly.setLocale(Object.fromEntries(Object.entries(Zh).filter((entry): entry is [string, string] => typeof entry[1] === "string")));
         registerPositionBlock(limits);
+        registerCameraBlock();
         workspace = Blockly.inject(element, {
           media: `${import.meta.env.BASE_URL}blockly-media/`,
+          maxInstances: { [BLOCK_TYPE]: 1, [CAMERA_BLOCK_TYPE]: 1 },
           renderer: "zelos", sounds: false, trashcan: false,
           scrollbars: true, move: { scrollbars: true, drag: true, wheel: true },
           zoom: { controls: false, wheel: false, startScale: 0.9 },
           grid: { spacing: 20, length: 1, colour: "#d4dedb", snap: false },
         });
+        workspaceRef.current = workspace;
+        setReady(true);
         const block = workspace.newBlock(BLOCK_TYPE);
         block.initSvg();
         block.render();
         block.moveBy(16, 24);
         const update = () => {
           if (!workspace) return;
+          setCameraAdded(workspace.getBlocksByType(CAMERA_BLOCK_TYPE, false).length > 0);
           try { setCode(pythonGenerator.workspaceToCode(workspace)); setError(""); setNotice(""); }
           catch (failure) { setCode(""); setError(String(failure)); }
         };
@@ -81,8 +90,18 @@ export function BlocksSidebar() {
       }
     }
     void initialize();
-    return () => { abort.abort(); detachDebug?.(); observer?.disconnect(); workspace?.dispose(); };
+    return () => { abort.abort(); workspaceRef.current = null; detachDebug?.(); observer?.disconnect(); workspace?.dispose(); };
   }, []);
+
+  function addCamera() {
+    const workspace = workspaceRef.current;
+    if (!workspace || workspace.getBlocksByType(CAMERA_BLOCK_TYPE, false).length) return;
+    const block = workspace.newBlock(CAMERA_BLOCK_TYPE);
+    block.initSvg(); block.render(); block.moveBy(16, 340);
+    workspace.centerOnBlock(block.id);
+    setCameraAdded(true);
+    setCode(pythonGenerator.workspaceToCode(workspace));
+  }
 
   async function run() {
     if (!code || runLock.current) return;
@@ -104,7 +123,8 @@ export function BlocksSidebar() {
   }
 
   return <aside className="blocks-sidebar" aria-label="机械臂积木编程">
-    <header className="blocks-heading"><h2>积木编程</h2><div className="blocks-heading-actions"><span>Python</span>
+    <header className="blocks-heading"><h2>积木编程</h2><div className="blocks-heading-actions">
+      <button type="button" className="blocks-add-camera" onClick={addCamera} disabled={!ready || cameraAdded || running} aria-label="添加虚拟相机积木" title="添加虚拟相机积木"><Camera size={15} /><span>相机</span></button>
       <button type="button" className="blocks-run" onClick={() => void run()} disabled={!code || running}
         aria-label={running ? "正在运行 Python" : "运行 Python"} aria-busy={running} title="运行 Python">
         <Play size={15} fill="currentColor" /><span>{running ? "运行中" : "运行"}</span>

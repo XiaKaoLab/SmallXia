@@ -74,3 +74,6 @@ $env:XIAOXIA_MOTION_TOKEN = "替换成自己的随机令牌"
 这里 GET state 的 `source=display_target`、`physical=false`，表示服务保存的显示目标，不是实时渲染角度或实机反馈。table 逐帧按最高 0.25 rad/s 追踪目标，URDF 未加载或目标不合法时不更新。API 返回 accepted 不能作为画面到位确认。模型使用 table 自带 SO101 URDF 限位，不能直接套用 SO100 训练数据；若要接入 SO100 推理，需要另外完成模型与坐标映射。
 
 本次仅进行 Python 语法和差异检查，未构建、启动服务、运行桌面或发送实机指令。
+
+
+虚拟相机装配：POST `/api/v1/robots/table/camera`，Bearer 鉴权，JSON 为 `{parent_link, position:[x,y,z], rotation:[roll,pitch,yaw], fov}`，分别使用米、弧度、角度。校验连杆存在、三维向量有限及范围，返回 202 和当前配置；GET state 增加 camera 字段。该配置只用于显示模型相机外形和视锥，不代表渲染到位或真实图像采集。

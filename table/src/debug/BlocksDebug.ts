@@ -4,12 +4,13 @@
  */
 import * as Blockly from "blockly/core";
 import { pythonGenerator } from "blockly/python";
+import { CAMERA_BLOCK_TYPE, CAMERA_LINKS, CAMERA_NUMBERS } from "../blocks/cameraBlock";
 import { BLOCK_TYPE, JOINTS, type Limits } from "../blocks/positionBlock";
 
 export interface BlockSnapshot {
   id: string;
   type: string;
-  fields: Record<string, number>;
+  fields: Record<string, number | string>;
   x: number;
   y: number;
 }
@@ -21,16 +22,24 @@ class WorkspaceManager {
 
   private get(id: string): Blockly.BlockSvg {
     const block = this.workspace.getBlockById(id);
-    if (!block || block.type !== BLOCK_TYPE) throw new Error(`找不到位置积木：${id}`);
+    if (!block || ![BLOCK_TYPE, CAMERA_BLOCK_TYPE].includes(block.type)) throw new Error(`找不到位置积木：${id}`);
     return block;
   }
 
-  private validateFields(fields: Record<string, number>): void {
+  private specs(type: string): Record<string, { label: string; lower?: number; upper?: number; options?: string[]; unit?: string }> {
+    if (type === BLOCK_TYPE) return Object.fromEntries(JOINTS.map(([name, label]) => [name, { label, unit: "rad", ...this.limits[name] }]));
+    if (type === CAMERA_BLOCK_TYPE) return { parent_link: { label: "安装连杆", options: CAMERA_LINKS.map(([, value]) => value) }, ...CAMERA_NUMBERS };
+    throw new Error(`未知积木类型：${type}`);
+  }
+
+  private validateFields(fields: Record<string, number | string>, type: string): void {
     if (!fields || typeof fields !== "object" || Array.isArray(fields)) throw new Error("fields 必须为字段对象");
+    const specs = this.specs(type);
     for (const [name, value] of Object.entries(fields)) {
-      const limit = Object.prototype.hasOwnProperty.call(this.limits, name) ? this.limits[name] : undefined;
-      if (!limit || typeof value !== "number" || !Number.isFinite(value) || value < limit.lower || value > limit.upper) {
-        throw new Error(`字段 ${name} 未知、不是有限数值或超出模型限位`);
+      const spec = Object.prototype.hasOwnProperty.call(specs, name) ? specs[name] : undefined;
+      if (!spec || (spec.options ? typeof value !== "string" || !spec.options.includes(value)
+        : typeof value !== "number" || !Number.isFinite(value) || value < spec.lower! || value > spec.upper!)) {
+        throw new Error(`字段 ${name} 未知或超出允许范围`);
       }
     }
   }
@@ -42,32 +51,34 @@ class WorkspaceManager {
   }
 
   types() {
-    return [{ type: BLOCK_TYPE, label: "设置机械臂位置", maxInstances: 1,
-      fields: JOINTS.map(([name, label]) => ({ name, label, unit: "rad", ...this.limits[name] })) }];
+    return [BLOCK_TYPE, CAMERA_BLOCK_TYPE].map((type) => ({ type,
+      label: type === BLOCK_TYPE ? "设置机械臂位置" : "装配虚拟相机", maxInstances: 1,
+      fields: Object.entries(this.specs(type)).map(([name, spec]) => ({ name, ...spec })) }));
   }
 
   list(): BlockSnapshot[] {
     return this.workspace.getAllBlocks(false).map((block) => {
       const position = block.getRelativeToSurfaceXY();
       return { id: block.id, type: block.type, x: position.x, y: position.y,
-        fields: Object.fromEntries(JOINTS.map(([name]) => [name, Number(block.getFieldValue(name))])) };
+        fields: Object.fromEntries(Object.entries(this.specs(block.type)).map(([name, spec]) =>
+          [name, spec.options ? String(block.getFieldValue(name)) : Number(block.getFieldValue(name))])) };
     });
   }
 
-  create(fields: Record<string, number> = {}, x = 16, y = 24): BlockSnapshot {
-    this.validateFields(fields);
+  create(fields: Record<string, number | string> = {}, x = 16, y = 24, type = BLOCK_TYPE): BlockSnapshot {
+    this.validateFields(fields, type);
     this.validatePosition(x, y);
-    if (this.workspace.getAllBlocks(false).length) throw new Error("当前仅支持一个位置积木，请先删除或清空");
-    const block = this.workspace.newBlock(BLOCK_TYPE);
+    if (this.workspace.getBlocksByType(type, false).length) throw new Error("每种积木最多保留一个，请先删除已有同类积木");
+    const block = this.workspace.newBlock(type);
     for (const [name, value] of Object.entries(fields)) block.setFieldValue(String(value), name);
     block.initSvg(); block.render(); block.moveBy(x, y);
     this.changed();
-    return this.list()[0];
+    return this.list().find((item) => item.id === block.id)!;
   }
 
-  setFields(id: string, fields: Record<string, number>): BlockSnapshot {
-    this.validateFields(fields);
+  setFields(id: string, fields: Record<string, number | string>): BlockSnapshot {
     const block = this.get(id);
+    this.validateFields(fields, block.type);
     Blockly.Events.setGroup(true);
     try { for (const [name, value] of Object.entries(fields)) block.setFieldValue(String(value), name); }
     finally { Blockly.Events.setGroup(false); }
@@ -91,23 +102,25 @@ class WorkspaceManager {
 
   importWorkspace(value: unknown): BlocksSnapshot {
     const state = typeof value === "string" ? JSON.parse(value) : value;
-    if (!state || state.version !== 1 || !Array.isArray(state.blocks) || state.blocks.length > 1) {
-      throw new Error("工作区快照需要 version=1 和最多一个积木");
+    if (!state || state.version !== 1 || !Array.isArray(state.blocks) || state.blocks.length > 2) {
+      throw new Error("工作区快照需要 version=1 和最多两个积木");
     }
     // 全部检查通过后才替换工作区，非法导入不删除现有积木。
     for (const block of state.blocks) {
-      if (!block || block.type !== BLOCK_TYPE || typeof block.id !== "string" || !block.id || block.id.length > 128) {
+      if (!block || ![BLOCK_TYPE, CAMERA_BLOCK_TYPE].includes(block.type) || typeof block.id !== "string" || !block.id || block.id.length > 128) {
         throw new Error("快照包含未知积木类型或无效 ID");
       }
-      this.validateFields(block.fields);
-      if (Object.keys(block.fields).length !== JOINTS.length) throw new Error("快照必须包含完整六轴字段");
+      this.validateFields(block.fields, block.type);
+      if (Object.keys(block.fields).length !== Object.keys(this.specs(block.type)).length) throw new Error("快照必须包含完整字段");
       this.validatePosition(block.x, block.y);
     }
+    if (new Set(state.blocks.map((block: BlockSnapshot) => block.type)).size !== state.blocks.length
+      || new Set(state.blocks.map((block: BlockSnapshot) => block.id)).size !== state.blocks.length) throw new Error("快照包含重复类型或 ID");
     Blockly.Events.setGroup(true);
     try {
       this.workspace.clear();
       for (const item of state.blocks) {
-        const block = this.workspace.newBlock(BLOCK_TYPE, item.id);
+        const block = this.workspace.newBlock(item.type, item.id);
         for (const [name, value] of Object.entries(item.fields)) block.setFieldValue(String(value), name);
         block.initSvg(); block.render(); block.moveBy(item.x, item.y);
       }
@@ -133,8 +146,9 @@ export class BlocksDebugAPI {
   }
   types() { return this.active().types(); }
   list() { return this.active().list(); }
-  create(fields: Record<string, number> = {}, x = 16, y = 24) { return this.active().create(fields, x, y); }
-  setFields(id: string, fields: Record<string, number>) { return this.active().setFields(id, fields); }
+  create(fields: Record<string, number | string> = {}, x = 16, y = 24, type = BLOCK_TYPE) { return this.active().create(fields, x, y, type); }
+  createCamera(fields: Record<string, number | string> = {}, x = 16, y = 340) { return this.active().create(fields, x, y, CAMERA_BLOCK_TYPE); }
+  setFields(id: string, fields: Record<string, number | string>) { return this.active().setFields(id, fields); }
   move(id: string, x: number, y: number) { return this.active().move(id, x, y); }
   remove(id: string) { this.active().remove(id); }
   clear() { this.active().clear(); }

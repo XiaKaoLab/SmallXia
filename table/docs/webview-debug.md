@@ -52,8 +52,21 @@ blocks.importWorkspace(snapshot);          // 替换为此前保存的快照
 blocks.importWorkspace(JSON.stringify(snapshot)); // 也支持 JSON 字符串
 ```
 
-当前仅支持一个 `table_set_arm_position` 积木。新增前需清空或删除现有积木。字段名沿用六轴 API：`shoulder_pan`、`shoulder_lift`、`elbow_flex`、`wrist_flex`、`wrist_roll`、`gripper`，单位 rad。字段修改支持部分更新，但非法字段或越界值会在修改前拒绝，不静默截断；导入快照要求完整六轴字段，校验通过后才替换工作区。
+当前支持 `table_set_arm_position` 和 `table_mount_camera` 两种积木，每种最多一个。新增同类前需删除现有同类积木。字段名沿用六轴 API：`shoulder_pan`、`shoulder_lift`、`elbow_flex`、`wrist_flex`、`wrist_roll`、`gripper`，单位 rad。字段修改支持部分更新，但非法字段或越界值会在修改前拒绝，不静默截断；导入快照要求完整六轴字段，校验通过后才替换工作区。
 
 每次管理操作同步触发 Python 预览刷新；清空后代码为空，运行按钮禁用。工作区卸载后解除绑定，接口抛出明确的未就绪错误，避免继续操作旧工作区。UI 默认积木不可手动删除，开发接口可显式删除。
 
 本次只做代码差异检查，未构建或实际操作 WebView 验证。
+
+
+虚拟相机积木管理示例：
+
+```javascript
+const camera = window.tableDebug.blocks.createCamera({
+  parent_link: "gripper_link", x: 0.03, y: 0, z: 0.05,
+  roll: 0, pitch: 3.141592653589793, yaw: 0, fov: 60,
+});
+window.tableDebug.blocks.setFields(camera.id, { parent_link: "wrist_link", fov: 75 });
+```
+
+也可调用 `create(fields, x, y, "table_mount_camera")`；原 create(fields, x, y) 仍默认创建位置积木。list、types、move、remove、clear、python、导入导出同时支持这两种积木。快照 version 仍为 1，可保留旧位置积木快照；导入拒绝重复类型和重复 ID。

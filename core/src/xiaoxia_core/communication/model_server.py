@@ -5,6 +5,8 @@ Created on 2026-11-01; Updated on 2026-11-01
 
 import json
 import os
+from hmac import compare_digest
+from xml.etree import ElementTree
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from time import monotonic_ns
@@ -13,6 +15,7 @@ from ..contracts import Action, Observation
 from ..safety import JointLimits
 from .motion_service import MotionRouteService
 from .transport import RobotTransport
+from .virtual_camera import VirtualCameraStore
 
 
 class ModelTransport(RobotTransport):
@@ -41,6 +44,8 @@ class ModelHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
 
     def __init__(self, token: str, limits: JointLimits) -> None:
+        urdf = Path(__file__).resolve().parents[4] / "table/public/robots/so101/so101_new_calib.urdf"
+        self.camera = VirtualCameraStore({link.attrib["name"] for link in ElementTree.parse(urdf).getroot().findall("link")})
         self.routes = MotionRouteService(token=token)
         self.routes.register("table", ModelTransport(limits), limits)
         self.read_authorization = f"Bearer {token}"
@@ -70,7 +75,7 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
             self._reply(404, {"error": "route_not_found"})
             return
         status, body = self.server.routes.handle("GET", self.path, self.server.read_authorization)
-        self._reply(status, {**body, "source": "display_target", "physical": False})
+        self._reply(status, {**body, "source": "display_target", "physical": False, "camera": self.server.camera.snapshot()})
 
     def do_POST(self) -> None:
         try:
@@ -84,6 +89,16 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(length))
         except (ValueError, UnicodeDecodeError):
             self._reply(400, {"error": "invalid_json"})
+            return
+        if self.path == "/api/v1/robots/table/camera":
+            if not compare_digest(self.headers.get("Authorization", "").encode(), self.server.read_authorization.encode()):
+                self._reply(401, {"error": "unauthorized"})
+                return
+            try:
+                configuration = self.server.camera.configure(body)
+                self._reply(202, {"status": "accepted", "physical": False, "camera": configuration})
+            except ValueError as error:
+                self._reply(422, {"error": str(error)})
             return
         status, result = self.server.routes.handle("POST", self.path,
                                                  self.headers.get("Authorization", ""), body)

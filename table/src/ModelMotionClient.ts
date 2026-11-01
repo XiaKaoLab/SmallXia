@@ -2,12 +2,14 @@
  * Created on 2026-11-01; Updated on 2026-11-01
  * @author: https://github.com/Linmoqian
  */
+import type { VirtualCameraConfig } from "./VirtualCameraRig";
+
 export class ModelMotionClient {
   private readonly controller = new AbortController();
   private timer: ReturnType<typeof setTimeout> | undefined;
   private stopped = false;
 
-  constructor(private readonly apply: (positions: Record<string, number>) => void) {
+  constructor(private readonly apply: (positions: Record<string, number>, camera: VirtualCameraConfig | null) => void) {
     void this.poll();
   }
 
@@ -23,7 +25,7 @@ export class ModelMotionClient {
       if (state.unit !== "rad" || state.physical !== false || state.source !== "display_target") {
         throw new Error("模型运动协议不匹配");
       }
-      if (!this.stopped) this.apply(state.joint_positions);
+      if (!this.stopped) this.apply(state.joint_positions, state.camera ?? null);
     } catch {
       delay = 1000;
     }

@@ -17,3 +17,6 @@
 .blocks-run:hover:not(:disabled) { background: #238450; }
 .blocks-run:disabled { opacity: .55; }
 .blocks-status { overflow-wrap: anywhere; max-height: 100px; overflow-y: auto; }
+
+.blocks-add-camera { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: #587e9d; font-size: 12px; }
+.blocks-add-camera:hover:not(:disabled) { background: #e7eef3; }
