@@ -1,0 +1,11 @@
+# Conda 管理 Python 核心环境
+# Created on 2026-11-01; Updated on 2026-11-01
+# @author: https://github.com/Linmoqian
+name: xiaoxia-core
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.11
+  - pip
+  - hatchling>=1.27,<2
