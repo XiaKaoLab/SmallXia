@@ -64,10 +64,11 @@ class BallPickupTraining:
             if self.request.get('demonstration_directory'):
                 archive = np.load(Path(self.request['demonstration_directory']) / 'demonstrations.npz', allow_pickle=False)
                 try:
-                    demos = [({'observation.state': archive['state'][i], BallObservation.camera_key: archive['wrist'][i]},
-                        archive['action'][i], float(archive['reward'][i]),
-                        {'observation.state': archive['next_state'][i], BallObservation.camera_key: archive['next_wrist'][i]},
-                        bool(archive['done'][i])) for i in range(len(archive['action']))]
+                    arrays = {key: archive[key] for key in archive.files}
+                    demos = [({'observation.state': arrays['state'][i], BallObservation.camera_key: arrays['wrist'][i]},
+                        arrays['action'][i], float(arrays['reward'][i]),
+                        {'observation.state': arrays['next_state'][i], BallObservation.camera_key: arrays['next_wrist'][i]},
+                        bool(arrays['done'][i])) for i in range(len(arrays['action']))]
                     if sum(row[4] for row in demos) < demo_count:
                         raise ValueError('归档的成功示教数量不足')
                     self.worker.progress(demonstration_successes=demo_count, demonstration_transitions=len(demos),
