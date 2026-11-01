@@ -14,6 +14,7 @@ from uuid import uuid4
 from ..imitation.api_jobs import ImitationJobs, atomic_json, identifier
 from .environment import TableRLEnvironment
 from .replay import ReplayStore
+from .onnx_api import BallOnnxAPI
 
 
 class ReinforcementAPI:
@@ -25,6 +26,7 @@ class ReinforcementAPI:
         self.limits = limits
         self.environment = TableRLEnvironment(limits, frames, routes, authorization)
         self.jobs = ImitationJobs(root / 'jobs', worker_module='xiaoxia_core.reinforcement.worker', max_running=3)
+        self.onnx = BallOnnxAPI(self.jobs)
         self._lock = RLock()
 
     def store(self, session_id):
@@ -138,7 +140,9 @@ class ReinforcementAPI:
                         'reward_classifier': 'local_cnn', 'official_grpc_pipeline': False,
                         'ball_pickup': {'backend': 'mujoco+lerobot_sac', 'num_envs': [1, 16],
                             'rounds_per_env': [1, 10000], 'success_lift_m': 0.05, 'success_hold_s': 1,
-                            'score': 'mean_episode_return_last_100', 'physical': False}}
+                            'score': 'mean_episode_return_last_100', 'physical': False,
+                            'onnx': {'automatic_export': True, 'state_dim': 18, 'action_dim': 6,
+                                     'deterministic': True, 'runtime': 'onnxruntime'}}}
                 if parts == ['sessions']:
                     return 200, {'sessions': [self.store(p.parent.name).summary() for p in (self.root / 'sessions').glob('*/session.json')]}
                 if parts == ['jobs']:
@@ -153,9 +157,17 @@ class ReinforcementAPI:
                     return 200, {'transitions': self.store(parts[1]).rows(limit=100)}
             if method != 'POST':
                 return 404, {'error': 'route_not_found'}
+            if parts in (['onnx-exports'], ['onnx-predictions'], ['onnx-rollouts']):
+                with self._lock:
+                    if parts == ['onnx-exports']:
+                        return 202, self.onnx.export(body)
+                    if parts == ['onnx-predictions']:
+                        return 200, self.onnx.predict(body)
+                    return 202, self.onnx.rollout(body,
+                        self.integer(body, 'rounds', 1, 1, 1000), self.integer(body, 'seed', 42, 0, 2147483647))
             if parts == ['ball-trainings']:
                 with self._lock:
-                    if any(job['kind'] == 'ball_pickup' and job['status'] in ('queued', 'running') for job in self.jobs.list()):
+                    if any(job['kind'] in ('ball_pickup', 'ball_onnx_rollout') and job['status'] in ('queued', 'running') for job in self.jobs.list()):
                         raise ValueError('已有小球训练在运行，请先停止或等待完成')
                     device = body.get('device', 'cpu')
                     if device not in ('cpu', 'cuda'):

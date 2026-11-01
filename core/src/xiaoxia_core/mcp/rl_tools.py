@@ -17,6 +17,18 @@ class RLTools:
         """读取 RL 后端与执行范围，当前是 table 的关节增量 SAC，非实机。"""
         return self.client.request('capabilities')
 
+    def rl_export_onnx(self, training_job_id: str) -> dict:
+        """将已完成的抓球训练权重导出 ONNX，返回后台导出任务；需查询成功后使用。"""
+        return self.client.export_onnx(training_job_id)
+
+    def rl_predict_onnx(self, model_job_id: str, states: list[list[float]]) -> dict:
+        """用 ONNX Runtime 对 [batch,18] 状态推理六轴归一化增量，不发送运动。"""
+        return self.client.predict_onnx(model_job_id, states)
+
+    def rl_rollout_onnx(self, model_job_id: str, rounds: int = 1) -> dict:
+        """用已完成的 ONNX 模型执行独立 MuJoCo 抓球仿真，不训练、不操作实机。"""
+        return self.client.rollout_onnx(model_job_id, rounds=rounds)
+
     def rl_create_session(self, task: str, fps: int = 2, cameras: list[str] | None = None,
                           roi: dict | None = None, max_joint_step_rad: float = 0.02, max_episode_steps: int = 40) -> dict:
         """创建 RL 会话但不运动、不训练。虚拟画面最高2FPS；相机与 ROI 使用已有配置。"""

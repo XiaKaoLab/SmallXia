@@ -26,7 +26,7 @@ class BallPickupTraining:
         count, rounds = self.request['num_envs'], self.request['rounds']
         atomic_json(self.worker.directory / 'policy_config.json', {'task': 'ball_pickup', 'cameras': [],
             'state_dim': 18, 'state_order': 'joint_positions_6,joint_velocities_6,ball_xyz_3,ball_minus_tip_xyz_3',
-            'action_space': 'joint_delta_rad', 'action_scale': .08, 'num_envs': count, 'rounds': rounds,
+            'action_space': 'normalized_joint_delta', 'action_scale': .08, 'num_envs': count, 'rounds': rounds,
             'seed': self.request['seed'], 'physical': False})
         self.worker.progress(phase='initializing', task='拿取小球', num_envs=count, rounds=rounds,
                              completed_episodes=0, total_episodes=count * rounds, progress=0, score=None,
@@ -89,7 +89,10 @@ class BallPickupTraining:
                             snapshot=environments[0].snapshot(), **metrics)
                         last_publish = monotonic()
             checkpoint = learner.publish(self.worker.directory, updates)
-            return {'checkpoint': checkpoint, 'completed_episodes': sum(completed), 'successes': successes,
+            self.worker.progress(phase='exporting')
+            from .onnx_export import BallOnnxExporter
+            exported = BallOnnxExporter().export(Path(checkpoint), self.worker.directory, policy=learner.policy)
+            return {'checkpoint': checkpoint, **exported, 'completed_episodes': sum(completed), 'successes': successes,
                     'score': float(np.mean(scores)), 'updates': updates, 'physical': False, 'task_success_validated': successes > 0}
         finally:
             for env in environments:

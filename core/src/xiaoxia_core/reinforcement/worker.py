@@ -160,6 +160,12 @@ class ReinforcementWorker(ImitationWorker):
         Thread(target=self.watch_parent, daemon=True).start()
         self.progress(status='running', started_at_ns=time_ns())
         try:
+            if self.request['kind'] in ('ball_onnx_export', 'ball_onnx_rollout'):
+                from .onnx_tasks import BallOnnxTasks
+                tasks = BallOnnxTasks(self)
+                result = tasks.export() if self.request['kind'] == 'ball_onnx_export' else tasks.rollout()
+                self.progress(status='succeeded', phase='completed', progress=1, result=result, finished_at_ns=time_ns())
+                return
             if self.request['kind'] == 'ball_pickup':
                 from .ball_training import BallPickupTraining
                 result = BallPickupTraining(self).run()

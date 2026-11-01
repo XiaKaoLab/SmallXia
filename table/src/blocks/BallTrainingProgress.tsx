@@ -13,7 +13,7 @@ interface TrainingJob {
   progress?: number; score?: number | null; current_score?: number; successes?: number;
   snapshot?: { joint_positions: Record<string, number>; ball_position: number[]; ball_radius: number };
 }
-const phases: Record<string, string> = { queued: "准备启动", initializing: "初始化仿真", collecting: "采集经验", learning: "训练策略",
+const phases: Record<string, string> = { queued: "准备启动", initializing: "初始化仿真", collecting: "采集经验", learning: "训练策略", exporting: "导出 ONNX", inferencing: "ONNX 推理",
   completed: "训练完成", succeeded: "训练完成", failed: "训练失败", cancelled: "已停止", interrupted: "训练已中断" };
 const active = (job: TrainingJob) => ["queued", "running"].includes(job.status);
 
@@ -38,7 +38,7 @@ export function BallTrainingProgress() {
       try {
         const { jobs } = await agentClient.request<{ jobs: TrainingJob[] }>({ action: "reinforcement_jobs" });
         if (stopped) return;
-        const candidates = jobs.filter(item => item.kind === "ball_pickup" && !ignored.current.has(item.id));
+        const candidates = jobs.filter(item => ["ball_pickup", "ball_onnx_rollout"].includes(item.kind) && !ignored.current.has(item.id));
         const next = candidates.find(active) ?? candidates.find(item => item.id === selected.current?.id)
           ?? candidates.filter(item => (item.created_at_ns ?? 0) / 1000000 >= mountedAt)
             .sort((first, second) => (second.created_at_ns ?? 0) - (first.created_at_ns ?? 0))[0];
@@ -67,7 +67,7 @@ export function BallTrainingProgress() {
   const running = active(job);
   const progress = Math.max(0, Math.min(1, job.progress ?? 0));
   return <section className="ball-training" aria-label="拿取小球训练进度">
-    <div className="ball-training-heading"><strong>拿取小球</strong><span role="status">{phases[running ? job.phase ?? job.status : job.status] ?? "训练中"}</span>
+    <div className="ball-training-heading"><strong>{job.kind === "ball_onnx_rollout" ? "拿取小球 · ONNX" : "拿取小球"}</strong><span role="status">{!running && job.status === "succeeded" && job.kind === "ball_onnx_rollout" ? "推理完成" : phases[running ? job.phase ?? job.status : job.status] ?? "运行中"}</span>
       {running ? <button type="button" onClick={() => void stop()} disabled={stopping}>{stopping ? "停止中" : "停止"}</button>
         : <button type="button" aria-label="关闭训练进度" onClick={() => { ignored.current.add(job.id); selected.current = undefined; setJob(undefined); window.dispatchEvent(new CustomEvent("table:ball-training", { detail: null })); }}>关闭</button>}
     </div>

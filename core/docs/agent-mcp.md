@@ -37,6 +37,8 @@ RL 工具复用 ReinforcementClient，不在 MCP 内重新实现算法：
 
 `rl_train_ball(num_envs=4, rounds=100, device="cpu")` 启动拿取小球的独立 MuJoCo 环境与共享 SAC 学习器；轮数按每个环境计算。任务 ID 可通过 `rl_get_job` 查询分数、回合与进度，通过 `rl_stop_job` 停止。积木类型 `table_policy_rl_ball` 使用 NUM_ENVS、ROUNDS、DEVICE 字段；启动后中间顶部显示训练面板。仅显式要求训练时调用，不把启动成功表述为已学会抓球。
 
+`rl_export_onnx(training_job_id)` 导出已有抓球模型；`rl_predict_onnx(model_job_id, states)` 对批量 18 维状态做只读 ONNX Runtime 推理；`rl_rollout_onnx(model_job_id, rounds=1)` 在独立 MuJoCo 环境执行推理。导出/执行返回任务 ID，先通过 rl_get_job 查询成功；推理不会重新训练，也不提供实机运动。ID 可用 latest，语义见 [ONNX 契约](reinforcement-api.md#onnx-导出与推理)。对应积木为 table_policy_onnx_export、table_policy_onnx_run，MODEL_ID 默认 latest，推理积木另有 ROUNDS 字段。
+
 ## 积木工具
 
 新增12个 blocks_ 工具：blocks_catalog、blocks_list、blocks_create、blocks_set_fields、blocks_move、blocks_connect、blocks_remove、blocks_clear、blocks_export、blocks_import、blocks_run、blocks_command_status。
@@ -55,4 +57,6 @@ catalog 返回六个分类和可用类型；list 返回 ID、字段、坐标。c
 
 首次接入时实际 stdio 工具发现得到31个工具：3个原模型工具、16个 RL 工具、12个积木工具。通过 MCP 查询 RL 能力、读取六分类目录，并创建 false 条件及条件分支、连接输入、导出 version=2 后删除本次创建的积木。未修改原有积木，未运行程序、训练、运动或 OpenAI API 请求。
 
-本次增加 rl_train_ball，未升级 MCP SDK。小球环境已做两个独立状态的单步检查和一次 SAC 参数更新，TypeScript 静态检查通过；未执行完整回合训练、真实 OpenAI 调用或实机动作，未构建桌面。
+抓球训练已通过积木完成一轮，100 个转换样本、37 次 SAC 更新，抓取成功 0 次，详见 RL API 检查记录。没有真实 OpenAI 调用或实机动作，未构建桌面。
+
+ONNX 也已通过积木导出已有权重，并通过推理积木完成一个仿真回合（100 个转换，成功 0 次）；MCP 只读批量推理的重复结果一致。首次运行回执 unknown 后查询原回执恢复，没有重复导出，最终恢复工作区。具体任务、误差和得分见 RL API 检查记录。

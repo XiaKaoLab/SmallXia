@@ -17,6 +17,26 @@ Created on 2026-11-02; Updated on 2026-11-02
 
 任务状态提供 `num_envs`、`rounds`、`completed_episodes`、`total_episodes`、`env_rounds`、`progress`（0–1）、`score`、`current_score`、`successes`、`success_rate`、`transitions`、`updates`、loss 和 `snapshot`。抓球环境使用仿真真值状态，不要求相机或人工奖励标签。模型和分数属于仿真，未证明真机抓取或策略收敛；MuJoCo 网格接触近似和实际硬件存在差异。
 
+## ONNX 导出与推理
+
+新抓球训练完成后自动导出 `policy.onnx` 和 `policy.onnx.json`，任务只有在 ONNX 导出、模型结构检查及 PyTorch/Runtime 数值对齐检查成功后才标记 succeeded；保留 `.pt` 权重。已有训练可单独导出，不需要重新训练。此功能适用于 18 维抓球 SAC 模型，不适用于 ACT 或含视觉输入的 HIL 会话策略。
+
+| 方法 | 路由 | 请求 |
+|---|---|---|
+| POST | `/onnx-exports` | `{"training_job_id":"训练任务ID或latest"}`，返回后台导出任务 |
+| POST | `/onnx-predictions` | `{"model_job_id":"模型任务ID或latest","states":[[18个数值]]}`，返回 `actions:[batch,6]`，不发送动作 |
+| POST | `/onnx-rollouts` | `{"model_job_id":"模型任务ID或latest","rounds":1,"seed":42}`，返回后台 ONNX Runtime 抓球仿真任务，不更新权重 |
+
+导出/运行任务继续使用 `/jobs/{id}` 查询和停止。`model_job_id` 接受已成功并有 ONNX 文件的新训练任务，或已完成的独立导出任务；不接受任意文件路径。`latest` 在导出时选最近完成的抓球训练，在推理时选最近已完成且具备 ONNX 文件的可用模型。若没有可用模型则明确报错。
+
+左侧策略增加「导出抓球模型 ONNX」和「ONNX 推理 · 拿取小球」积木，默认模型任务为 latest。旧模型先运行导出积木，等任务成功后再运行推理积木；新模型训练后可直接推理。推理过程复用中间顶部面板展示实际分数、回合和状态。
+
+输入 `state` 为 float32 `[batch,18]`，API batch 范围 1–64。顺序固定为六关节位置（rad）、六关节速度（rad/s）、小球世界位置 XYZ（m）、小球相对夹爪抓取点的位置 XYZ（m）。各六轴顺序均为 shoulder_pan、shoulder_lift、elbow_flex、wrist_flex、wrist_roll、gripper。与训练相同，输入使用原始仿真单位，不额外归一化；不能拿六个模型目标角度冒充完整观测。
+
+输出 `action` 为 float32 `[batch,6]`，范围 [-1,1]；乘以 0.08 得到关节增量（rad），仿真环境继续应用 URDF 范围、速度和力矩限制。模型导出确定性动作 `tanh(actor_mean)`，不包含训练时的随机探索采样、Critic 或优化器。ONNX Runtime 推理模块不导入 PyTorch/LeRobot；MuJoCo 仿真执行仍由现有独立环境负责，所有接口均不操作实机。
+
+采用 ONNX opset 17、动态 batch、CPUExecutionProvider，并随文件保存 SHA-256、输入输出契约、关节顺序和导出数值误差。导出机制参考 [PyTorch ONNX 文档](https://docs.pytorch.org/docs/stable/onnx)，运行方式参考 [ONNX Runtime Python 文档](https://onnxruntime.ai/docs/api/python/api_summary.html)。复用 Conda base，新增 onnx/onnxruntime 依赖；不创建新环境。
+
 ## 会话与数据
 
 | 方法 | 路由 | 请求/响应 |
@@ -110,3 +130,7 @@ sid = session["id"]
 - WebView 只读检查确认面板位于三维区顶部 16px、水平居中、宽 360px，显示训练完成、1/1、100% 与实际分数。原工作区恢复后完整快照比对一致，未执行原有机械臂位置积木。
 
 本机详细回执保存在 Git 忽略的 `core/data/runtime/ball-block-check.json`，工作区备份为同目录 `ball-block-workspace-backup.json`；面板完成态记录为 `ball-panel-final.json`。没有构建桌面、发送真实 LLM 请求或连接实机。
+
+同日用「导出抓球模型 ONNX」积木导出上述训练权重，任务 `39ee5bb78bfe495f8c8341669a41423f` succeeded，生成 151200 字节的 policy.onnx 和伴随契约文件。导出检查的 PyTorch/ONNX Runtime 最大绝对误差为 2.682209014892578e-7；通过 MCP 对两条 18 维状态做只读推理，相同输入的重复输出完全一致。随后「ONNX 推理 · 拿取小球」积木启动任务 `1215a17083ab4a1ea6543d0383419fc1`，仅使用 ONNX Runtime 完成 1/1 回合、100 个物理转换，得分 -0.4069328814359693，成功 0 次，training=false。未重新训练，原工作区快照恢复一致。此检查覆盖旧权重独立导出与运行；新训练自动导出复用同一导出器，本次没有为检查自动导出另行训练。
+
+首次导出积木的运行回执超过 8 秒进入 unknown，但后台任务已创建；通过原 command_id 查询到迟到的 succeeded 回执后继续，没有重发导出。原始失败记录和恢复后的完成记录分别在 `core/data/runtime/onnx-block-check.json`、`onnx-recovered-check.json`，不能把首次 unknown 误当作未执行。

@@ -25,6 +25,15 @@ class ReinforcementClient:
     def train_ball(self, num_envs=4, rounds=100, device='cpu', seed=42):
         return self.request('ball-trainings', {'num_envs': num_envs, 'rounds': rounds, 'device': device, 'seed': seed})
 
+    def export_onnx(self, training_job_id):
+        return self.request('onnx-exports', {'training_job_id': training_job_id})
+
+    def predict_onnx(self, model_job_id, states):
+        return self.request('onnx-predictions', {'model_job_id': model_job_id, 'states': states})
+
+    def rollout_onnx(self, model_job_id, rounds=1, seed=42):
+        return self.request('onnx-rollouts', {'model_job_id': model_job_id, 'rounds': rounds, 'seed': seed})
+
     def session(self, session_id):
         return self.request(f'sessions/{session_id}')
 
