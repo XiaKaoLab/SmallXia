@@ -21,7 +21,7 @@ const policy = (type: string) => ({ kind: "block", type, inputs: { ID: { shadow:
 export class BlocksToolbox {
   definition(): Blockly.utils.toolbox.ToolboxInfo {
     return { kind: "categoryToolbox", contents: [
-      { kind: "category", name: "机械臂", colour: "#638b80", contents: [block(BLOCK_TYPE)] },
+      { kind: "category", name: "机械臂", colour: "#638b80", contents: [{ kind: "button", text: "刷新串口", callbackkey: "REFRESH_ARM_PORTS" }, block(BLOCK_TYPE)] },
       { kind: "category", name: "相机", colour: "#587e9d", contents: [{ kind: "button", text: "刷新相机", callbackkey: "REFRESH_CAMERAS" }, block(CAMERA_BLOCK_TYPE), block(FRAME_CAPTURE)] },
       { kind: "category", name: "逻辑", colour: "#687f9b", contents: LOGIC_TYPES.map(block) },
       { kind: "category", name: "变量", colour: "#9a805c", contents: [

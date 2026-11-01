@@ -8,6 +8,7 @@ import { LiveJointRunner } from "./LiveJointRunner";
 import { blocksDebug } from "../debug/BlocksDebug";
 import { registerCameraBlock } from "./cameraBlock";
 import { cameraCatalog } from "./CameraCatalog";
+import { armTargetCatalog } from "./ArmTargetCatalog";
 import { registerFrameBlocks } from "./frameBlocks";
 import { BlocksToolbox, BLOCK_LIMITS } from "./BlocksToolbox";
 import { BlocksControlBridge } from "./BlocksControlBridge";
@@ -44,7 +45,7 @@ export function BlocksSidebar() {
     window.addEventListener("table:pose-limit", onLimit);
     const onConfirmed = (event: Event) => {
       const block = workspace?.getBlocksByType(BLOCK_TYPE, false)[0];
-      if (!block) return;
+      if (!block || block.getFieldValue("TARGET") !== "simulation") return;
       const positions = (event as CustomEvent<Record<string, number>>).detail;
       for (const [name] of JOINTS) block.setFieldValue(String(positions[name]), name);
     };
@@ -53,6 +54,7 @@ export function BlocksSidebar() {
     liveRef.current = live;
     let detachDebug: (() => void) | undefined;
     let detachCameras: (() => void) | undefined;
+    let detachArmTargets: (() => void) | undefined;
     let controlBridge: BlocksControlBridge | undefined;
     async function initialize() {
       try {
@@ -81,6 +83,7 @@ export function BlocksSidebar() {
         });
         workspaceRef.current = workspace;
         detachCameras = cameraCatalog.attach(workspace);
+        detachArmTargets = armTargetCatalog.attach(workspace);
         workspace.registerButtonCallback("CREATE_VARIABLE", () => {
           if (workspace) Blockly.Variables.createVariableButtonHandler(workspace);
         });
@@ -125,7 +128,7 @@ export function BlocksSidebar() {
       }
     }
     void initialize();
-    return () => { abort.abort(); window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; controlBridge?.stop(); detachDebug?.(); detachCameras?.(); observer?.disconnect(); workspace?.dispose(); };
+    return () => { abort.abort(); window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; controlBridge?.stop(); detachDebug?.(); detachCameras?.(); detachArmTargets?.(); observer?.disconnect(); workspace?.dispose(); };
   }, []);
 
   async function run(strict = false) {

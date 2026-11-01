@@ -74,6 +74,10 @@ class DesktopBridge:
                          'Authorization': 'Bearer ' + os.environ['XIAOXIA_MOTION_TOKEN']}, method='POST')
             with urlopen(query, timeout=5) as response:
                 self.emit({'type': 'data', 'data': json.load(response)})
+        elif action == 'list_arm_ports':
+            from serial.tools.list_ports import comports
+            ports = sorted({port.device for port in comports()}, key=lambda value: (len(value), value))
+            self.emit({'type': 'data', 'data': {'ports': ports, 'opened': False}})
         elif action == "list_cameras":
             from urllib.request import Request, urlopen
             query = Request('http://127.0.0.1:8766/api/v1/cameras',

@@ -6,6 +6,7 @@ import * as Blockly from "blockly/core";
 import { JointAngleSlider } from "./JointAngleSlider";
 import { jointPreview } from "../JointPreview";
 import { pythonGenerator } from "blockly/python";
+import { armTargetCatalog } from "./ArmTargetCatalog";
 
 export const JOINTS = [
   ["shoulder_pan", "肩部旋转"], ["shoulder_lift", "肩部抬升"],
@@ -18,12 +19,15 @@ export const BLOCK_TYPE = "table_set_arm_position";
 export function registerPositionBlock(limits: Limits, onSlide: (block: Blockly.Block) => void): void {
   Blockly.Blocks[BLOCK_TYPE] = {
     init(this: Blockly.Block) {
-      this.appendDummyInput().appendField("设置机械臂位置");
+      this.appendDummyInput().appendField("机械臂（")
+        .appendField(new Blockly.FieldDropdown(function () { return armTargetCatalog.options(this.getValue()); }), "TARGET")
+        .appendField("）");
       for (const [index, [name, label]] of JOINTS.entries()) {
         const { lower, upper } = limits[name];
         this.appendDummyInput().appendField(`M${index + 1} ${label}`)
           .appendField(new JointAngleSlider(Math.max(lower, Math.min(0, upper)), lower, upper, `M${index + 1} ${label}`, (angle) => {
             if (this.isInFlyout) return angle;
+            if (this.getFieldValue("TARGET") !== "simulation") return angle;
             const accepted = jointPreview.stage(name, angle);
             this.setFieldValue(String(accepted), name);
             onSlide(this);
@@ -31,11 +35,13 @@ export function registerPositionBlock(limits: Limits, onSlide: (block: Blockly.B
           }), name);
       }
       this.setColour("#638b80");
-      this.setTooltip("拖动滑杆立即调整对应电机角度，显示单位为度，API 使用弧度。");
+      this.setTooltip("选择仿真或发现的 COM 口。仿真滑杆实时控制模型；串口枚举不表示机械臂已连接，未绑定校准的串口不发送动作。");
       this.setPreviousStatement(true); this.setNextStatement(true);
     },
   };
   pythonGenerator.forBlock[BLOCK_TYPE] = (block) => {
+    const target = String(block.getFieldValue("TARGET") ?? "simulation");
+    if (target !== "simulation") return `# 功能：检查机械臂目标绑定。\n# Created on 2026-11-02; Updated on 2026-11-02\n# @author: https://github.com/Linmoqian\nraise RuntimeError(${JSON.stringify(`${target.replace(/^serial:/, "")} 尚未绑定可用的机械臂控制服务和校准，未发送运动指令`)})\n`;
     const positions = JOINTS.map(([name]) => {
       const value = Number(block.getFieldValue(name));
       if (!Number.isFinite(value) || value < limits[name].lower || value > limits[name].upper) {
