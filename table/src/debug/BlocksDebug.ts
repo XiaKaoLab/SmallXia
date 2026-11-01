@@ -8,7 +8,7 @@ import { CAMERA_BLOCK_TYPE } from "../blocks/cameraBlock";
 import { BLOCK_TYPE, JOINTS, type Limits } from "../blocks/positionBlock";
 import { cameraCatalog } from "../blocks/CameraCatalog";
 import { FRAME_CAPTURE, FRAME_VARIABLE } from "../blocks/frameBlocks";
-import { BLOCK_LIMITS, TOOLBOX_TYPES } from "../blocks/BlocksToolbox";
+import { BlocksToolbox, BLOCK_LIMITS, TOOLBOX_TYPES } from "../blocks/BlocksToolbox";
 
 export interface BlockSnapshot { id: string; type: string; fields: Record<string, number | string>; x: number; y: number }
 export interface BlocksSnapshot { version: 2; state: Record<string, unknown> }
@@ -79,6 +79,15 @@ class WorkspaceManager {
     this.position(x, y); const block = this.get(id); const p = block.getRelativeToSurfaceXY();
     block.moveBy(x - p.x, y - p.y); this.changed(); return this.list().find(item => item.id === id)!;
   }
+  connect(parentId: string, childId: string, inputName = ""): BlockSnapshot[] {
+    const parent = this.get(parentId), child = this.get(childId);
+    if (parent === child) throw new Error("不能连接积木自身");
+    const target = inputName ? parent.getInput(inputName)?.connection : parent.nextConnection;
+    if (!target) throw new Error("父积木没有该连接口");
+    const source = target.type === Blockly.ConnectionType.INPUT_VALUE ? child.outputConnection : child.previousConnection;
+    if (!source) throw new Error("子积木类型与连接口不匹配");
+    target.connect(source); this.changed(); return this.list();
+  }
   remove(id: string): void { this.get(id).dispose(false); this.changed(); }
   clear(): void { this.workspace.clear(); this.changed(); }
   python(): string { return pythonGenerator.workspaceToCode(this.workspace); }
@@ -130,11 +139,13 @@ export class BlocksDebugAPI {
     if (!this.manager) throw new Error("Blockly 工作区尚未就绪或已卸载"); return this.manager;
   }
   types() { return this.active().types(); }
+  catalog() { return { toolbox: new BlocksToolbox().definition(), types: this.active().types() }; }
   list() { return this.active().list(); }
   create(fields: Record<string, number | string> = {}, x = 16, y = 24, type = BLOCK_TYPE) { return this.active().create(fields, x, y, type); }
   createCamera(fields: Record<string, number | string> = {}, x = 16, y = 340) { return this.active().create(fields, x, y, CAMERA_BLOCK_TYPE); }
   setFields(id: string, fields: Record<string, number | string>) { return this.active().setFields(id, fields); }
   move(id: string, x: number, y: number) { return this.active().move(id, x, y); }
+  connect(parentId: string, childId: string, inputName = "") { return this.active().connect(parentId, childId, inputName); }
   remove(id: string) { this.active().remove(id); }
   clear() { this.active().clear(); }
   python() { return this.active().python(); }

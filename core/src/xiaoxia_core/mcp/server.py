@@ -1,5 +1,5 @@
-"""通过标准 MCP stdio 工具访问 table 模型 API，不提供实机工具。
-Created on 2026-11-01; Updated on 2026-11-01
+"""通过标准 MCP stdio 提供 table 模型、RL 与当前 WebView 积木工具。
+Created on 2026-11-01; Updated on 2026-11-02
 @author: https://github.com/Linmoqian
 """
 
@@ -13,6 +13,8 @@ from mcp.server.fastmcp import FastMCP
 from ..communication.motion_routes import MotionRouteClient
 from ..contracts import Action
 from ..safety import JointLimits
+from .blocks_tools import BlocksTools
+from .rl_tools import RLTools
 
 
 class TableModelTools:
@@ -53,6 +55,10 @@ def main() -> None:
     server = FastMCP("xiaoxia-table-model")
     for method in (tools.table_get_state, tools.table_get_limits, tools.table_move_joints):
         server.tool()(method)
+    for provider, prefix in ((RLTools(), "rl_"), (BlocksTools(), "blocks_")):
+        for name in dir(provider):
+            if name.startswith(prefix):
+                server.tool()(getattr(provider, name))
     server.run(transport="stdio")
 
 

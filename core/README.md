@@ -132,7 +132,7 @@ with OpenAILLM(LLMConfig.from_env()) as llm:
 
 每轮发送最近 20 轮完整历史（可配置，按轮数而非 token 裁剪）。仅在完整响应成功后原子保存 user/assistant 两条消息；流异常、未完成、主动关闭或生成期间会话版本冲突都不会写入本轮。异常由调用方捕获，提前结束消费时需像示例一样关闭迭代器。中途显示的文本是预览，`completed` 才表示已保存。
 
-这是文本对话 Agent，不含工具调用循环、自动选择技能、长上下文摘要、异步并发或硬件执行。流式接口依据 [OpenAI 流式响应文档](https://developers.openai.com/api/docs/guides/streaming-responses)。未发送实际 API 请求，尚未验收联网交互。
+桌面 Agent 已启用 MCP 工具循环，支持模型、RL 和当前 WebView 积木控制，详见 [Agent MCP](docs/agent-mcp.md)。未提供实机运动工具；技能仍由用户显式选择。流式接口依据 [OpenAI 流式响应文档](https://developers.openai.com/api/docs/guides/streaming-responses)。未发送实际 API 请求，尚未验收联网交互。
 
 ## 强化学习 API
 

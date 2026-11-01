@@ -1,5 +1,5 @@
 """为同步 Agent 托管标准 MCP stdio 会话，保持异步上下文同任务退出。
-Created on 2026-11-01; Updated on 2026-11-01
+Created on 2026-11-01; Updated on 2026-11-02
 @author: https://github.com/Linmoqian
 """
 
@@ -19,7 +19,7 @@ class TableMCPClient:
         params = StdioServerParameters(command=sys.executable,
                                       args=["-m", "xiaoxia_core.mcp.server"], env=dict(os.environ))
         async with stdio_client(params) as (read, write):
-            async with ClientSession(read, write, read_timeout_seconds=timedelta(seconds=10)) as session:
+            async with ClientSession(read, write, read_timeout_seconds=timedelta(seconds=20)) as session:
                 await session.initialize()
                 yield session
 

@@ -50,6 +50,16 @@ class DesktopBridge:
         elif action == "clear":
             self.sessions.clear(request["session_id"])
             self.emit({"type": "data", "data": {"cleared": True}})
+        elif action in ('blocks_poll', 'blocks_reply'):
+            from urllib.request import Request, urlopen
+            endpoint = 'poll' if action == 'blocks_poll' else 'replies'
+            body = {key: value for key, value in request.items() if key != 'action'}
+            query = Request('http://127.0.0.1:8766/api/v1/blocks/' + endpoint,
+                data=json.dumps(body, allow_nan=False).encode(),
+                headers={'Content-Type': 'application/json',
+                         'Authorization': 'Bearer ' + os.environ['XIAOXIA_MOTION_TOKEN']}, method='POST')
+            with urlopen(query, timeout=5) as response:
+                self.emit({'type': 'data', 'data': json.load(response)})
         elif action == "list_cameras":
             from urllib.request import Request, urlopen
             query = Request('http://127.0.0.1:8766/api/v1/cameras',

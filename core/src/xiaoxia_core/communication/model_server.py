@@ -21,6 +21,7 @@ from .model_pose_guard import ModelPoseGuard
 from ..imitation.api_service import ImitationAPI
 from ..reinforcement.service import ReinforcementAPI
 from ..collection.capture_api import CollectionAPI
+from .blocks_control import BlocksControlAPI
 
 
 class ModelTransport(RobotTransport):
@@ -54,6 +55,7 @@ class ModelHTTPServer(ThreadingHTTPServer):
 
     def __init__(self, token: str, limits: JointLimits) -> None:
         urdf = Path(__file__).resolve().parents[4] / "table/public/robots/so101/so101_new_calib.urdf"
+        self.blocks = BlocksControlAPI()
         self.frames = CameraFrames()
         self.camera = VirtualCameraStore({link.attrib["name"] for link in ElementTree.parse(urdf).getroot().findall("link")})
         self.routes = MotionRouteService(token=token)
@@ -94,7 +96,7 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _learning(self, method, body=None):
-        for service in (self.server.imitation, self.server.reinforcement, self.server.collection):
+        for service in (self.server.imitation, self.server.reinforcement, self.server.collection, self.server.blocks):
             if not self.path.startswith(service.prefix + '/'):
                 continue
             if not compare_digest(self.headers.get('Authorization', '').encode(), self.server.read_authorization.encode()):
@@ -126,7 +128,7 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         try:
             length = int(self.headers.get("Content-Length", "0"))
-            if not 0 < length <= (1500000 if self.path == "/api/v1/cameras/virtual/frame" else 16384):
+            if not 0 < length <= (1500000 if self.path == "/api/v1/cameras/virtual/frame" else 1000000 if self.path.startswith("/api/v1/blocks/") else 16384):
                 self._reply(413, {"error": "body_size_invalid"})
                 return
             if self.headers.get_content_type() != "application/json":

@@ -1,5 +1,5 @@
-"""执行 Responses 流式工具循环，经 MCP 调用模型运动 API。
-Created on 2026-11-01; Updated on 2026-11-01
+"""执行 Responses 流式工具循环，经 MCP 调用模型、强化学习与积木工具。
+Created on 2026-11-01; Updated on 2026-11-02
 @author: https://github.com/Linmoqian
 """
 
@@ -15,7 +15,12 @@ def stream_with_mcp(llm, messages, instructions):
     input_tokens = output_tokens = 0
     guidance = ("\n工具只控制 table 显示模型，不是实机。运动前读取模型状态和限位。"
                 "只有用户请求运动时才发送动作。工具错误或超时不得自动重试运动；"
-                "必须如实说明失败。accepted 仅为目标接收，不得声称渲染到位。")
+                "必须如实说明失败。accepted 仅为目标接收，不得声称渲染到位。"
+                "RL 工具复用现有 API：创建会话不代表训练；启动学习器、执行者或奖励训练前必须有用户对应意图。"
+                "不得编造成功/失败标签；后台任务需查询状态，succeeded 也不代表任务成功率通过。"
+                "积木操作先读取目录和工作区；修改/连接不自动运行；只有用户明确要求运行才调用 blocks_run。"
+                "替换快照或批量改动前先导出备份；积木命令超时可能已生效，应查询回执或工作区，禁止重发。"
+                "积木程序可能启动采集/训练，真机只读采集仍遵守既有身份/校准配置；工具不能绕过这些检查。")
     with TableMCPClient() as mcp:
         for round_index in range(8):
             with llm._client.responses.stream(

@@ -10,6 +10,7 @@ import { registerCameraBlock } from "./cameraBlock";
 import { cameraCatalog } from "./CameraCatalog";
 import { registerFrameBlocks } from "./frameBlocks";
 import { BlocksToolbox, BLOCK_LIMITS } from "./BlocksToolbox";
+import { BlocksControlBridge } from "./BlocksControlBridge";
 import { DataBlocks } from "./dataBlocks";
 import { PolicyBlocks } from "./policyBlocks";
 import "blockly/blocks";
@@ -30,6 +31,8 @@ export function BlocksSidebar() {
   const runLock = useRef(false);
   const liveRef = useRef<LiveJointRunner | null>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
+  const runRef = useRef<() => Promise<unknown>>(async () => undefined);
+  runRef.current = () => run(true);
 
   useEffect(() => {
     if (!host.current) return;
@@ -50,6 +53,7 @@ export function BlocksSidebar() {
     liveRef.current = live;
     let detachDebug: (() => void) | undefined;
     let detachCameras: (() => void) | undefined;
+    let controlBridge: BlocksControlBridge | undefined;
     async function initialize() {
       try {
         const response = await fetch(`${import.meta.env.BASE_URL}robots/so101/so101_new_calib.urdf`, { signal: abort.signal });
@@ -95,7 +99,9 @@ export function BlocksSidebar() {
           update();
         });
         update();
-        if (import.meta.env.DEV) detachDebug = blocksDebug.attach(workspace, limits, () => { edited = true; update(); });
+        detachDebug = blocksDebug.attach(workspace, limits, () => { edited = true; update(); });
+        controlBridge = new BlocksControlBridge(() => runRef.current(), () => runLock.current);
+        void controlBridge.start();
         observer = new ResizeObserver(() => { if (workspace) Blockly.svgResize(workspace); });
         observer.observe(element);
         // API 可用时以当前显示目标初始化；不可用时保留模型范围内的零位。
@@ -119,12 +125,14 @@ export function BlocksSidebar() {
       }
     }
     void initialize();
-    return () => { abort.abort(); window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; detachDebug?.(); detachCameras?.(); observer?.disconnect(); workspace?.dispose(); };
+    return () => { abort.abort(); window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; controlBridge?.stop(); detachDebug?.(); detachCameras?.(); observer?.disconnect(); workspace?.dispose(); };
   }, []);
 
-  async function run() {
-    if (!code || runLock.current) return;
-    if (!agentClient.desktop) { setError("运行 Python 需要打开 Tauri 桌面窗口"); return; }
+  async function run(strict = false) {
+    if (runLock.current) { if (strict) throw new Error("已有程序运行中"); return; }
+    const source = workspaceRef.current ? pythonGenerator.workspaceToCode(workspaceRef.current) : code;
+    if (!source.trim()) { if (strict) throw new Error("工作区为空"); return; }
+    if (!agentClient.desktop) { setError("运行 Python 需要打开 Tauri 桌面窗口"); if (strict) throw new Error("需要 Tauri 窗口"); return; }
     runLock.current = true;
     const revision = jointPreview.revision;
     setRunning(true);
@@ -132,7 +140,7 @@ export function BlocksSidebar() {
     setNotice("正在运行 Python…");
     try {
       await liveRef.current?.pause();
-      const result = await agentClient.request<{ output: string; exit_code: number }>({ action: "run_program", source: code });
+      const result = await agentClient.request<{ output: string; exit_code: number }>({ action: "run_program", source });
       for (const line of result.output.trim().split("\n")) {
         try {
           const receipt = JSON.parse(line);
@@ -140,9 +148,11 @@ export function BlocksSidebar() {
         } catch { /* 相机积木等非 JSON 文本不属于关节回执。 */ }
       }
       setNotice(result.output.trim() ? `已运行：${result.output.trim()}` : "Python 运行完成");
+      return result;
     } catch (failure) {
       setError(String(failure));
       setNotice("");
+      if (strict) throw failure;
     } finally {
       liveRef.current?.resume();
       runLock.current = false;
