@@ -9,7 +9,7 @@ import numpy as np
 
 @dataclass(frozen=True)
 class PickupRewardConfig:
-    version: str = 'pickup_v3_visual'
+    version: str = 'pickup_v4_phase'
     found_ball: float = 1.0
     empty_close_cost: float = .2
     approach_gain: float = 5.0

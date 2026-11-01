@@ -13,7 +13,7 @@ def make_policy(config, device):
     inputs.update({f'observation.images.{camera}': PolicyFeature(FeatureType.VISUAL, (3, 64, 64))
                    for camera in config['cameras']})
     settings = SACConfig(input_features=inputs, output_features={'action': PolicyFeature(FeatureType.ACTION, (6,))},
-        device=device, push_to_hub=False, use_torch_compile=False, freeze_vision_encoder=False,
+        device=device, shared_encoder=config.get('shared_encoder', True), push_to_hub=False, use_torch_compile=False, freeze_vision_encoder=False,
         vision_encoder_name=None, latent_dim=128, image_encoder_hidden_dim=16, temperature_init=0.01,
         actor_network_kwargs=ActorNetworkConfig(hidden_dims=[128, 128]),
         critic_network_kwargs=CriticNetworkConfig(hidden_dims=[128, 128]),
@@ -31,7 +31,7 @@ class SACLearner:
         self.device = device
         self.bc_optimizer = None
 
-    def update(self, batch):
+    def update(self, batch, demonstration_batch=None, bc_weight=.5):
         import torch
         self.policy.train()
         metrics = {}
@@ -39,6 +39,13 @@ class SACLearner:
             optimizer = self.optimizers[model]
             optimizer.zero_grad(set_to_none=True)
             loss = self.policy(batch, model=model)[f'loss_{model}']
+            if model == 'actor' and demonstration_batch is not None:
+                actor = self.policy.actor
+                features = actor.encoder(demonstration_batch['state'])
+                predicted = torch.tanh(actor.mean_layer(actor.network(features)))
+                bc_loss = torch.nn.functional.mse_loss(predicted, demonstration_batch['action'])
+                loss = loss + bc_weight * bc_loss
+                metrics['loss_bc'] = float(bc_loss.detach().cpu())
             if not torch.isfinite(loss):
                 raise ValueError('SAC 损失非有限值')
             loss.backward()
@@ -54,7 +61,7 @@ class SACLearner:
         self.policy.train()
         actor = self.policy.actor
         if self.bc_optimizer is None:
-            self.bc_optimizer = torch.optim.Adam(actor.parameters(), lr=3e-4)
+            self.bc_optimizer = torch.optim.Adam(actor.parameters(), lr=3e-4) if self.policy.shared_encoder else self.optimizers['actor']
         optimizer = self.bc_optimizer
         optimizer.zero_grad(set_to_none=True)
         features = actor.encoder(observations)

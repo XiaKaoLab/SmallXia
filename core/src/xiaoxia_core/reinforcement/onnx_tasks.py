@@ -27,17 +27,21 @@ class BallOnnxTasks:
         urdf = Path(__file__).resolve().parents[4] / 'table/public/robots/so101/so101_new_calib.urdf'
         env = BallPickupEnvironment.vector(urdf, 1, self.request['seed'])[0]
         from .ball_observation import BallObservation
-        observer = BallObservation(env, self.request['seed'] + 100000, noisy=False) if policy.manifest.get('cameras') else None
+        observer = BallObservation(env, self.request['seed'] + 100000, noisy=self.request.get('suite') == 'noisy') if policy.manifest.get('cameras') else None
         from .preview import TrainingPreviewPublisher
         preview = TrainingPreviewPublisher(self.worker.directory)
         preview.publish([env], force=True)
         rounds = self.request['rounds']
+        positions = [(float(x), float(y)) for x in np.linspace(.16, .23, 7)
+                     for y in np.linspace(-.05, .05, 5)] if self.request.get('suite') == 'grid' else None
+        episodes = []
         scores = deque(maxlen=100)
         successes = transitions = 0
         last_publish = 0
         try:
             for episode in range(rounds):
-                state = env.reset_episode()
+                state = env.reset_episode(position=positions[episode] if positions else None)
+                peak_floor_force = 0.
                 while True:
                     observation = observer.read() if observer else None
                     action = policy.predict(np.asarray([observation['observation.state'] if observation else state]),
@@ -45,12 +49,16 @@ class BallOnnxTasks:
                     state, _, terminated, truncated, success = env.advance(action)
                     if observer:
                         observer.read()  # 将当前动作后的相机发现奖励计入回合分数。
+                    peak_floor_force = max(peak_floor_force, env.contact_state()['arm_floor_force'])
                     transitions += 1
                     preview.publish([env])
                     done = terminated or truncated
                     if done:
                         scores.append(env.return_)
-                        successes += int(success)
+                        accepted = bool(success and peak_floor_force <= 5.)
+                        successes += int(accepted)
+                        episodes.append({'success': accepted, 'physical_grasp': bool(success),
+                            'peak_arm_floor_force': peak_floor_force, 'snapshot': env.snapshot()})
                     if monotonic() - last_publish >= .5 or done:
                         completed = episode + int(done)
                         self.worker.progress(phase='inferencing', runtime='onnxruntime', completed_episodes=completed,
@@ -63,7 +71,8 @@ class BallOnnxTasks:
                         break
             preview.publish([env], force=True)
             return {'runtime': 'onnxruntime', 'completed_episodes': rounds, 'score': float(np.mean(scores)),
-                    'successes': successes, 'transitions': transitions, 'training': False, 'physical': False}
+                    'successes': successes, 'transitions': transitions, 'training': False, 'physical': False, 'suite': self.request.get('suite', 'clean'),
+                    'episodes': episodes, 'all_passed': successes == rounds}
         finally:
             if observer:
                 observer.close()

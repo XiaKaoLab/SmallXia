@@ -12,17 +12,20 @@ class BallPolicyEvaluation:
     def __init__(self, urdf, device):
         self.urdf, self.device = urdf, device
 
-    def run(self, policy, rounds=5, seed=20261102, preview=None):
+    def run(self, policy, rounds=20, seed=20261102, preview=None, level=2, noisy=noisy):
         env = BallPickupEnvironment.vector(self.urdf, 1, seed)[0]
+        env.curriculum_level = level
+        env.reset_episode()
         observer = None
         results = []
         policy.eval()
         try:
-            observer = BallObservation(env, seed + 100000, noisy=False)
+            observer = BallObservation(env, seed + 100000, noisy=noisy)
             for episode in range(rounds):
                 if episode:
                     env.reset_episode()
                 success = False
+                peak_floor_force = 0.
                 while not env.ended:
                     observation = observer.read()
                     batch = observer.batch([observation], self.device)
@@ -31,13 +34,14 @@ class BallPolicyEvaluation:
                         action = torch.tanh(actor.mean_layer(actor.network(actor.encoder(batch))))[0].cpu().numpy()
                     _, _, _, _, success = env.advance(action)
                     observer.read()
+                    peak_floor_force = max(peak_floor_force, env.contact_state()['arm_floor_force'])
                     if preview:
                         preview.publish([env])
-                results.append({'success': bool(success), 'score': env.return_,
+                results.append({'success': bool(success and peak_floor_force <= 5.), 'peak_arm_floor_force': peak_floor_force, 'score': env.return_,
                     'held_seconds': env.held_seconds, 'snapshot': env.snapshot()})
             return {'rounds': rounds, 'seed': seed, 'successes': sum(row['success'] for row in results),
                 'score': float(np.mean([row['score'] for row in results])), 'episodes': results,
-                'controller': 'learned_actor_mean', 'physical': False}
+                'curriculum_level': level, 'noisy': noisy, 'controller': 'learned_actor_with_phase_gate', 'physical': False}
         finally:
             if observer:
                 observer.close()

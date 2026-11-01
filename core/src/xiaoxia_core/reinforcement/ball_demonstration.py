@@ -46,60 +46,40 @@ class BallDemonstrator:
             raise ValueError('参考抓取位姿不可达，位置误差超过 3mm')
         return np.r_[q, opening]
 
+    def expert_action(self, env, cache):
+        phase = env.phases.name
+        current = np.array([env.read_observation().joint_positions[name] for name in JOINTS])
+        if cache.get('phase') != phase:
+            heights = {'search': .065, 'approach': .065, 'align': .002, 'close': .002,
+                       'lift': .075, 'hold': .075, 'recover': .065}
+            opening = 1. if phase in ('search', 'approach', 'align', 'recover') else -.16
+            if phase in ('lift', 'hold'):
+                opening = cache.setdefault('grasp_angle', current[5] - .02)
+            elif phase == 'recover':
+                cache.pop('grasp_angle', None)
+            target = env.ball_position().copy()
+            target[2] = env.spawn_position[2] + heights[phase]
+            cache.update(phase=phase, target=self.solve(env, target, opening))
+        return np.clip((cache['target'] - current) / .08, -1, 1).astype(np.float32)
+
     def collect(self, env, observer):
-        initial = env.ball_position().copy()
-        rows, grasp_angle = [], None
+        rows, cache = [], {}
         observation = observer.read()
         success = False
-        for stage, height, opening, steps in [('approach', .065, 1., 28),
-                ('descend', .002, 1., 18), ('close', .002, -.16, 18), ('lift', .075, -.16, 34)]:
-            if stage == 'lift' and grasp_angle is not None:
-                opening = grasp_angle
-            target = initial + [0, 0, height]
-            q = self.solve(env, target, opening)
-            for _ in range(steps):
-                current = np.array([env.read_observation().joint_positions[name] for name in JOINTS])
-                action = np.clip((q - current) / .08, -1, 1).astype(np.float32)
-                _, reward, terminated, truncated, success = env.advance(action)
-                following = observer.read()
-                reward += env.last_visual_reward
-                # 不用定时等待帧教策略在接近/下降的阶段交界永久停住。
-                if stage not in ('approach', 'descend') or np.max(np.abs(action)) >= .04:
-                    rows.append((observation, action, reward, following, terminated))
-                observation = following
-                if terminated or truncated:
-                    break
-                if stage == 'close' and env.contact_state()['both_jaws']:
-                    grasp_angle = env.read_observation().joint_positions['gripper'] - .02
-                    break
-            if env.ended:
-                break
+        while not env.ended:
+            action = self.expert_action(env, cache)
+            _, reward, terminated, _, success = env.advance(action)
+            following = observer.read()
+            rows.append((observation, action, reward + env.last_visual_reward, following, terminated))
+            observation = following
         return rows if success else []
 
     def corrections(self, env, observer, policy, device, preview=None):
-        # DAgger：在模型偏离示教后的实际状态标注专家动作，仅用于行为克隆。
-        # 混合执行动作不会写入 SAC 示教回放，避免伪造 action/next_state 转换。
-        initial = env.ball_position().copy()
-        labels = []
-        stage, q, grasp_angle = 0, None, None
-        heights = [.065, .002, .002, .075]
-        openings = [1., 1., -.16, -.16]
+        labels, cache = [], {}
         policy.eval()
-        for _ in range(env.episode_steps):
+        while not env.ended:
             observation = observer.read()
-            current = np.array([env.read_observation().joint_positions[name] for name in JOINTS])
-            if q is None:
-                target = initial + [0, 0, heights[stage]]
-                q = self.solve(env, target, grasp_angle if stage == 3 and grasp_angle is not None else openings[stage])
-            if stage < 2 and np.max(np.abs(q - current)) < .015:
-                stage += 1
-                q = None
-                continue
-            if stage == 2 and env.contact_state()['both_jaws']:
-                grasp_angle = current[5] - .02
-                stage, q = 3, None
-                continue
-            expert = np.clip((q - current) / .08, -1, 1).astype(np.float32)
+            expert = self.expert_action(env, cache)
             labels.append((observation, expert))
             with torch.inference_mode():
                 batch = observer.batch([observation], device)
@@ -109,6 +89,4 @@ class BallDemonstrator:
             observer.read()
             if preview:
                 preview.publish([env])
-            if env.ended:
-                break
         return labels

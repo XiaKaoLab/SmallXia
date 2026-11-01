@@ -8,8 +8,9 @@ import numpy as np
 
 class BallObservation:
     camera_key = 'observation.images.wrist'
-    config = {'cameras': ['wrist'], 'state_dim': 18, 'actor_std_min': .01, 'actor_std_max': .1,
-              'state_scale': [.5] * 6 + [.1] * 6 + [5.] * 3 + [20.] * 3}
+    config = {'cameras': ['wrist'], 'state_dim': 31, 'shared_encoder': False,
+              'state_order': 'joint_positions_6,joint_velocities_6,ball_xyz_3,ball_minus_tip_xyz_3,phase_onehot_7,jaw_forces_2,hold_fraction_1,orientation_error_3', 'actor_std_min': .01, 'actor_std_max': .1,
+              'state_scale': [.5] * 6 + [.1] * 6 + [5.] * 3 + [20.] * 3 + [1.] * 13}
     noise = {'joint_position_std_rad': .002, 'joint_velocity_std': .005,
              'position_std_m': .001, 'rgb_std': .01, 'brightness_range': [.9, 1.1]}
 
@@ -25,7 +26,7 @@ class BallObservation:
         image = rgb.astype(np.float32) / 255
         state = self.env.state().copy()
         if self.noisy:
-            state += self.random.normal(0, [.002] * 6 + [.005] * 6 + [.001] * 6)
+            state += self.random.normal(0, [.002] * 6 + [.005] * 6 + [.001] * 6 + [0.] * 13)
             image = np.clip(image * self.random.uniform(.9, 1.1) + self.random.normal(0, .01, image.shape), 0, 1)
         return {'observation.state': state, self.camera_key: (image.transpose(2, 0, 1) * 255).round().astype(np.uint8)}
 

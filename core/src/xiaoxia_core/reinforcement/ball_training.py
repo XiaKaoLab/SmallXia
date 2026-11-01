@@ -15,6 +15,7 @@ from .learning import SACLearner
 from .ball_observation import BallObservation
 from .ball_demonstration import BallDemonstrator
 from .ball_evaluation import BallPolicyEvaluation
+from .pickup_curriculum import PickupCurriculum
 from ..imitation.api_jobs import atomic_json
 from .preview import TrainingPreviewPublisher
 
@@ -33,7 +34,7 @@ class BallPickupTraining:
         stop_on_success = self.request.get('stop_on_success', False)
         atomic_json(self.worker.directory / 'policy_config.json', {'task': 'ball_pickup', 'cameras': ['wrist'],
             'environment_version': BallPickupEnvironment.version,
-            **BallObservation.config, 'state_order': 'joint_positions_6,joint_velocities_6,ball_xyz_3,ball_minus_tip_xyz_3',
+            **BallObservation.config, 'state_order': 'joint_positions_6,joint_velocities_6,ball_xyz_3,ball_minus_tip_xyz_3,phase_onehot_7,jaw_forces_2,hold_fraction_1,orientation_error_3',
             'action_space': 'normalized_joint_delta', 'action_scale': .08, 'num_envs': count, 'rounds': rounds,
             'observation_noise': BallObservation.noise, 'demonstration_episodes': demo_count, 'pretraining_updates': pretraining,
             'privileged_state': True, 'seed': self.request['seed'], 'physical': False})
@@ -56,7 +57,10 @@ class BallPickupTraining:
             preview = TrainingPreviewPublisher(self.worker.directory)
             self.worker.progress(reward_config=environments[0].reward.description())
             preview.publish(environments, force=True)
-            replay = deque(maxlen=5000)
+            replay = deque(maxlen=10000)
+            hard_replay = deque(maxlen=2000)
+            curriculum = PickupCurriculum()
+            best_state, best_metric, regressions = None, (-1, -1, float('-inf')), 0
             demos = []
             self.worker.progress(phase='demonstrating', demonstration_successes=0)
             teacher = BallDemonstrator()
@@ -108,7 +112,7 @@ class BallPickupTraining:
             pretraining_completed = 0
             for step in range(pretraining):
                 pretraining_completed = step + 1
-                selected = rng.sample(demos, min(64, len(demos)))
+                selected = PickupCurriculum.sample(demos, 64, rng)
                 labels = [(r[0], r[1]) for r in selected]
                 if correction_labels:
                     labels = labels[:32] + rng.sample(correction_labels, min(32, len(correction_labels)))
@@ -121,12 +125,10 @@ class BallPickupTraining:
                     learner.publish(self.worker.directory, step + 1)
                 if stop_on_success and (step + 1) % 1000 == 0:
                     self.worker.progress(phase='evaluating', pretraining_step=step + 1)
-                    evaluation = evaluator.run(learner.policy, preview=preview)
+                    evaluation = evaluator.run(learner.policy, preview=preview, level=curriculum.level)
                     atomic_json(self.worker.directory / 'evaluation.json', evaluation)
-                    self.worker.progress(evaluation_successes=evaluation['successes'], evaluation_rounds=5)
-                    if evaluation['successes'] >= 3:
-                        validated = True
-                        break
+                    self.worker.progress(evaluation_successes=evaluation['successes'], evaluation_rounds=20)
+                    # 示教预训练只提供初始化；不能跳过在线 SAC 和最终全工作区验收。
                     if self.request.get('corrective_demonstrations', False):
                         self.worker.progress(phase='correcting')
                         for _ in range(8):
@@ -138,6 +140,7 @@ class BallPickupTraining:
                                 continue
                         correction_labels = correction_labels[-10000:]
                         self.worker.progress(correction_labels=len(correction_labels))
+            curriculum.configure(environments)
             for env in environments:
                 env.reset_episode()
             scores = deque(maxlen=100)
@@ -160,7 +163,11 @@ class BallPickupTraining:
                         state, reward, terminated, truncated, success = futures[offset].result()
                         state = observers[index].read()
                         reward += environments[index].last_visual_reward
-                        replay.append((states[index], actions[offset], reward, state, terminated))
+                        row = (states[index], actions[offset], reward, state, terminated)
+                        replay.append(row)
+                        if any(environments[index].last_reward_terms.get(key, 0) < 0
+                               for key in ('drop', 'empty_close', 'premature_close', 'timeout', 'floor_collision')):
+                            hard_replay.append(row)
                         transitions += 1
                         states[index] = state
                         if terminated or truncated:
@@ -171,22 +178,59 @@ class BallPickupTraining:
                                 environments[index].reset_episode()
                                 states[index] = observers[index].read()
                     if len(replay) >= 64:
-                        selected = rng.sample(list(replay), 48) + rng.sample(demos, 16)
+                        selected = (PickupCurriculum.sample(replay, 16, rng) + PickupCurriculum.sample(demos, 32, rng)
+                                    + PickupCurriculum.sample(hard_replay or replay, 16, rng))
                         tensor = lambda values: torch.as_tensor(np.asarray(values), dtype=torch.float32, device=self.request['device'])
+                        anchor = PickupCurriculum.sample(demos, 32, rng)
+                        labels = [(r[0], r[1]) for r in anchor]
+                        if correction_labels:
+                            labels += rng.sample(correction_labels, min(32, len(correction_labels)))
                         metrics = learner.update({'state': BallObservation.batch([row[0] for row in selected], self.request['device']),
                             'action': tensor([row[1] for row in selected]), 'reward': tensor([row[2] for row in selected]),
                             'next_state': BallObservation.batch([row[3] for row in selected], self.request['device']),
-                            'done': tensor([row[4] for row in selected])})
-                        metrics['loss_bc'] = learner.behavior_clone(
-                            BallObservation.batch([r[0] for r in selected[-16:]], self.request['device']),
-                            tensor([r[1] for r in selected[-16:]]))
+                            'done': tensor([row[4] for row in selected])},
+                            demonstration_batch={'state': BallObservation.batch([r[0] for r in labels], self.request['device']),
+                                                 'action': tensor([r[1] for r in labels])}, bc_weight=.5)
                         updates += 1
                         if stop_on_success and updates % 500 == 0:
-                            self.worker.progress(phase='evaluating')
-                            evaluation = evaluator.run(learner.policy, preview=preview)
+                            self.worker.progress(phase='evaluating', curriculum_level=curriculum.level)
+                            evaluation = evaluator.run(learner.policy, preview=preview, level=curriculum.level,
+                                seed=20270000 + updates, noisy=curriculum.level == 2)
                             atomic_json(self.worker.directory / 'evaluation.json', evaluation)
-                            self.worker.progress(evaluation_successes=evaluation['successes'], evaluation_rounds=5)
-                            validated = evaluation['successes'] >= 3
+                            self.worker.progress(evaluation_successes=evaluation['successes'], evaluation_rounds=20)
+                            metric = (curriculum.level, evaluation['successes'], evaluation['score'])
+                            if metric > best_metric:
+                                best_metric, regressions = metric, 0
+                                best_state = {key: value.detach().cpu().clone() for key, value in learner.policy.state_dict().items()}
+                                torch.save(best_state, self.worker.directory / 'best-policy.pt')
+                            else:
+                                regressions += 1
+                            if curriculum.promote(evaluation):
+                                curriculum.configure(environments)
+                                self.worker.progress(curriculum_level=curriculum.level)
+                            elif (curriculum.level == 2 and evaluation['successes'] == 20
+                                  and updates >= self.request.get('minimum_online_updates', 2000)):
+                                validated = True
+                            elif regressions >= 3 and best_state is not None:
+                                learner.policy.load_state_dict(best_state)
+                                for optimizer in learner.optimizers.values():
+                                    optimizer.state.clear()
+                                regressions = 0
+                                self.worker.progress(restored_best_policy=True)
+                            if not validated and self.request.get('corrective_demonstrations', False):
+                                self.worker.progress(phase='correcting')
+                                for _ in range(4):
+                                    environments[0].reset_episode()
+                                    try:
+                                        correction_labels.extend(teacher.corrections(environments[0], observers[0],
+                                            learner.policy, self.request['device'], preview))
+                                    except ValueError:
+                                        continue
+                                correction_labels = correction_labels[-10000:]
+                                # 纠正采集改变了环境，清空当前观察并重置，不拼接不连续转换。
+                                environments[0].reset_episode()
+                                states[0] = observers[0].read()
+                                self.worker.progress(correction_labels=len(correction_labels))
                         if updates % 200 == 0:
                             learner.publish(self.worker.directory, pretraining_completed + updates)
                     preview.publish(environments)
@@ -199,6 +243,8 @@ class BallPickupTraining:
                             env_rounds=completed, transitions=transitions, updates=updates,
                             snapshot=environments[0].snapshot(), **metrics)
                         last_publish = monotonic()
+            if not validated and best_state is not None:
+                learner.policy.load_state_dict(best_state)
             checkpoint = learner.publish(self.worker.directory, pretraining_completed + updates)
             preview.publish(environments, force=True)
             self.worker.progress(phase='exporting')
@@ -206,7 +252,8 @@ class BallPickupTraining:
             exported = BallOnnxExporter().export(Path(checkpoint), self.worker.directory, policy=learner.policy, config=BallObservation.config, environment_version=BallPickupEnvironment.version)
             return {'checkpoint': checkpoint, **exported, 'completed_episodes': sum(completed), 'successes': successes,
                     'score': float(np.mean(scores)) if scores else None, 'updates': updates, 'physical': False,
-                    'evaluation': evaluation, 'task_success_validated': validated, 'stopped_on_success': validated}
+                    'curriculum_level': curriculum.level, 'minimum_online_updates': self.request.get('minimum_online_updates', 2000),
+                    'evaluation': evaluation, 'task_success_validated': False, 'training_candidate_qualified': validated, 'stopped_on_success': validated}
         finally:
             for observer in observers:
                 observer.close()

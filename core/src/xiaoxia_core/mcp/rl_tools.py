@@ -23,7 +23,7 @@ class RLTools:
 
     def rl_predict_onnx(self, model_job_id: str, states: list[list[float]],
                         images: list[list[list[list[float]]]] | None = None) -> dict:
-        """ONNX 推理六轴增量；视觉策略同时需要 images=[batch,3,64,64] RGB，范围[0,1]，不发送运动。"""
+        """ONNX推理六轴增量，states维度按模型manifest（新版31维）；视觉策略同时需要 images=[batch,3,64,64] RGB，范围[0,1]，不发送运动。"""
         return self.client.predict_onnx(model_job_id, states, images)
 
     def rl_rollout_onnx(self, model_job_id: str, rounds: int = 1) -> dict:

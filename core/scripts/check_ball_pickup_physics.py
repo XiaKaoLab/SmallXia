@@ -12,6 +12,7 @@ from scipy.optimize import least_squares
 
 from xiaoxia_core.contracts import Action
 from xiaoxia_core.reinforcement.ball_environment import BallPickupEnvironment
+from xiaoxia_core.reinforcement.ball_observation import BallObservation
 from xiaoxia_core.safety import JOINTS
 
 
@@ -42,6 +43,7 @@ class PickupPhysicsCheck:
 
     def run(self, seed):
         env = BallPickupEnvironment.vector(self.urdf, 1, seed)[0]
+        observer = BallObservation(env, seed + 100000, noisy=False)
         trace, success = [], False
         initial = env.ball_position().copy()
         grasp_angle = None
@@ -54,8 +56,10 @@ class PickupPhysicsCheck:
                     opening = grasp_angle
                 q = self.solve(env, target, opening)
                 for _ in range(steps):
+                    observer.read()
                     current = np.array([env.read_observation().joint_positions[name] for name in JOINTS])
                     _, reward, terminated, truncated, success = env.advance(np.clip((q - current) / .08, -1, 1))
+                    observer.read()
                     trace.append({'stage': stage, 'reward': reward, **env.snapshot()})
                     if stage == 'close' and env.contact_state()['both_jaws']:
                         grasp_angle = env.read_observation().joint_positions['gripper'] - .02
@@ -81,6 +85,7 @@ class PickupPhysicsCheck:
                 'released_drop_m': float(held_position[2] - released[2]), 'released_to_floor': bool(dropped),
                 'initial_position': initial.tolist(), 'resets': reset, 'trace': trace, 'physical': False}
         finally:
+            observer.close()
             env.disconnect()
 
 

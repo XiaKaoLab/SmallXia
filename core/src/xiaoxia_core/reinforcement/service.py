@@ -141,12 +141,13 @@ class ReinforcementAPI:
                         'ball_pickup': {'backend': 'mujoco+lerobot_sac', 'num_envs': [1, 16],
                             'rounds_per_env': [1, 10000], 'success_lift_m': 0.05, 'success_hold_s': 1,
                             'score': 'mean_episode_return_last_100', 'physical': False,
-                            'environment_version': 'so101_pickup_v4_visual_reward', 'reward_version': 'pickup_v3_visual',
+                            'environment_version': 'so101_pickup_v5_phase_sac', 'reward_version': 'pickup_v4_phase',
                             'cameras': ['wrist'], 'rgb_shape': [3, 64, 64], 'privileged_state': True,
                             'initial_demonstrations': 8, 'behavior_clone_updates': 200,
-                            'observation_noise': True,
+                            'observation_noise': True, 'state_dim': 31, 'strategy': 'phase_conditioned_sac',
+                            'curriculum_levels': 3, 'acceptance': '100_clean_100_noisy_35_grid_all_success',
                             'success_requires': 'both_jaw_forces_over_0.01N_no_floor_contact_continuous_lift',
-                            'onnx': {'automatic_export': True, 'state_dim': 18, 'action_dim': 6,
+                            'onnx': {'automatic_export': True, 'state_dim': 31, 'action_dim': 6,
                                      'deterministic': True, 'runtime': 'onnxruntime'}}}
                 if parts == ['sessions']:
                     return 200, {'sessions': [self.store(p.parent.name).summary() for p in (self.root / 'sessions').glob('*/session.json')]}
@@ -213,6 +214,7 @@ class ReinforcementAPI:
                         'pretraining_updates': self.integer(body, 'pretraining_updates', 200, 200, 50000),
                         'stop_on_success': body.get('stop_on_success', False),
                         'corrective_demonstrations': body.get('corrective_demonstrations', False),
+                        'minimum_online_updates': self.integer(body, 'minimum_online_updates', 2000, 500, 100000),
                         'num_envs': count, 'rounds': rounds,
                         'seed': self.integer(body, 'seed', 42, 0, 2147483647)},
                         initial_state={'task': '拿取小球', 'num_envs': count, 'rounds': rounds,

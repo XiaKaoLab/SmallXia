@@ -1,4 +1,4 @@
-"""持续扩量训练抓球策略，直到独立 ONNX 推理出现真实物理抓取成功。
+"""持续扩量训练抓球策略，直到独立 ONNX 三组验收全部成功。
 Created on 2026-11-02; Updated on 2026-11-02
 @author: https://github.com/Linmoqian
 """
@@ -13,7 +13,7 @@ class PickupTrainingCampaign:
         self.demonstration_job_id = demonstration_job_id
         self.client = ReinforcementClient()
         self.path = Path(__file__).resolve().parents[1] / 'data/runtime/pickup-campaign.json'
-        self.report = {'status': 'running', 'acceptance': 'independent_onnx_physical_grasp', 'batches': []}
+        self.report = {'status': 'running', 'acceptance': '100_clean+100_noisy+35_grid_all_success', 'batches': []}
 
     def save(self):
         atomic_json(self.path, self.report)
@@ -42,16 +42,21 @@ class PickupTrainingCampaign:
                 self.report['batch'] = batch
                 self.report['training_job_id'] = training['id']
                 self.wait(training['id'], 'training')
-                evaluation = self.client.rollout_onnx(training['id'], rounds=20, seed=20261103 + batch)
-                self.report['evaluation_job_id'] = evaluation['id']
-                result = self.wait(evaluation['id'], 'evaluation')
-                successes = result.get('successes', 0)
-                self.report['batches'].append({'training_job_id': training['id'],
-                    'evaluation_job_id': evaluation['id'], 'successes': successes, 'rounds': 20})
+                suites = []
+                for index, (suite, rounds) in enumerate((('clean', 100), ('noisy', 100), ('grid', 35))):
+                    evaluation = self.client.rollout_onnx(training['id'], rounds=rounds,
+                        seed=30261103 + batch * 10 + index, suite=suite)
+                    self.report['evaluation_job_id'] = evaluation['id']
+                    self.report['evaluation_suite'] = suite
+                    result = self.wait(evaluation['id'], 'evaluation')
+                    suites.append({'suite': suite, 'job_id': evaluation['id'],
+                        'successes': result.get('successes', 0), 'rounds': rounds})
+                self.report['batches'].append({'training_job_id': training['id'], 'suites': suites})
                 self.save()
-                if successes > 0:
+                if all(item['successes'] == item['rounds'] for item in suites):
                     self.report.update(status='succeeded', successful_model_job_id=training['id'],
-                        success_rate=successes / 20, robust_grasp_validated=successes >= 16)
+                        success_rate=1., robust_grasp_validated=True, task_success_validated=True,
+                        qualification_scope='defined_simulation_workspace_and_noise_only')
                     self.save()
                     return
                 previous = training['id']

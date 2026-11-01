@@ -62,6 +62,11 @@ class BallOnnxAPI:
             raise ValueError('模型使用旧抓球环境，请在新版物理与奖励环境重新训练')
         if any(job['kind'] in ('ball_pickup', 'ball_onnx_rollout') and job['status'] in ('queued', 'running') for job in self.jobs.list()):
             raise ValueError('已有抓球训练或 ONNX 推理运行中，请先停止或等待结束')
-        return self.jobs.start('ball_onnx_rollout', {'source_directory': str(source), 'rounds': rounds, 'seed': seed},
+        suite = body.get('suite', 'clean')
+        if suite not in ('clean', 'noisy', 'grid'):
+            raise ValueError('suite 需要 clean、noisy 或 grid')
+        if suite == 'grid':
+            rounds = 35
+        return self.jobs.start('ball_onnx_rollout', {'source_directory': str(source), 'rounds': rounds, 'seed': seed, 'suite': suite},
             initial_state={'task': '拿取小球 · ONNX 推理', 'phase': 'initializing', 'num_envs': 1, 'rounds': rounds,
                            'completed_episodes': 0, 'total_episodes': rounds, 'progress': 0, 'score': None, 'physical': False})

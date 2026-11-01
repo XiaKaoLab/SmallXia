@@ -12,12 +12,14 @@ from ..contracts import Action
 from ..safety import JOINTS, JointLimits
 from ..simulation.world import MujocoSimulation, SimulationConfig
 from .pickup_reward import PickupReward
+from .pickup_phases import PickupPhases
+from .pickup_curriculum import PickupCurriculum
 
 
 class BallPickupEnvironment(MujocoSimulation):
-    version = 'so101_pickup_v4_visual_reward'
+    version = 'so101_pickup_v5_phase_sac'
     radius = 0.015
-    episode_steps = 100
+    episode_steps = 180
     floor_z = -.003
     lift_height = .05
     hold_seconds = 1.0
@@ -72,13 +74,18 @@ class BallPickupEnvironment(MujocoSimulation):
             environments.append(env)
         return environments
 
-    def reset_episode(self):
+    def reset_episode(self, position=None):
         super().reset()
         model, data = self._state()
         address = model.jnt_qposadr[self.ball_joint]
-        data.qpos[address:address + 3] = [self.random.uniform(.16, .23), self.random.uniform(-.05, .05), self.floor_z + self.radius + .002]
+        width = PickupCurriculum.widths[getattr(self, 'curriculum_level', 2)]
+        xy = position if position is not None else [self.random.uniform(.195 - .035 * width, .195 + .035 * width), self.random.uniform(-.05 * width, .05 * width)]
+        if len(xy) != 2 or not np.isfinite(xy).all() or not .16 <= xy[0] <= .23 or not -.05 <= xy[1] <= .05:
+            raise ValueError('球位置超出已定义工作区')
+        data.qpos[address:address + 3] = [*xy, self.floor_z + self.radius + .002]
         data.qpos[address + 3:address + 7] = [1, 0, 0, 0]
         mujoco.mj_forward(model, data)
+        self.phases = PickupPhases()
         self.steps = self.held = 0
         self.held_seconds = 0.0
         self.ended = False
@@ -102,7 +109,12 @@ class BallPickupEnvironment(MujocoSimulation):
         q = [data.qpos[model.jnt_qposadr[self._joints[name]]] for name in JOINTS]
         velocity = [data.qvel[model.jnt_dofadr[self._joints[name]]] for name in JOINTS]
         ball = self.ball_position()
-        return np.asarray([*q, *velocity, *ball, *(ball - data.site_xpos[self.tip])], dtype=np.float32)
+        contact = self.contact_state()
+        forces = [contact['jaw_forces'][name] for name in ('gripper_link', 'moving_jaw_so101_v1_link')]
+        orientation = data.site_xmat[self.tip].reshape(3, 3)[:, 2] - [0, 0, 1]
+        return np.asarray([*q, *velocity, *ball, *(ball - data.site_xpos[self.tip]),
+            *self.phases.one_hot(), *[min(force, 2.) / 2 for force in forces],
+            min(self.held_seconds / self.hold_seconds, 1.), *orientation], dtype=np.float32)
 
     def advance(self, action):
         if self.ended:
@@ -110,6 +122,8 @@ class BallPickupEnvironment(MujocoSimulation):
         action = np.asarray(action)
         if action.shape != (6,) or action.dtype.kind not in 'fiu' or not np.isfinite(action).all() or np.max(np.abs(action)) > 1:
             raise ValueError('动作必须为六维 [-1,1] 有限数值')
+        requested_action = action.copy()
+        action = self.phases.mask(action)
         current = self.read_observation().joint_positions
         targets = {name: float(np.clip(current[name] + float(action[index]) * .08,
                    self.limits.joints[name].lower, self.limits.joints[name].upper)) for index, name in enumerate(JOINTS)}
@@ -130,6 +144,14 @@ class BallPickupEnvironment(MujocoSimulation):
             grasped=grasped, success=success, failed=failed, truncated=truncated,
             action=action, floor_force=contact['arm_floor_force'],
             ball_contact=any(force > .01 for force in contact['jaw_forces'].values()))
+        progress = self.phases.update(visible=self.ball_visible, delta=ball - data.site_xpos[self.tip],
+            orientation_error=float(np.linalg.norm(data.site_xmat[self.tip].reshape(3, 3)[:, 2] - [0, 0, 1])),
+            contact=contact, lifted=ball[2] - self.initial_ball_position[2],
+            gripper=self.read_observation().joint_positions['gripper'])
+        self.last_reward_terms['phase_progress'] = progress
+        blocked = max(0., float(action[5] - requested_action[5]))
+        self.last_reward_terms['premature_close'] = -.1 * blocked
+        reward += progress - .1 * blocked
         self.return_ += reward
         self.ended = bool(terminated or truncated)
         return self.state(), reward, bool(terminated), bool(truncated), bool(success)
@@ -200,4 +222,5 @@ class BallPickupEnvironment(MujocoSimulation):
         return {'joint_positions': self.read_observation().joint_positions, 'ball_position': self.ball_position().tolist(),
                 'ball_radius': self.radius, 'floor_z': self.floor_z, 'episode_index': self.episode_index,
                 'spawn_position': self.spawn_position.tolist(), 'held_seconds': self.held_seconds,
+                'phase': self.phases.name, 'curriculum_level': getattr(self, 'curriculum_level', 2),
                 'ball_visible': self.ball_visible, 'contacts': self.contact_state(), 'reward_terms': self.last_reward_terms, 'physical': False}

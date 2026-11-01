@@ -23,10 +23,10 @@ class ReinforcementClient:
         return self.request('sessions', {'task': task, **configuration})
 
     def train_ball(self, num_envs=4, rounds=100, device='cpu', seed=42, warm_start_job_id=None,
-                   demonstration_episodes=8, pretraining_updates=200, stop_on_success=False, demonstration_job_id=None, corrective_demonstrations=False):
+                   demonstration_episodes=8, pretraining_updates=200, stop_on_success=False, demonstration_job_id=None, corrective_demonstrations=False, minimum_online_updates=2000):
         return self.request('ball-trainings', {'num_envs': num_envs, 'rounds': rounds, 'device': device,
             'seed': seed, 'demonstration_episodes': demonstration_episodes,
-            'pretraining_updates': pretraining_updates, 'stop_on_success': stop_on_success, 'corrective_demonstrations': corrective_demonstrations,
+            'pretraining_updates': pretraining_updates, 'stop_on_success': stop_on_success, 'corrective_demonstrations': corrective_demonstrations, 'minimum_online_updates': minimum_online_updates,
             **({'demonstration_job_id': demonstration_job_id} if demonstration_job_id else {}), **({'warm_start_job_id': warm_start_job_id} if warm_start_job_id else {})})
 
     def export_onnx(self, training_job_id):
@@ -36,8 +36,8 @@ class ReinforcementClient:
         return self.request('onnx-predictions', {'model_job_id': model_job_id, 'states': states,
             **({'images': images} if images is not None else {})})
 
-    def rollout_onnx(self, model_job_id, rounds=1, seed=42):
-        return self.request('onnx-rollouts', {'model_job_id': model_job_id, 'rounds': rounds, 'seed': seed})
+    def rollout_onnx(self, model_job_id, rounds=1, seed=42, suite=None):
+        return self.request('onnx-rollouts', {'model_job_id': model_job_id, 'rounds': rounds, 'seed': seed, **({'suite': suite} if suite else {})})
 
     def session(self, session_id):
         return self.request(f'sessions/{session_id}')
