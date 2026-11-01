@@ -18,6 +18,7 @@ from .transport import RobotTransport
 from .virtual_camera import VirtualCameraStore
 from .camera_frames import CameraFrames
 from .model_pose_guard import ModelPoseGuard
+from ..imitation.api_service import ImitationAPI
 
 
 class ModelTransport(RobotTransport):
@@ -56,9 +57,12 @@ class ModelHTTPServer(ThreadingHTTPServer):
         self.routes = MotionRouteService(token=token)
         self.routes.register("table", ModelTransport(limits, ModelPoseGuard(urdf)), limits)
         self.read_authorization = f"Bearer {token}"
+        self.imitation = ImitationAPI(Path(__file__).resolve().parents[3] / 'data/imitation_api',
+            limits, self.frames, lambda: self.routes.handle('GET', '/api/v1/robots/table/state', self.read_authorization)[1]['joint_positions'])
         super().__init__(("127.0.0.1", 8766), ModelRequestHandler)
 
     def server_close(self):
+        self.imitation.close()
         self.frames.close()
         super().server_close()
 
@@ -80,7 +84,18 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _imitation(self, method, body=None):
+        if not self.path.startswith(ImitationAPI.prefix + '/'):
+            return False
+        if not compare_digest(self.headers.get('Authorization', '').encode(), self.server.read_authorization.encode()):
+            self._reply(401, {'error': 'unauthorized'})
+        else:
+            self._reply(*self.server.imitation.handle(method, self.path, body))
+        return True
+
     def do_GET(self) -> None:
+        if self._imitation('GET'):
+            return
         if self.path in ('/api/v1/cameras/virtual/frame', '/api/v1/cameras/real/frame'):
             if not compare_digest(self.headers.get('Authorization', '').encode(), self.server.read_authorization.encode()):
                 self._reply(401, {'error': 'unauthorized'})
@@ -111,6 +126,8 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
                 raise ValueError("对象必需")
         except (ValueError, UnicodeDecodeError):
             self._reply(400, {"error": "invalid_json"})
+            return
+        if self._imitation('POST', body):
             return
         if self.path in ('/api/v1/cameras/virtual/frame', '/api/v1/cameras/real/config'):
             if not compare_digest(self.headers.get('Authorization', '').encode(), self.server.read_authorization.encode()):

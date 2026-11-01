@@ -1,5 +1,5 @@
 """用 LeRobot ACT 完成真实参数更新、检查点保存与有界关节策略推理。
-Created on 2026-11-01; Updated on 2026-11-01
+Created on 2026-11-01; Updated on 2026-11-02
 @author: https://github.com/Linmoqian
 """
 
@@ -46,7 +46,7 @@ class JointNormalizer:
 
 
 class ACTTrainer:
-    def train(self, config: ACTTrainingConfig) -> dict:
+    def train(self, config: ACTTrainingConfig, *, progress=None) -> dict:
         # 禁止 Transformers 为本次 PyTorch 工作流额外初始化本机 TensorFlow。
         os.environ.setdefault("USE_TF", "0")
         import torch
@@ -82,7 +82,7 @@ class ACTTrainer:
         iterator = iter(loader)
         losses = []
         policy.train()
-        for _ in range(config.steps):
+        for step in range(config.steps):
             try:
                 raw = next(iterator)
             except StopIteration:
@@ -100,6 +100,8 @@ class ACTTrainer:
             torch.nn.utils.clip_grad_norm_(policy.parameters(), 1.0, error_if_nonfinite=True)
             optimizer.step()
             losses.append(float(loss.detach().cpu()))
+            if progress is not None:
+                progress(step + 1, losses[-1])
         policy.save_pretrained(config.output)
         metadata["normalization"] = "joint_limits_linear_minus1_plus1_v1"
         (config.output / "imitation.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")

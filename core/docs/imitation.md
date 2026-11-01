@@ -2,6 +2,10 @@
 
 复用 Conda `base`；本次不转 UV，不修改 `table`。SO-100/101 共用六关节通信、数据格式和 ACT 链路，模型/校准/零点方向由配置决定。
 
+## HTTP API
+
+模型示教、统一相机画面记录、LeRobot 数据集导出、ACT 训练、预测、table 回放及任务停止接口见 [模仿学习 API](imitation-api.md)。HTTP API 不连接实机，沿用 base 环境和模型服务 8766 端口。
+
 ## 软件入口
 
 实际脚本入口为 `core/src/xiaoxia_core/imitation/__main__.py`。在 `core` 目录执行：
