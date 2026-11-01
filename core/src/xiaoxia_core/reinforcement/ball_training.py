@@ -105,7 +105,9 @@ class BallPickupTraining:
             evaluation = None
             validated = False
             correction_labels = []
+            pretraining_completed = 0
             for step in range(pretraining):
+                pretraining_completed = step + 1
                 selected = rng.sample(demos, min(64, len(demos)))
                 labels = [(r[0], r[1]) for r in selected]
                 if correction_labels:
@@ -186,7 +188,7 @@ class BallPickupTraining:
                             self.worker.progress(evaluation_successes=evaluation['successes'], evaluation_rounds=5)
                             validated = evaluation['successes'] >= 3
                         if updates % 200 == 0:
-                            learner.publish(self.worker.directory, pretraining + updates)
+                            learner.publish(self.worker.directory, pretraining_completed + updates)
                     preview.publish(environments)
                     if monotonic() - last_publish >= .5 or min(completed) >= rounds:
                         done = sum(completed)
@@ -197,7 +199,7 @@ class BallPickupTraining:
                             env_rounds=completed, transitions=transitions, updates=updates,
                             snapshot=environments[0].snapshot(), **metrics)
                         last_publish = monotonic()
-            checkpoint = learner.publish(self.worker.directory, pretraining + updates)
+            checkpoint = learner.publish(self.worker.directory, pretraining_completed + updates)
             preview.publish(environments, force=True)
             self.worker.progress(phase='exporting')
             from .onnx_export import BallOnnxExporter

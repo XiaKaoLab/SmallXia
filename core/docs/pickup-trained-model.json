@@ -1,0 +1,34 @@
+{
+  "date": "2026-11-02",
+  "environment_version": "so101_pickup_v4_visual_reward",
+  "training_job_id": "31b642699f764b3291fd0694cd84868e",
+  "onnx_evaluation_job_id": "aa953077234d4036be66436b183c8967",
+  "device": "cuda",
+  "demonstration_episodes": 64,
+  "demonstration_transitions": 2966,
+  "behavior_clone_updates": 1000,
+  "online_sac_updates": 0,
+  "early_stop": "learned_actor_independent_3_of_5_before_online_sac",
+  "learned_actor_validation": {
+    "seed": 20261102,
+    "successes": 3,
+    "rounds": 5,
+    "successful_hold_seconds": [
+      1.1000000000000005,
+      1.0800000000000005,
+      1.1000000000000005
+    ]
+  },
+  "onnx_validation": {
+    "seed": 20261104,
+    "successes": 7,
+    "rounds": 20,
+    "success_rate": 0.35,
+    "runtime": "onnxruntime",
+    "teacher_or_ik_assistance": false
+  },
+  "onnx_max_absolute_error": 4.172325134277344e-07,
+  "onnx_sha256": "f6e68834514c83c307588485f4d0f0148743f8f246e7491282b3b3f53ac0f9a3",
+  "robust_grasp_validated": false,
+  "physical_hardware_tested": false
+}
