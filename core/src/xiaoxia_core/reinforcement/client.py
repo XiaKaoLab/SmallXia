@@ -29,8 +29,9 @@ class ReinforcementClient:
     def export_onnx(self, training_job_id):
         return self.request('onnx-exports', {'training_job_id': training_job_id})
 
-    def predict_onnx(self, model_job_id, states):
-        return self.request('onnx-predictions', {'model_job_id': model_job_id, 'states': states})
+    def predict_onnx(self, model_job_id, states, images=None):
+        return self.request('onnx-predictions', {'model_job_id': model_job_id, 'states': states,
+            **({'images': images} if images is not None else {})})
 
     def rollout_onnx(self, model_job_id, rounds=1, seed=42):
         return self.request('onnx-rollouts', {'model_job_id': model_job_id, 'rounds': rounds, 'seed': seed})

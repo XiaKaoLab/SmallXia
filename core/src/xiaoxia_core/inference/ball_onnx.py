@@ -22,7 +22,7 @@ class BallOnnxPolicy:
         options.intra_op_num_threads = 2
         self.session = ort.InferenceSession(model, sess_options=options, providers=['CPUExecutionProvider'])
 
-    def predict(self, states):
+    def predict(self, states, images=None):
         if not isinstance(states, (list, np.ndarray)):
             raise ValueError('states 必须是 [batch,18] 数值数组')
         if isinstance(states, list) and any(not isinstance(row, list) or any(type(value) not in (int, float) for value in row) for row in states):
@@ -33,7 +33,17 @@ class BallOnnxPolicy:
         array = array.astype(np.float32)
         if not np.isfinite(array).all():
             raise ValueError('states 不能包含非有限值')
-        actions = self.session.run(['action'], {'state': array})[0]
+        feed = {'state': array}
+        if self.manifest.get('cameras'):
+            if images is None:
+                raise ValueError('视觉策略必须提供 images，格式 [batch,3,64,64]，数值范围 [0,1]')
+            image = np.asarray(images)
+            if image.dtype.kind not in 'fiu' or image.shape != (len(array), 3, 64, 64):
+                raise ValueError('images 必须是 [batch,3,64,64] 数值数组')
+            if not np.isfinite(image).all() or image.min() < 0 or image.max() > 1:
+                raise ValueError('images 必须为 [0,1] 的有限 RGB 数值')
+            feed['wrist'] = image.astype(np.float32)
+        actions = self.session.run(['action'], feed)[0]
         if actions.shape != (len(array), 6) or not np.isfinite(actions).all() or np.max(np.abs(actions)) > 1.00001:
             raise ValueError('ONNX 输出动作无效')
         return np.clip(actions, -1, 1)

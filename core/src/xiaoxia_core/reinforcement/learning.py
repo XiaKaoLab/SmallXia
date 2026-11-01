@@ -29,6 +29,7 @@ class SACLearner:
         self.optimizers = {key: torch.optim.Adam([value] if key == 'temperature' else value, lr=3e-4)
                            for key, value in parameters.items()}
         self.device = device
+        self.bc_optimizer = None
 
     def update(self, batch):
         import torch
@@ -47,6 +48,26 @@ class SACLearner:
             metrics[f'loss_{model}'] = float(loss.detach().cpu())
         self.policy.update_target_networks()
         return metrics
+
+    def behavior_clone(self, observations, actions):
+        import torch
+        self.policy.train()
+        actor = self.policy.actor
+        if self.bc_optimizer is None:
+            self.bc_optimizer = torch.optim.Adam(actor.parameters(), lr=3e-4)
+        optimizer = self.bc_optimizer
+        optimizer.zero_grad(set_to_none=True)
+        features = actor.encoder(observations)
+        predicted = torch.tanh(actor.mean_layer(actor.network(features)))
+        loss = torch.nn.functional.mse_loss(predicted, actions)
+        if not torch.isfinite(loss):
+            raise ValueError('示教损失非有限值')
+        loss.backward()
+        parameters = [p for group in optimizer.param_groups for p in group['params']]
+        torch.nn.utils.clip_grad_norm_(parameters, 40, error_if_nonfinite=True)
+        optimizer.step()
+        self.policy.update_target_networks()
+        return float(loss.detach().cpu())
 
     def publish(self, directory, step):
         import torch

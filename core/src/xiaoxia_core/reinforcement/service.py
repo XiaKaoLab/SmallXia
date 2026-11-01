@@ -141,7 +141,10 @@ class ReinforcementAPI:
                         'ball_pickup': {'backend': 'mujoco+lerobot_sac', 'num_envs': [1, 16],
                             'rounds_per_env': [1, 10000], 'success_lift_m': 0.05, 'success_hold_s': 1,
                             'score': 'mean_episode_return_last_100', 'physical': False,
-                            'environment_version': 'so101_pickup_v2', 'reward_version': 'pickup_v2',
+                            'environment_version': 'so101_pickup_v3_vision', 'reward_version': 'pickup_v2',
+                            'cameras': ['wrist'], 'rgb_shape': [3, 64, 64], 'privileged_state': True,
+                            'initial_demonstrations': 8, 'behavior_clone_updates': 200,
+                            'observation_noise': True,
                             'success_requires': 'both_jaw_forces_over_0.01N_no_floor_contact_continuous_lift',
                             'onnx': {'automatic_export': True, 'state_dim': 18, 'action_dim': 6,
                                      'deterministic': True, 'runtime': 'onnxruntime'}}}

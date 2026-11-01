@@ -13,7 +13,7 @@ from ..safety import JOINTS
 
 
 class BallOnnxExporter:
-    def export(self, checkpoint: Path, directory: Path, *, policy=None, environment_version='so101_pickup_v2'):
+    def export(self, checkpoint: Path, directory: Path, *, policy=None, environment_version='so101_pickup_v2', config=None):
         import onnx
         import onnxruntime as ort
         import torch
@@ -24,38 +24,50 @@ class BallOnnxExporter:
                 super().__init__()
                 self.actor = actor
 
-            def forward(self, state):
-                features = self.actor.encoder({'observation.state': state})
+            def forward(self, state, wrist=None):
+                observations = {'observation.state': state}
+                if wrist is not None:
+                    observations['observation.images.wrist'] = wrist
+                features = self.actor.encoder(observations)
                 return torch.tanh(self.actor.mean_layer(self.actor.network(features)))
 
+        config = config or {'cameras': [], 'state_dim': 18}
+        visual = bool(config['cameras'])
         if policy is None:
-            policy = make_policy({'cameras': [], 'state_dim': 18}, 'cpu')
+            policy = make_policy(config, 'cpu')
             policy.load_state_dict(torch.load(checkpoint, map_location='cpu', weights_only=True))
         # 使用独立 CPU 副本，不改变训练器的设备或权重。
         from copy import deepcopy
         model = DeterministicActor(deepcopy(policy.actor).cpu().eval()).eval()
         temporary = directory / 'policy.exporting.onnx'
         path = directory / 'policy.onnx'
+        inputs = (torch.zeros(1, 18), torch.zeros(1, 3, 64, 64)) if visual else (torch.zeros(1, 18),)
+        names = ['state', 'wrist'] if visual else ['state']
         try:
             with torch.inference_mode():
-                torch.onnx.export(model, (torch.zeros(1, 18),), str(temporary), dynamo=False,
-                    opset_version=17, input_names=['state'], output_names=['action'],
-                    dynamic_axes={'state': {0: 'batch'}, 'action': {0: 'batch'}})
+                torch.onnx.export(model, inputs, str(temporary), dynamo=False,
+                    opset_version=17, input_names=names, output_names=['action'],
+                    dynamic_axes={name: {0: 'batch'} for name in [*names, 'action']})
             data = temporary.read_bytes()
             onnx.checker.check_model(onnx.load_model_from_string(data))
             session = ort.InferenceSession(data, providers=['CPUExecutionProvider'])
             sample = np.random.default_rng(42).normal(size=(4, 18)).astype(np.float32)
             sample[0] = 0
+            feed = {'state': sample}
+            if visual:
+                feed['wrist'] = np.random.default_rng(43).random((4, 3, 64, 64)).astype(np.float32)
             with torch.inference_mode():
-                expected = model(torch.from_numpy(sample)).numpy()
-            actual = session.run(['action'], {'state': sample})[0]
+                expected = model(*[torch.from_numpy(feed[name]) for name in names]).numpy()
+            actual = session.run(['action'], feed)[0]
             error = float(np.max(np.abs(expected - actual)))
             if not np.allclose(expected, actual, rtol=1e-4, atol=1e-5):
                 raise ValueError(f'ONNX 与 PyTorch 输出不一致，最大绝对误差 {error}')
             manifest = {'task': 'ball_pickup', 'environment_version': environment_version, 'format': 'onnx', 'opset': 17, 'state_dim': 18,
                 'input': {'name': 'state', 'dtype': 'float32', 'shape': ['batch', 18]},
                 'output': {'name': 'action', 'dtype': 'float32', 'shape': ['batch', 6]},
-                'joint_order': list(JOINTS), 'state_order': 'joint_positions_6,joint_velocities_6,ball_xyz_3,ball_minus_tip_xyz_3',
+                'cameras': config['cameras'], 'image_input': {'name': 'wrist', 'shape': ['batch', 3, 64, 64],
+                    'dtype': 'float32', 'range': [0, 1]} if visual else None,
+                'privileged_state': True, 'joint_order': list(JOINTS), 'state_order': 'joint_positions_6,joint_velocities_6,ball_xyz_3,ball_minus_tip_xyz_3',
                 'action_space': 'normalized_joint_delta', 'action_scale_rad': .08,
                 'deterministic': True, 'action_formula': 'tanh(actor_mean)', 'physical': False,
                 'sha256': hashlib.sha256(data).hexdigest(), 'checkpoint': checkpoint.name,
@@ -75,4 +87,4 @@ class BallOnnxExporter:
         checkpoint = source / weights['file']
         if not checkpoint.resolve().is_relative_to(source.resolve()):
             raise ValueError('策略权重路径超出任务目录')
-        return self.export(checkpoint, destination, environment_version=config.get('environment_version', 'so101_pickup_v1'))
+        return self.export(checkpoint, destination, environment_version=config.get('environment_version', 'so101_pickup_v1'), config=config)

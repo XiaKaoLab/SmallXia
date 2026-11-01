@@ -15,7 +15,7 @@ from .pickup_reward import PickupReward
 
 
 class BallPickupEnvironment(MujocoSimulation):
-    version = 'so101_pickup_v2'
+    version = 'so101_pickup_v3_vision'
     radius = 0.015
     episode_steps = 100
     floor_z = -.003
@@ -30,6 +30,8 @@ class BallPickupEnvironment(MujocoSimulation):
         world = mjcf.find('worldbody')
         ET.SubElement(world, 'geom', name='pickup_floor', type='plane', size='1 1 .05',
                       pos='0 0 -.003', friction='1 .01 .001', rgba='.8 .85 .82 1')
+        ET.SubElement(world, 'light', name='pickup_fill', pos='0 0 1', dir='0 0 -1',
+                      directional='true', ambient='.35 .35 .35', diffuse='.7 .7 .7')
         ball = ET.SubElement(world, 'body', name='pickup_ball', pos='.2 0 .015')
         ET.SubElement(ball, 'freejoint', name='pickup_ball_free')
         ET.SubElement(ball, 'geom', name='pickup_ball_geom', type='sphere', size=str(self.radius),
@@ -38,6 +40,8 @@ class BallPickupEnvironment(MujocoSimulation):
         if gripper is None:
             raise ValueError('URDF 缺少 gripper_link，无法定位抓取点')
         ET.SubElement(gripper, 'site', name='pickup_tip', pos='.0071 -.000218121 -.092', size='.003')
+        ET.SubElement(gripper, 'camera', name='pickup_wrist', pos='.0025 -.068697378 -.003110223',
+                      quat='.976296007 .216439614 0 0', fovy='60')
         # 原生位置执行器在每个物理步计算 P 项，避免各环境在 Python 中逐轴逐步争用 GIL。
         actuators = mjcf.find('actuator')
         if actuators is None:

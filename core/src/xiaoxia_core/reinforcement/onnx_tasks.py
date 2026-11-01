@@ -26,6 +26,8 @@ class BallOnnxTasks:
             raise ValueError('抓球碰撞、观测和奖励环境已更新，旧模型不能作为新版环境的有效推理模型，请重新训练')
         urdf = Path(__file__).resolve().parents[4] / 'table/public/robots/so101/so101_new_calib.urdf'
         env = BallPickupEnvironment.vector(urdf, 1, self.request['seed'])[0]
+        from .ball_observation import BallObservation
+        observer = BallObservation(env, self.request['seed'] + 100000, noisy=False) if policy.manifest.get('cameras') else None
         from .preview import TrainingPreviewPublisher
         preview = TrainingPreviewPublisher(self.worker.directory)
         preview.publish([env], force=True)
@@ -37,7 +39,9 @@ class BallOnnxTasks:
             for episode in range(rounds):
                 state = env.reset_episode()
                 while True:
-                    action = policy.predict(np.asarray([state]))[0]
+                    observation = observer.read() if observer else None
+                    action = policy.predict(np.asarray([observation['observation.state'] if observation else state]),
+                        np.asarray([observation[BallObservation.camera_key]], dtype=np.float32) / 255 if observation else None)[0]
                     state, _, terminated, truncated, success = env.advance(action)
                     transitions += 1
                     preview.publish([env])
@@ -59,4 +63,6 @@ class BallOnnxTasks:
             return {'runtime': 'onnxruntime', 'completed_episodes': rounds, 'score': float(np.mean(scores)),
                     'successes': successes, 'transitions': transitions, 'training': False, 'physical': False}
         finally:
+            if observer:
+                observer.close()
             env.disconnect()

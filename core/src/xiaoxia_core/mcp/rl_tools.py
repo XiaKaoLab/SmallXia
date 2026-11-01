@@ -21,9 +21,10 @@ class RLTools:
         """将已完成的抓球训练权重导出 ONNX，返回后台导出任务；需查询成功后使用。"""
         return self.client.export_onnx(training_job_id)
 
-    def rl_predict_onnx(self, model_job_id: str, states: list[list[float]]) -> dict:
-        """用 ONNX Runtime 对 [batch,18] 状态推理六轴归一化增量，不发送运动。"""
-        return self.client.predict_onnx(model_job_id, states)
+    def rl_predict_onnx(self, model_job_id: str, states: list[list[float]],
+                        images: list[list[list[list[float]]]] | None = None) -> dict:
+        """ONNX 推理六轴增量；视觉策略同时需要 images=[batch,3,64,64] RGB，范围[0,1]，不发送运动。"""
+        return self.client.predict_onnx(model_job_id, states, images)
 
     def rl_rollout_onnx(self, model_job_id: str, rounds: int = 1) -> dict:
         """用已完成的 ONNX 模型执行独立 MuJoCo 抓球仿真，不训练、不操作实机。"""

@@ -49,7 +49,7 @@ class BallOnnxAPI:
             if len(self.policies) > 4:
                 self.policies.popitem(last=False)
         self.policies.move_to_end(key)
-        actions = self.policies[key].predict(body.get('states'))
+        actions = self.policies[key].predict(body.get('states'), body.get('images'))
         return {'model_job_id': key, 'actions': actions.tolist(), 'action_space': 'normalized_joint_delta',
                 'action_scale_rad': .08, 'deterministic': True, 'runtime': 'onnxruntime',
                 'executed': False, 'physical': False}
