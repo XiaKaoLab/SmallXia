@@ -26,8 +26,9 @@ def identifier(value):
 
 
 class ImitationJobs:
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, *, worker_module="xiaoxia_core.imitation.api_worker", max_running=1):
         self.root = root
+        self.worker_module, self.max_running = worker_module, max_running
         root.mkdir(parents=True, exist_ok=True)
         self._lock = RLock()
         self._processes = {}
@@ -38,8 +39,8 @@ class ImitationJobs:
 
     def start(self, kind: str, payload: dict):
         with self._lock:
-            if any(process.poll() is None for process in self._processes.values()):
-                raise ValueError('已有模仿学习任务运行中，请等待或停止该任务')
+            if sum(process.poll() is None for process in self._processes.values()) >= self.max_running:
+                raise ValueError('后台任务数量已达上限，请等待或停止已有任务')
             job_id = uuid4().hex
             directory = self.root / job_id
             directory.mkdir()
@@ -52,7 +53,7 @@ class ImitationJobs:
             try:
                 with (directory / 'worker.log').open('wb') as log:
                     self._processes[job_id] = subprocess.Popen(
-                        [sys.executable, '-u', '-m', 'xiaoxia_core.imitation.api_worker', str(directory)],
+                        [sys.executable, '-u', '-m', self.worker_module, str(directory)],
                         stdout=log, stderr=log, env=environment, **options)
             except Exception as error:
                 atomic_json(directory / 'status.json', {'id': job_id, 'kind': kind, 'status': 'failed', 'error': str(error)})

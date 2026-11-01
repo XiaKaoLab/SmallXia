@@ -1,0 +1,72 @@
+"""使用 LeRobot 原生 SAC 计算损失、优化策略与目标网络并发布原子权重快照。
+Created on 2026-11-02; Updated on 2026-11-02
+@author: https://github.com/Linmoqian
+"""
+from ..imitation.api_jobs import atomic_json
+
+
+def make_policy(config, device):
+    from lerobot.configs.types import FeatureType, PolicyFeature
+    from lerobot.policies.sac.configuration_sac import SACConfig, ActorNetworkConfig, CriticNetworkConfig, PolicyConfig
+    from lerobot.policies.sac.modeling_sac import SACPolicy
+    inputs = {'observation.state': PolicyFeature(FeatureType.STATE, (6,))}
+    inputs.update({f'observation.images.{camera}': PolicyFeature(FeatureType.VISUAL, (3, 64, 64))
+                   for camera in config['cameras']})
+    settings = SACConfig(input_features=inputs, output_features={'action': PolicyFeature(FeatureType.ACTION, (6,))},
+        device=device, push_to_hub=False, use_torch_compile=False, freeze_vision_encoder=False,
+        vision_encoder_name=None, latent_dim=128, image_encoder_hidden_dim=16, temperature_init=0.01,
+        actor_network_kwargs=ActorNetworkConfig(hidden_dims=[128, 128]),
+        critic_network_kwargs=CriticNetworkConfig(hidden_dims=[128, 128]),
+        policy_kwargs=PolicyConfig(std_min=-5, std_max=2))
+    return SACPolicy(settings).to(device)
+
+
+class SACLearner:
+    def __init__(self, config, device):
+        import torch
+        self.policy = make_policy(config, device)
+        parameters = self.policy.get_optim_params()
+        self.optimizers = {key: torch.optim.Adam([value] if key == 'temperature' else value, lr=3e-4)
+                           for key, value in parameters.items()}
+        self.device = device
+
+    def update(self, batch):
+        import torch
+        self.policy.train()
+        metrics = {}
+        for model in ('critic', 'actor', 'temperature'):
+            optimizer = self.optimizers[model]
+            optimizer.zero_grad(set_to_none=True)
+            loss = self.policy(batch, model=model)[f'loss_{model}']
+            if not torch.isfinite(loss):
+                raise ValueError('SAC 损失非有限值')
+            loss.backward()
+            parameters = [parameter for group in optimizer.param_groups for parameter in group['params']]
+            torch.nn.utils.clip_grad_norm_(parameters, 40, error_if_nonfinite=True)
+            optimizer.step()
+            metrics[f'loss_{model}'] = float(loss.detach().cpu())
+        self.policy.update_target_networks()
+        return metrics
+
+    def publish(self, directory, step):
+        import torch
+        name = f'policy-{step:08d}.pt'
+        path = directory / name
+        temporary = path.with_suffix('.tmp')
+        torch.save({key: value.detach().cpu() for key, value in self.policy.state_dict().items()}, temporary)
+        temporary.replace(path)
+        atomic_json(directory / 'weights.json', {'step': step, 'file': name})
+        # 保留当前与前一份，给执行者留出读取窗口。
+        old = sorted(directory.glob('policy-*.pt'))
+        for candidate in old[:-2]:
+            try:
+                candidate.unlink()
+            except OSError:
+                pass
+        return str(path)
+
+
+def reward_network(cameras):
+    from torch import nn
+    return nn.Sequential(nn.Conv2d(3 * cameras, 16, 5, stride=2), nn.ReLU(),
+        nn.Conv2d(16, 32, 3, stride=2), nn.ReLU(), nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Linear(32, 1))

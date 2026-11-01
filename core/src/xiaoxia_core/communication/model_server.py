@@ -19,6 +19,7 @@ from .virtual_camera import VirtualCameraStore
 from .camera_frames import CameraFrames
 from .model_pose_guard import ModelPoseGuard
 from ..imitation.api_service import ImitationAPI
+from ..reinforcement.service import ReinforcementAPI
 
 
 class ModelTransport(RobotTransport):
@@ -59,9 +60,12 @@ class ModelHTTPServer(ThreadingHTTPServer):
         self.read_authorization = f"Bearer {token}"
         self.imitation = ImitationAPI(Path(__file__).resolve().parents[3] / 'data/imitation_api',
             limits, self.frames, lambda: self.routes.handle('GET', '/api/v1/robots/table/state', self.read_authorization)[1]['joint_positions'])
+        self.reinforcement = ReinforcementAPI(Path(__file__).resolve().parents[3] / 'data/reinforcement_api',
+            limits, self.frames, self.routes, self.read_authorization)
         super().__init__(("127.0.0.1", 8766), ModelRequestHandler)
 
     def server_close(self):
+        self.reinforcement.close()
         self.imitation.close()
         self.frames.close()
         super().server_close()
@@ -84,17 +88,19 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def _imitation(self, method, body=None):
-        if not self.path.startswith(ImitationAPI.prefix + '/'):
-            return False
-        if not compare_digest(self.headers.get('Authorization', '').encode(), self.server.read_authorization.encode()):
-            self._reply(401, {'error': 'unauthorized'})
-        else:
-            self._reply(*self.server.imitation.handle(method, self.path, body))
-        return True
+    def _learning(self, method, body=None):
+        for service in (self.server.imitation, self.server.reinforcement):
+            if not self.path.startswith(service.prefix + '/'):
+                continue
+            if not compare_digest(self.headers.get('Authorization', '').encode(), self.server.read_authorization.encode()):
+                self._reply(401, {'error': 'unauthorized'})
+            else:
+                self._reply(*service.handle(method, self.path, body))
+            return True
+        return False
 
     def do_GET(self) -> None:
-        if self._imitation('GET'):
+        if self._learning('GET'):
             return
         if self.path == '/api/v1/cameras' or (self.path.startswith('/api/v1/cameras/') and self.path.endswith('/frame') and len(self.path.split('/')) == 6):
             if not compare_digest(self.headers.get('Authorization', '').encode(), self.server.read_authorization.encode()):
@@ -127,7 +133,7 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
         except (ValueError, UnicodeDecodeError):
             self._reply(400, {"error": "invalid_json"})
             return
-        if self._imitation('POST', body):
+        if self._learning('POST', body):
             return
         if self.path in ('/api/v1/cameras/virtual/frame', '/api/v1/cameras/real/config'):
             if not compare_digest(self.headers.get('Authorization', '').encode(), self.server.read_authorization.encode()):

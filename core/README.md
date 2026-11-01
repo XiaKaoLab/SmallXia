@@ -14,6 +14,7 @@ Python 3.11+ 核心，基础层使用标准库，机器人学习使用 LeRobot�
 | `agent` | SQLite 会话历史、SKILL.md 加载、流式对话和命令行入口 |
 | `safety` | 六轴 URDF 范围、编码器映射交集及发送速度约束 |
 | `imitation` | 实体/键盘主臂、LeRobot 记录、ACT 训练和策略回放 |
+| `reinforcement` | table 人机回环、SAC 学习器/执行者、人工奖励与视觉奖励训练 API |
 | `contracts.py` | 共享观测、动作类型，关节位置单位为弧度 |
 
 复用本机已有 Conda `base` 环境。本次 ACT 数据记录、训练和推理已实际跑通，无需转 UV。运行依赖包含 `lerobot[feetech]==0.4.4`、`mujoco==3.15.0`、`openai==2.24.0`、PyYAML、NumPy，记录在 `pyproject.toml`。在本目录执行：
@@ -132,3 +133,7 @@ with OpenAILLM(LLMConfig.from_env()) as llm:
 每轮发送最近 20 轮完整历史（可配置，按轮数而非 token 裁剪）。仅在完整响应成功后原子保存 user/assistant 两条消息；流异常、未完成、主动关闭或生成期间会话版本冲突都不会写入本轮。异常由调用方捕获，提前结束消费时需像示例一样关闭迭代器。中途显示的文本是预览，`completed` 才表示已保存。
 
 这是文本对话 Agent，不含工具调用循环、自动选择技能、长上下文摘要、异步并发或硬件执行。流式接口依据 [OpenAI 流式响应文档](https://developers.openai.com/api/docs/guides/streaming-responses)。未发送实际 API 请求，尚未验收联网交互。
+
+## 强化学习 API
+
+[强化学习 HTTP API](docs/reinforcement-api.md) 复用模型服务 8766 端口和原生 LeRobot SAC，提供会话、转换数据、人工接管/成功反馈、ROI、学习器、执行者、单次预测、奖励分类器及后台任务停止。当前目标仅为 table，使用关节增量与 HTTP/SQLite 适配；不是官方实机末端空间/gRPC 流水线。服务启动不会初始化策略或自动训练。
