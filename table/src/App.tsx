@@ -1,9 +1,12 @@
-/** 功能：挂载并释放唯一的机械臂模型视图。
+/** 功能：组合机械臂工作区、路由与聊天侧栏。
  * Created on 2026-11-01; Updated on 2026-11-01
  * @author: https://github.com/Linmoqian
  */
 import { useEffect, useRef } from "react";
 import { RobotViewer } from "./RobotViewer";
+import { HashRouter, Route, Routes } from "react-router";
+import { MotionConfig } from "motion/react";
+import { ChatSidebar } from "./chat/ChatSidebar";
 import "./App.css";
 export default function App() {
   const host = useRef<HTMLElement>(null);
@@ -12,5 +15,8 @@ export default function App() {
     const viewer = new RobotViewer(host.current);
     return () => viewer.dispose();
   }, []);
-  return <main ref={host} className="robot-viewer" aria-label="机械臂三维视图" />;
+  return <MotionConfig reducedMotion="user"><HashRouter><main className="workspace">
+    <section ref={host} className="robot-viewer" aria-label="机械臂三维视图" />
+    <Routes><Route path="/" element={<ChatSidebar />} /><Route path="/chat/:sessionId" element={<ChatSidebar />} /><Route path="*" element={<ChatSidebar />} /></Routes>
+  </main></HashRouter></MotionConfig>;
 }

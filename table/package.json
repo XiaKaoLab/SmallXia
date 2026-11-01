@@ -11,8 +11,13 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
+    "lucide-react": "^1.66.0",
+    "motion": "^14.9.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "react-router": "^8.5.1",
+    "remark-gfm": "^4.0.1",
     "three": "^0.187.0",
     "urdf-loader": "^0.13.1"
   },

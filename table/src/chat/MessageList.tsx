@@ -1,0 +1,64 @@
+/** 功能：聊天气泡、Markdown、活动堆栈与流式滚动。
+ * Created on 2026-11-01; Updated on 2026-11-01
+ * @author: https://github.com/Linmoqian
+ */
+import { useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
+import { ArrowDown, Check, Copy, Sparkles } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { IconButton } from "../shared/IconButton";
+import { ActivityCard } from "./ActivityCard";
+import type { ChatMessage } from "./types";
+
+function CopyMessage({ text }: { text: string }) {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  useEffect(() => { if (state === "idle") return; const timer = setTimeout(() => setState("idle"), 1800); return () => clearTimeout(timer); }, [state]);
+  return <span className="copy-action"><IconButton label={state === "copied" ? "已复制" : "复制回复"} onClick={() => {
+    void navigator.clipboard.writeText(text).then(() => setState("copied")).catch(() => setState("failed"));
+  }}>{state === "copied" ? <Check size={14} /> : <Copy size={14} />}</IconButton>
+    {state === "failed" && <small role="status">复制失败</small>}</span>;
+}
+
+export function MessageList({ messages, busy, onSuggest }: { messages: ChatMessage[]; busy: boolean; onSuggest: (text: string) => void }) {
+  const scroll = useRef<HTMLDivElement>(null);
+  const pinned = useRef(true);
+  const [showBottom, setShowBottom] = useState(false);
+  useEffect(() => {
+    if (pinned.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight;
+  }, [messages]);
+
+  return <div className="conversation-shell">
+    <div ref={scroll} className="conversation-scroll" role="log" aria-label="聊天消息" aria-live="off" tabIndex={0} onScroll={() => {
+      const element = scroll.current;
+      if (!element) return;
+      pinned.current = element.scrollHeight - element.scrollTop - element.clientHeight < 72;
+      setShowBottom(!pinned.current);
+    }}>
+      {messages.length === 0 ? <div className="chat-empty">
+        <span className="empty-symbol"><Sparkles size={25} strokeWidth={1.35} /></span>
+        <h1>一起，把想法变成动作。</h1>
+        <p>聊聊机械臂，或从一个问题开始。</p>
+        <div className="suggestions">
+          {["认识这台机械臂", "如何开始采集数据？", "仿真和实机有什么区别？"].map((text) => <button key={text} onClick={() => onSuggest(text)}>{text}<span>↗</span></button>)}
+        </div>
+      </div> : <div className="message-list">
+        {messages.map((message) => <motion.article key={message.id} className={`message message-${message.role}`} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}>
+          {message.role === "user" ? <div className="user-bubble">{message.content}</div> : <>
+            <div className="assistant-label"><Sparkles size={13} /><span>小虾</span>{message.status === "streaming" && <span className="live-dot" />}</div>
+            {message.activities.length > 0 && <div className="activity-stack" aria-label="技能与工具活动" tabIndex={0}>{message.activities.map((activity) => <ActivityCard key={activity.id} activity={activity} />)}</div>}
+            {message.content ? <div className="markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({ children, href, title }) => <a href={href} title={title} target="_blank" rel="noreferrer">{children}</a> }}>{message.content}</ReactMarkdown></div> : message.status === "streaming" ? <div className="thinking" role="status" aria-label="正在生成"><i /><i /><i /></div> : null}
+            {message.status === "streaming" && message.content && <span className="stream-caret" />}
+            {message.status === "completed" && <div className="message-actions"><CopyMessage text={message.content} />{message.result?.output_tokens != null && <small>{message.result.output_tokens} tokens</small>}</div>}
+            {(message.status === "failed" || message.status === "cancelled") && <small className="message-interrupted">{message.status === "cancelled" ? "已停止生成" : "回答未完成"}</small>}
+          </>}
+        </motion.article>)}
+      </div>}
+    </div>
+    {showBottom && <IconButton label="回到最新消息" className="scroll-bottom" onClick={() => {
+      pinned.current = true; setShowBottom(false);
+      if (scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight;
+    }}><ArrowDown size={16} /></IconButton>}
+    <span className="sr-only" role="status">{busy ? "小虾正在生成回复" : "可以发送消息"}</span>
+  </div>;
+}

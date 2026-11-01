@@ -1,8 +1,18 @@
-/* 功能：全窗口机械臂画布。
+/* 功能：机械臂与四分之一聊天栏的应用布局。
  * Created on 2026-11-01; Updated on 2026-11-01
  * @author: https://github.com/Linmoqian
  */
-html, body, #root, .robot-viewer { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-body { background: #e8edf0; }
-.robot-viewer { touch-action: none; }
+* { box-sizing: border-box; }
+html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+body { background: #e8edf0; color: #24282d; font-family: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 13px; -webkit-font-smoothing: antialiased; }
+button, textarea { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { color: inherit; cursor: pointer; }
+button:disabled { cursor: default; opacity: .4; }
+button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 2px solid #638378; outline-offset: 3px; }
+.workspace { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); width: 100%; height: 100%; }
+.robot-viewer { width: 100%; height: 100%; min-width: 0; touch-action: none; }
 .robot-viewer canvas { display: block; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+@media (max-width: 1000px) { .workspace { grid-template-columns: minmax(0, 1fr) 320px; } }
+@media (max-width: 580px) { .workspace { grid-template-columns: 1fr; grid-template-rows: 30% 70%; } }
