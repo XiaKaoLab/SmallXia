@@ -1,5 +1,5 @@
 /** 功能：管理机械臂 URDF、场景和交互生命周期。
- * Created on 2026-11-01; Updated on 2026-11-01
+ * Created on 2026-11-01; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
 import * as THREE from "three";
@@ -19,13 +19,14 @@ export class RobotViewer {
   private robot: URDFRobot | undefined;
   private targets: Record<string, number> = {};
   private readonly clock = new THREE.Clock();
-  private readonly cameraRig = new VirtualCameraRig(this.scene);
+  private readonly cameraRig: VirtualCameraRig;
   private readonly motion = new ModelMotionClient((positions, camera) => {
     this.setJointTargets(positions);
     if (this.robot) this.cameraRig.configure(this.robot, camera);
   });
 
   constructor(private readonly host: HTMLElement) {
+    this.cameraRig = new VirtualCameraRig(this.scene, host);
     this.scene.background = new THREE.Color("#e8edf0");
     this.camera.up.set(0, 0, 1);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -46,6 +47,7 @@ export class RobotViewer {
       this.cameraRig.update();
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
+      this.cameraRig.renderPreview();
     });
     const manager = new THREE.LoadingManager();
     const loader = new URDFLoader(manager);

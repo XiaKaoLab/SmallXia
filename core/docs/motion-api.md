@@ -76,4 +76,4 @@ $env:XIAOXIA_MOTION_TOKEN = "替换成自己的随机令牌"
 本次仅进行 Python 语法和差异检查，未构建、启动服务、运行桌面或发送实机指令。
 
 
-虚拟相机装配：POST `/api/v1/robots/table/camera`，Bearer 鉴权，JSON 为 `{parent_link, position:[x,y,z], rotation:[roll,pitch,yaw], fov}`，分别使用米、弧度、角度。校验连杆存在、三维向量有限及范围，返回 202 和当前配置；GET state 增加 camera 字段。该配置只用于显示模型相机外形和视锥，不代表渲染到位或真实图像采集。
+虚拟相机装配：POST `/api/v1/robots/table/camera`，Bearer 鉴权，JSON 为 `{parent_link, position:[x,y,z], rotation:[roll,pitch,yaw], fov}`，分别使用米、弧度、角度。校验连杆存在、三维向量有限及范围，返回 202 和当前配置；GET state 增加 camera 字段。配置可附加布尔字段 visible；只有 visible=true 才显示相机、视锥和虚拟画面，缺省为 false。该配置不代表渲染到位或真实图像采集。

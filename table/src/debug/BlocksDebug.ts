@@ -1,5 +1,5 @@
 /** 功能：为 WebView 开发接口管理当前 Blockly 工作区和六轴位置积木。
- * Created on 2026-11-01; Updated on 2026-11-01
+ * Created on 2026-11-01; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
 import * as Blockly from "blockly/core";
@@ -28,7 +28,7 @@ class WorkspaceManager {
 
   private specs(type: string): Record<string, { label: string; lower?: number; upper?: number; options?: string[]; unit?: string }> {
     if (type === BLOCK_TYPE) return Object.fromEntries(JOINTS.map(([name, label]) => [name, { label, unit: "rad", ...this.limits[name] }]));
-    if (type === CAMERA_BLOCK_TYPE) return { parent_link: { label: "安装连杆", options: CAMERA_LINKS.map(([, value]) => value) }, ...CAMERA_NUMBERS };
+    if (type === CAMERA_BLOCK_TYPE) return { parent_link: { label: "安装连杆", options: CAMERA_LINKS.map(([, value]) => value) }, display: { label: "相机及画面", options: ["hidden", "shown"] }, ...CAMERA_NUMBERS };
     throw new Error(`未知积木类型：${type}`);
   }
 
@@ -110,6 +110,7 @@ class WorkspaceManager {
       if (!block || ![BLOCK_TYPE, CAMERA_BLOCK_TYPE].includes(block.type) || typeof block.id !== "string" || !block.id || block.id.length > 128) {
         throw new Error("快照包含未知积木类型或无效 ID");
       }
+      if (block.type === CAMERA_BLOCK_TYPE && block.fields && !("display" in block.fields)) block.fields = { ...block.fields, display: "hidden" };
       this.validateFields(block.fields, block.type);
       if (Object.keys(block.fields).length !== Object.keys(this.specs(block.type)).length) throw new Error("快照必须包含完整字段");
       this.validatePosition(block.x, block.y);

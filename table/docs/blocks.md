@@ -22,6 +22,15 @@ $env:XIAOXIA_MOTION_TOKEN = "与模型服务一致的令牌"
 
 Python 通过 POST `/api/v1/robots/table/camera` 提交 `{parent_link, position:[x,y,z], rotation:[roll,pitch,yaw], fov}`。令牌沿用 `XIAOXIA_MOTION_TOKEN`。同一台虚拟相机重复运行只更新装配，不重复叠加。GET state 的 camera 字段返回当前配置；服务重启不持久保存相机配置，需重新运行积木。
 
-模型将相机外形和视锥挂在所选 URDF 连杆下，随连杆运动；旋转顺序为 Rz(yaw)Ry(pitch)Rx(roll)，镜头光轴为局部 -Z。当前仅显示装配及视锥，没有新增相机画面预览或图像采集，不访问 USB 相机。
+模型将相机外形和视锥挂在所选 URDF 连杆下，随连杆运动；旋转顺序为 Rz(yaw)Ry(pitch)Rx(roll)，镜头光轴为局部 -Z。只有积木“相机及画面”明确选择“显示”并运行后，才显示相机外形、视锥和实时虚拟画面；默认“不显示”，没有配置或缺少 visible 时均隐藏。画面来自场景中的虚拟相机，不访问 USB 相机。
 
 本次完成 TypeScript 无输出类型检查、Python 语法检查，并确认当前 WebView 中出现新积木类型和相机按钮。未执行虚拟相机装配后的视觉验收，未构建桌面安装包。
+
+
+## 文档安装位置与按需显示
+
+上游固定版本 [腕部相机装配指南](https://github.com/TheRobotStudio/SO-ARM100/blob/a758567c3978dfeefe282ede0500085a48fe8f78/Optional/Wrist_Cam_Mount_32x32_UVC_Module/README.md) 说明，用带相机孔位的支架替换 Wrist Roll，安装 32×32 mm 模组。当前 URDF 的 wrist_roll 关节连接 wrist_link → gripper_link，因此模型默认挂载到 gripper_link，随腕部旋转，不挂到活动夹爪。
+
+指南没有提供相机光心相对 URDF 的精确 XYZ/RPY 或标定外参。默认局部偏移 `(0.03, 0, -0.015)` m、旋转 `(0, 0, 0)` rad 只是可编辑的显示示意；镜头朝局部 -Z，接近 gripper_frame_link 所在方向。它们不能作为文档测量值或真实手眼标定值。FOV 60° 也是显示参数。
+
+“相机及画面”默认“不显示”。显式改为“显示”后运行，API 提交 visible=true，在模型区右下角创建 4:3 实时虚拟画面；改为“不显示”后运行，移除相机外形、视锥和预览，并释放预览 WebGL 资源。不显示时不创建预览 canvas。未加入相机积木不会主动安装或显示相机。
