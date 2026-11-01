@@ -22,6 +22,8 @@ class BallOnnxTasks:
         from ..inference.ball_onnx import BallOnnxPolicy
         from .ball_environment import BallPickupEnvironment
         policy = BallOnnxPolicy(Path(self.request['source_directory']))
+        if policy.manifest.get('environment_version') != BallPickupEnvironment.version:
+            raise ValueError('抓球碰撞、观测和奖励环境已更新，旧模型不能作为新版环境的有效推理模型，请重新训练')
         urdf = Path(__file__).resolve().parents[4] / 'table/public/robots/so101/so101_new_calib.urdf'
         env = BallPickupEnvironment.vector(urdf, 1, self.request['seed'])[0]
         from .preview import TrainingPreviewPublisher

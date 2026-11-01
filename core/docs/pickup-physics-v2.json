@@ -1,0 +1,318 @@
+{
+  "created_on": "2026-11-02",
+  "author": "https://github.com/Linmoqian",
+  "environment_version": "so101_pickup_v2",
+  "method": "reference IK controller with actual force contacts, no learned policy, no weld or ball teleport during grasp",
+  "physical_hardware": false,
+  "runs": [
+    {
+      "seed": 42,
+      "initial_position_m": [
+        0.21417692339891745,
+        -0.006112156024794771,
+        0.01183512061066378
+      ],
+      "success": true,
+      "lift_m": 0.08050469057351184,
+      "held_seconds": 1.1000000000000005,
+      "jaw_normal_forces_N": {
+        "moving_jaw_so101_v1_link": 0.8699199178477385,
+        "gripper_link": 0.8841445259618128
+      },
+      "ball_on_floor_at_success": false,
+      "released_to_floor": true,
+      "released_drop_m": 0.08050469053910411,
+      "reset_positions_m": [
+        [
+          0.2201018543937968,
+          0.019736802905936393,
+          0.01183512061066378
+        ],
+        [
+          0.16659241435213548,
+          0.047562235163675595,
+          0.01183512061066378
+        ],
+        [
+          0.21327977913932472,
+          0.02860643052769539,
+          0.01183512061066378
+        ]
+      ],
+      "max_reset_speed": 3.153202753999471e-09,
+      "reset_scores": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "seed": 43,
+      "initial_position_m": [
+        0.20566094838906376,
+        -0.04562246763610034,
+        0.01183512061066378
+      ],
+      "success": true,
+      "lift_m": 0.08053234909568863,
+      "held_seconds": 1.1000000000000005,
+      "jaw_normal_forces_N": {
+        "moving_jaw_so101_v1_link": 0.8728562699588323,
+        "gripper_link": 0.887245463818217
+      },
+      "ball_on_floor_at_success": false,
+      "released_to_floor": true,
+      "released_drop_m": 0.0805323490612809,
+      "reset_positions_m": [
+        [
+          0.16140207108119517,
+          0.03392125825110301,
+          0.01183512061066378
+        ],
+        [
+          0.2011000133311641,
+          -0.02752947697963756,
+          0.01183512061066378
+        ],
+        [
+          0.2126254590273031,
+          -0.02363078025216253,
+          0.01183512061066378
+        ]
+      ],
+      "max_reset_speed": 3.153202753999471e-09,
+      "reset_scores": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "seed": 44,
+      "initial_position_m": [
+        0.16857958567717102,
+        -0.0241886925227227,
+        0.01183512061066378
+      ],
+      "success": true,
+      "lift_m": 0.08076268250372537,
+      "held_seconds": 1.1800000000000006,
+      "jaw_normal_forces_N": {
+        "moving_jaw_so101_v1_link": 0.853517080910875,
+        "gripper_link": 0.8651342830949922
+      },
+      "ball_on_floor_at_success": false,
+      "released_to_floor": true,
+      "released_drop_m": 0.08076268246970289,
+      "reset_positions_m": [
+        [
+          0.1884039509474792,
+          0.046918394814442196,
+          0.01183512061066378
+        ],
+        [
+          0.17136219873498967,
+          0.03572936735567715,
+          0.01183512061066378
+        ],
+        [
+          0.17141316897497458,
+          -0.016203805103408263,
+          0.01183512061066378
+        ]
+      ],
+      "max_reset_speed": 3.153202753999471e-09,
+      "reset_scores": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "seed": 45,
+      "initial_position_m": [
+        0.2001191459863254,
+        0.0028491145170202806,
+        0.01183512061066378
+      ],
+      "success": true,
+      "lift_m": 0.08058781590303132,
+      "held_seconds": 1.1000000000000005,
+      "jaw_normal_forces_N": {
+        "moving_jaw_so101_v1_link": 0.8653295147299008,
+        "gripper_link": 0.8806428706944371
+      },
+      "ball_on_floor_at_success": false,
+      "released_to_floor": true,
+      "released_drop_m": 0.0805878158686236,
+      "reset_positions_m": [
+        [
+          0.21345551678613484,
+          0.031169276700960702,
+          0.01183512061066378
+        ],
+        [
+          0.19571601986405066,
+          0.027933967239778743,
+          0.01183512061066378
+        ],
+        [
+          0.21572793131220314,
+          0.009475500434086771,
+          0.01183512061066378
+        ]
+      ],
+      "max_reset_speed": 3.153202753999471e-09,
+      "reset_scores": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "seed": 46,
+      "initial_position_m": [
+        0.22339229936832183,
+        -0.04227732067882568,
+        0.01183512061066378
+      ],
+      "success": true,
+      "lift_m": 0.08043558356489863,
+      "held_seconds": 1.1000000000000005,
+      "jaw_normal_forces_N": {
+        "moving_jaw_so101_v1_link": 0.8749120195444318,
+        "gripper_link": 0.8888106499337797
+      },
+      "ball_on_floor_at_success": false,
+      "released_to_floor": true,
+      "released_drop_m": 0.08043558353049532,
+      "reset_positions_m": [
+        [
+          0.17907988291430466,
+          0.012185048224613304,
+          0.01183512061066378
+        ],
+        [
+          0.2253819885802555,
+          -0.04150532130612235,
+          0.01183512061066378
+        ],
+        [
+          0.20404608367095736,
+          0.027557174647426186,
+          0.01183512061066378
+        ]
+      ],
+      "max_reset_speed": 3.153202753999471e-09,
+      "reset_scores": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "reward_checks": {
+    "stationary": {
+      "reward": -0.01,
+      "terms": {
+        "approach": 0.0,
+        "first_grasp": 0.0,
+        "lift_progress": 0.0,
+        "success": 0.0,
+        "time": -0.01,
+        "action": -0.0,
+        "drop": 0.0,
+        "failure": 0.0,
+        "timeout": 0.0,
+        "floor_collision": -0.0
+      }
+    },
+    "approach": {
+      "reward": 0.24,
+      "terms": {
+        "approach": 0.25,
+        "first_grasp": 0.0,
+        "lift_progress": 0.0,
+        "success": 0.0,
+        "time": -0.01,
+        "action": -0.0,
+        "drop": 0.0,
+        "failure": 0.0,
+        "timeout": 0.0,
+        "floor_collision": -0.0
+      }
+    },
+    "away": {
+      "reward": -0.25999999999999995,
+      "terms": {
+        "approach": -0.24999999999999994,
+        "first_grasp": 0.0,
+        "lift_progress": 0.0,
+        "success": 0.0,
+        "time": -0.01,
+        "action": -0.0,
+        "drop": 0.0,
+        "failure": 0.0,
+        "timeout": 0.0,
+        "floor_collision": -0.0
+      }
+    },
+    "timeout": {
+      "reward": -2.01,
+      "terms": {
+        "approach": 0.0,
+        "first_grasp": 0.0,
+        "lift_progress": 0.0,
+        "success": 0.0,
+        "time": -0.01,
+        "action": -0.0,
+        "drop": 0.0,
+        "failure": 0.0,
+        "timeout": -2.0,
+        "floor_collision": -0.0
+      }
+    },
+    "failure": {
+      "reward": -10.01,
+      "terms": {
+        "approach": 0.0,
+        "first_grasp": 0.0,
+        "lift_progress": 0.0,
+        "success": 0.0,
+        "time": -0.01,
+        "action": -0.0,
+        "drop": 0.0,
+        "failure": -10.0,
+        "timeout": 0.0,
+        "floor_collision": -0.0
+      }
+    },
+    "floor_collision": {
+      "reward": -0.11,
+      "terms": {
+        "approach": 0.0,
+        "first_grasp": 0.0,
+        "lift_progress": 0.0,
+        "success": 0.0,
+        "time": -0.01,
+        "action": -0.0,
+        "drop": 0.0,
+        "failure": 0.0,
+        "timeout": 0.0,
+        "floor_collision": -0.1
+      }
+    },
+    "grasp_first": {
+      "reward": 0.99
+    },
+    "grasp_stationary": {
+      "reward": -0.01
+    },
+    "lift": {
+      "reward": 4.99
+    },
+    "drop": {
+      "reward": -8.01
+    }
+  }
+}

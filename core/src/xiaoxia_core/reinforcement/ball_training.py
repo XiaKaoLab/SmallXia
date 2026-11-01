@@ -26,10 +26,12 @@ class BallPickupTraining:
         torch.set_num_threads(4)
         count, rounds = self.request['num_envs'], self.request['rounds']
         atomic_json(self.worker.directory / 'policy_config.json', {'task': 'ball_pickup', 'cameras': [],
+            'environment_version': BallPickupEnvironment.version,
             'state_dim': 18, 'state_order': 'joint_positions_6,joint_velocities_6,ball_xyz_3,ball_minus_tip_xyz_3',
             'action_space': 'normalized_joint_delta', 'action_scale': .08, 'num_envs': count, 'rounds': rounds,
             'seed': self.request['seed'], 'physical': False})
         self.worker.progress(phase='initializing', task='拿取小球', num_envs=count, rounds=rounds,
+                             environment_version=BallPickupEnvironment.version,
                              completed_episodes=0, total_episodes=count * rounds, progress=0, score=None,
                              score_source='episode_return', successes=0, physical=False)
         seed = self.request['seed']
@@ -42,6 +44,7 @@ class BallPickupTraining:
             if self.request.get('warm_start_checkpoint'):
                 learner.policy.load_state_dict(torch.load(self.request['warm_start_checkpoint'], map_location=self.request['device'], weights_only=True))
             preview = TrainingPreviewPublisher(self.worker.directory)
+            self.worker.progress(reward_config=environments[0].reward.description())
             preview.publish(environments, force=True)
             replay = deque(maxlen=50000)
             scores = deque(maxlen=100)
@@ -91,6 +94,7 @@ class BallPickupTraining:
                         self.worker.progress(phase='learning' if updates else 'collecting', completed_episodes=done,
                             progress=done / (count * rounds), score=float(np.mean(scores)) if scores else None,
                             current_score=float(environments[0].return_), successes=successes, success_rate=successes / done if done else 0,
+                            reward_terms=environments[0].last_reward_terms,
                             env_rounds=completed, transitions=transitions, updates=updates,
                             snapshot=environments[0].snapshot(), **metrics)
                         last_publish = monotonic()

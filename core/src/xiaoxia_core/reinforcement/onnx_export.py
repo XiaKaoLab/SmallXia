@@ -13,7 +13,7 @@ from ..safety import JOINTS
 
 
 class BallOnnxExporter:
-    def export(self, checkpoint: Path, directory: Path, *, policy=None):
+    def export(self, checkpoint: Path, directory: Path, *, policy=None, environment_version='so101_pickup_v2'):
         import onnx
         import onnxruntime as ort
         import torch
@@ -52,7 +52,7 @@ class BallOnnxExporter:
             error = float(np.max(np.abs(expected - actual)))
             if not np.allclose(expected, actual, rtol=1e-4, atol=1e-5):
                 raise ValueError(f'ONNX 与 PyTorch 输出不一致，最大绝对误差 {error}')
-            manifest = {'task': 'ball_pickup', 'format': 'onnx', 'opset': 17, 'state_dim': 18,
+            manifest = {'task': 'ball_pickup', 'environment_version': environment_version, 'format': 'onnx', 'opset': 17, 'state_dim': 18,
                 'input': {'name': 'state', 'dtype': 'float32', 'shape': ['batch', 18]},
                 'output': {'name': 'action', 'dtype': 'float32', 'shape': ['batch', 6]},
                 'joint_order': list(JOINTS), 'state_order': 'joint_positions_6,joint_velocities_6,ball_xyz_3,ball_minus_tip_xyz_3',
@@ -75,4 +75,4 @@ class BallOnnxExporter:
         checkpoint = source / weights['file']
         if not checkpoint.resolve().is_relative_to(source.resolve()):
             raise ValueError('策略权重路径超出任务目录')
-        return self.export(checkpoint, destination)
+        return self.export(checkpoint, destination, environment_version=config.get('environment_version', 'so101_pickup_v1'))

@@ -1,0 +1,14 @@
+{
+  "source": "wrist_roll_follower_so101_v1.stl",
+  "method": "CoACD",
+  "threshold": 0.03,
+  "seed": 42,
+  "parts": 24,
+  "source_sha256": "4b17b410a12d64ec39554abc3e8054d8a97384b2dc4a8d95a5ecb2a93670f5f4",
+  "coacd_version": "1.0.14",
+  "resolution": 2000,
+  "mcts_iterations": 60,
+  "mcts_max_depth": 4,
+  "max_convex_hull": 24,
+  "max_concavity_observed": 0.08053712581917616
+}

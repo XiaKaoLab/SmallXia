@@ -1,0 +1,14 @@
+{
+  "source": "moving_jaw_so101_v1.stl",
+  "method": "CoACD",
+  "threshold": 0.03,
+  "seed": 42,
+  "parts": 24,
+  "source_sha256": "785a9dded2f474bc1d869e0d3dae398a3dcd9c0c345640040472210d2861fa9d",
+  "coacd_version": "1.0.14",
+  "resolution": 2000,
+  "mcts_iterations": 60,
+  "mcts_max_depth": 4,
+  "max_convex_hull": 24,
+  "max_concavity_observed": 0.07169013471312358
+}

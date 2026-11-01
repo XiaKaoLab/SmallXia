@@ -23,5 +23,8 @@ dependencies = [
 requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
+[project.optional-dependencies]
+physics-tools = ["coacd==1.0.14", "trimesh>=4.6,<5", "scipy>=1.14,<2"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/xiaoxia_core"]

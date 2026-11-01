@@ -47,6 +47,7 @@ class MujocoSimulation(RobotTransport):
         root = ElementTree.parse(path).getroot()
         if root.tag != "robot":
             raise ValueError("需要 URDF robot 文件")
+        self.prepare_urdf(root, path)
         extension = root.find("mujoco")
         if extension is None:
             extension = ElementTree.SubElement(root, "mujoco")
@@ -124,6 +125,9 @@ class MujocoSimulation(RobotTransport):
 
     def extend_scene(self, mjcf: ElementTree.Element) -> None:
         """子类可在编译前添加任务物体；默认保持纯机械臂场景。"""
+
+    def prepare_urdf(self, root: ElementTree.Element, path: Path) -> None:
+        """子类可替换碰撞描述；原始 URDF 和视觉模型保持不变。"""
 
     def disconnect(self) -> None:
         self._model = self._data = None

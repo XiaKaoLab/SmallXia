@@ -6,6 +6,7 @@ import { agentClient } from "./chat/AgentClient";
 
 export interface TrainingSnapshot {
   env_index: number; joint_positions: Record<string, number>; ball_position: number[]; ball_radius: number;
+  episode_index?: number; floor_z?: number;
 }
 export interface TrainingPreview { job_id: string; timestamp_ns: number; snapshots: TrainingSnapshot[]; physical: false }
 

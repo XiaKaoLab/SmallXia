@@ -141,6 +141,8 @@ class ReinforcementAPI:
                         'ball_pickup': {'backend': 'mujoco+lerobot_sac', 'num_envs': [1, 16],
                             'rounds_per_env': [1, 10000], 'success_lift_m': 0.05, 'success_hold_s': 1,
                             'score': 'mean_episode_return_last_100', 'physical': False,
+                            'environment_version': 'so101_pickup_v2', 'reward_version': 'pickup_v2',
+                            'success_requires': 'both_jaw_forces_over_0.01N_no_floor_contact_continuous_lift',
                             'onnx': {'automatic_export': True, 'state_dim': 18, 'action_dim': 6,
                                      'deterministic': True, 'runtime': 'onnxruntime'}}}
                 if parts == ['sessions']:
@@ -180,6 +182,10 @@ class ReinforcementAPI:
                         state = self.jobs.get(source.name)
                         if state['kind'] != 'ball_pickup' or state['status'] not in ('succeeded', 'cancelled', 'failed', 'interrupted'):
                             raise ValueError('接续权重需要已结束且存在完整权重的抓球训练')
+                        config = json.loads((source / 'policy_config.json').read_text(encoding='utf-8'))
+                        from .ball_environment import BallPickupEnvironment
+                        if config.get('environment_version') != BallPickupEnvironment.version:
+                            raise ValueError('旧权重使用不同的抓球物理与观测定义，请在新环境重新训练')
                         weights = json.loads((source / 'weights.json').read_text(encoding='utf-8'))
                         checkpoint = source / weights['file']
                         if not checkpoint.resolve().is_relative_to(source.resolve()) or not checkpoint.is_file():

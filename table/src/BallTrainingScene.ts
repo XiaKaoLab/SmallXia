@@ -6,7 +6,7 @@ import * as THREE from "three";
 import type { URDFRobot } from "urdf-loader";
 import { TrainingPreviewClient, type TrainingPreview, type TrainingSnapshot } from "./TrainingPreviewClient";
 
-interface Instance { robot: URDFRobot; ball: THREE.Mesh; offset: THREE.Vector3 }
+interface Instance { robot: URDFRobot; ball: THREE.Mesh; offset: THREE.Vector3; episode?: number }
 export class BallTrainingScene {
   private readonly group = new THREE.Group();
   private readonly sphere = new THREE.SphereGeometry(1, 20, 12);
@@ -34,7 +34,7 @@ export class BallTrainingScene {
     const version = `${frame.job_id}:${frame.timestamp_ns}`;
     if (version === this.version) return;
     this.version = version;
-    this.changed = this.jobId !== frame.job_id;
+    this.changed ||= this.jobId !== frame.job_id;
     this.jobId = frame.job_id;
     this.snapshots = frame.snapshots.filter(item => item.ball_position?.length === 3
       && item.ball_position.every(Number.isFinite) && Number.isFinite(item.ball_radius)
@@ -69,9 +69,9 @@ export class BallTrainingScene {
       ball.position.fromArray(this.snapshots[index].ball_position).add(offset);
       ball.scale.setScalar(this.snapshots[index].ball_radius);
       const floor = new THREE.Mesh(this.floorGeometry, this.floorMaterial);
-      floor.position.copy(offset); floor.position.z = -.004;
+      floor.position.copy(offset); floor.position.z = this.snapshots[index].floor_z ?? -.004;
       this.group.add(ball, floor);
-      this.instances.push({ robot: arm, ball, offset });
+      this.instances.push({ robot: arm, ball, offset, episode: this.snapshots[index].episode_index });
     }
     this.fit(count); this.changed = false;
   }
@@ -83,11 +83,14 @@ export class BallTrainingScene {
     const alpha = fresh ? 1 : 1 - Math.exp(-dt / .09);
     this.instances.forEach((instance, index) => {
       const snapshot = this.snapshots[index];
+      const reset = snapshot.episode_index !== undefined && snapshot.episode_index !== instance.episode;
+      const blend = reset ? 1 : alpha;
+      instance.episode = snapshot.episode_index;
       for (const [name, target] of Object.entries(snapshot.joint_positions)) {
         const joint = instance.robot.joints[name];
-        if (joint) joint.setJointValue(THREE.MathUtils.lerp(joint.jointValue[0], target, alpha));
+        if (joint) joint.setJointValue(THREE.MathUtils.lerp(joint.jointValue[0], target, blend));
       }
-      instance.ball.position.lerp(new THREE.Vector3().fromArray(snapshot.ball_position).add(instance.offset), alpha);
+      instance.ball.position.lerp(new THREE.Vector3().fromArray(snapshot.ball_position).add(instance.offset), blend);
       instance.ball.scale.setScalar(snapshot.ball_radius);
     });
   }

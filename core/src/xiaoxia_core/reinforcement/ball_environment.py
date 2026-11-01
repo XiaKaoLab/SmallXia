@@ -11,11 +11,20 @@ import numpy as np
 from ..contracts import Action
 from ..safety import JOINTS, JointLimits
 from ..simulation.world import MujocoSimulation, SimulationConfig
+from .pickup_reward import PickupReward
 
 
 class BallPickupEnvironment(MujocoSimulation):
+    version = 'so101_pickup_v2'
     radius = 0.015
     episode_steps = 100
+    floor_z = -.003
+    lift_height = .05
+    hold_seconds = 1.0
+
+    def prepare_urdf(self, root, path):
+        from .gripper_collision import GripperCollisionGeometry
+        GripperCollisionGeometry().apply(root, path)
 
     def extend_scene(self, mjcf):
         world = mjcf.find('worldbody')
@@ -24,11 +33,11 @@ class BallPickupEnvironment(MujocoSimulation):
         ball = ET.SubElement(world, 'body', name='pickup_ball', pos='.2 0 .015')
         ET.SubElement(ball, 'freejoint', name='pickup_ball_free')
         ET.SubElement(ball, 'geom', name='pickup_ball_geom', type='sphere', size=str(self.radius),
-                      mass='.012', friction='1.5 .02 .002', condim='4', rgba='1 .35 .15 1')
+                      mass='.012', friction='1.5 .02 .002', condim='4', priority='1', solref='.008 1', rgba='1 .35 .15 1')
         gripper = mjcf.find(".//body[@name='gripper_link']")
         if gripper is None:
             raise ValueError('URDF 缺少 gripper_link，无法定位抓取点')
-        ET.SubElement(gripper, 'site', name='pickup_tip', pos='-.0079 -.000218121 -.0981274', size='.003')
+        ET.SubElement(gripper, 'site', name='pickup_tip', pos='.0071 -.000218121 -.092', size='.003')
         # 原生位置执行器在每个物理步计算 P 项，避免各环境在 Python 中逐轴逐步争用 GIL。
         actuators = mjcf.find('actuator')
         if actuators is None:
@@ -53,6 +62,8 @@ class BallPickupEnvironment(MujocoSimulation):
             env.tip = mujoco.mj_name2id(env._model, mujoco.mjtObj.mjOBJ_SITE, 'pickup_tip')
             env.jaws = {mujoco.mj_name2id(env._model, mujoco.mjtObj.mjOBJ_BODY, name)
                         for name in ('gripper_link', 'moving_jaw_so101_v1_link')}
+            env.floor_geom = mujoco.mj_name2id(env._model, mujoco.mjtObj.mjOBJ_GEOM, 'pickup_floor')
+            env.episode_index = 0
             env.reset_episode()
             environments.append(env)
         return environments
@@ -61,12 +72,19 @@ class BallPickupEnvironment(MujocoSimulation):
         super().reset()
         model, data = self._state()
         address = model.jnt_qposadr[self.ball_joint]
-        data.qpos[address:address + 3] = [self.random.uniform(.16, .23), self.random.uniform(-.05, .05), self.radius]
+        data.qpos[address:address + 3] = [self.random.uniform(.16, .23), self.random.uniform(-.05, .05), self.floor_z + self.radius + .002]
         data.qpos[address + 3:address + 7] = [1, 0, 0, 0]
         mujoco.mj_forward(model, data)
         self.steps = self.held = 0
+        self.held_seconds = 0.0
+        self.ended = False
+        self.episode_index += 1
         self.return_ = 0.0
-        self.previous_distance = float(np.linalg.norm(self.ball_position() - data.site_xpos[self.tip]))
+        self._physics_step(track_hold=False)
+        self.initial_ball_position = self.ball_position()
+        self.spawn_position = self.initial_ball_position.copy()
+        self.reward = PickupReward(float(np.linalg.norm(self.ball_position() - data.site_xpos[self.tip])))
+        self.last_reward_terms = {}
         return self.state()
 
     def ball_position(self):
@@ -80,10 +98,35 @@ class BallPickupEnvironment(MujocoSimulation):
         return np.asarray([*q, *velocity, *ball, *(ball - data.site_xpos[self.tip])], dtype=np.float32)
 
     def advance(self, action):
+        if self.ended:
+            raise ValueError('当前回合已结束，请先 reset_episode；不重复计算成功奖励')
+        action = np.asarray(action)
+        if action.shape != (6,) or action.dtype.kind not in 'fiu' or not np.isfinite(action).all() or np.max(np.abs(action)) > 1:
+            raise ValueError('动作必须为六维 [-1,1] 有限数值')
         current = self.read_observation().joint_positions
         targets = {name: float(np.clip(current[name] + float(action[index]) * .08,
                    self.limits.joints[name].lower, self.limits.joints[name].upper)) for index, name in enumerate(JOINTS)}
         self.send_action(Action(targets))
+        self._physics_step()
+        model, data = self._state()
+        contact = self.contact_state()
+        ball = self.ball_position()
+        distance = float(np.linalg.norm(ball - data.site_xpos[self.tip]))
+        lifted = float(np.clip((ball[2] - self.initial_ball_position[2]) / self.lift_height, 0, 1))
+        grasped = contact['both_jaws'] and not contact['ball_on_floor']
+        success = self.held_seconds >= self.hold_seconds - 1e-8
+        self.steps += 1
+        failed = ball[2] < self.floor_z - .02 or float(np.linalg.norm(ball[:2])) > .6
+        terminated = success or failed
+        truncated = self.steps >= self.episode_steps and not terminated
+        reward, self.last_reward_terms = self.reward.calculate(distance=distance, lift_fraction=lifted,
+            grasped=grasped, success=success, failed=failed, truncated=truncated,
+            action=action, floor_force=contact['arm_floor_force'])
+        self.return_ += reward
+        self.ended = bool(terminated or truncated)
+        return self.state(), reward, bool(terminated), bool(truncated), bool(success)
+
+    def _physics_step(self, *, track_hold=True):
         model, data = self._state()
         for _ in range(10):
             data.qfrc_applied[:] = 0
@@ -96,30 +139,46 @@ class BallPickupEnvironment(MujocoSimulation):
                 # P 项由原生执行器逐步计算；10 个物理步更新一次重力/偏置补偿和速度受限设定点。
                 data.ctrl[index] = self._setpoints[name] + data.qfrc_bias[dof] / self.config.position_gain
             mujoco.mj_step(model, data, nstep=10)
+            if track_hold:
+                contact = self.contact_state()
+                valid = contact['both_jaws'] and not contact['ball_on_floor'] and self.ball_position()[2] >= self.initial_ball_position[2] + self.lift_height
+                self.held_seconds = self.held_seconds + self.config.timestep * 10 if valid else 0.0
+        self.held = int((self.held_seconds + 1e-8) / .2)
         if not np.isfinite(data.qpos).all() or not np.isfinite(data.qvel).all():
             raise ValueError('小球仿真状态非有限值，停止训练')
+
+    def contact_state(self):
+        model, data = self._state()
         touching = set()
-        for contact in data.contact:
-            if contact.dist > 0 or self.ball_geom not in (contact.geom1, contact.geom2):
+        jaw_forces = {mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, body): 0.0 for body in self.jaws}
+        ball_on_floor = False
+        arm_floor_force = 0.0
+        for index, contact in enumerate(data.contact):
+            if contact.efc_address < 0 or contact.dist > 0:
                 continue
-            other = contact.geom2 if contact.geom1 == self.ball_geom else contact.geom1
-            body = int(model.geom_bodyid[other])
-            if body in self.jaws:
-                touching.add(body)
-        ball = self.ball_position()
-        distance = float(np.linalg.norm(ball - data.site_xpos[self.tip]))
-        lifted = float(np.clip((ball[2] - self.radius) / .05, 0, 1))
-        grasped = len(touching) == 2
-        self.held = self.held + 1 if grasped and lifted >= 1 else 0
-        success = self.held >= 5  # 双指接触且抬升 5cm，连续保持 1 秒。
-        reward = 10 * (self.previous_distance - distance) - .01 + .1 * len(touching) + (lifted if grasped else 0) + (10 if success else 0)
-        self.previous_distance = distance
-        self.return_ += reward
-        self.steps += 1
-        terminated = success or ball[2] < -.02 or float(np.linalg.norm(ball[:2])) > .6
-        truncated = self.steps >= self.episode_steps and not terminated
-        return self.state(), float(reward), bool(terminated), bool(truncated), bool(success)
+            force = np.zeros(6)
+            mujoco.mj_contactForce(model, data, index, force)
+            normal = float(force[0])
+            if normal <= .01:
+                continue
+            geoms = (contact.geom1, contact.geom2)
+            if self.ball_geom in geoms:
+                other = contact.geom2 if contact.geom1 == self.ball_geom else contact.geom1
+                body = int(model.geom_bodyid[other])
+                if body in self.jaws:
+                    touching.add(body)
+                    jaw_forces[mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, body)] += normal
+                if other == self.floor_geom:
+                    ball_on_floor = True
+            elif self.floor_geom in geoms:
+                other = contact.geom2 if contact.geom1 == self.floor_geom else contact.geom1
+                body_name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, int(model.geom_bodyid[other]))
+                if body_name not in ('world', 'base_link', 'xiaoxia_fixed_base'):
+                    arm_floor_force += normal
+        return {'both_jaws': len(touching) == 2, 'jaw_forces': jaw_forces, 'ball_on_floor': ball_on_floor, 'arm_floor_force': arm_floor_force}
 
     def snapshot(self):
         return {'joint_positions': self.read_observation().joint_positions, 'ball_position': self.ball_position().tolist(),
-                'ball_radius': self.radius, 'physical': False}
+                'ball_radius': self.radius, 'floor_z': self.floor_z, 'episode_index': self.episode_index,
+                'spawn_position': self.spawn_position.tolist(), 'held_seconds': self.held_seconds,
+                'contacts': self.contact_state(), 'reward_terms': self.last_reward_terms, 'physical': False}

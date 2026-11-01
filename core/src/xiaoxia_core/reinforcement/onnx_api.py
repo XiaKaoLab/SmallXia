@@ -56,6 +56,10 @@ class BallOnnxAPI:
 
     def rollout(self, body, rounds, seed):
         source = self.source(body.get('model_job_id'), exported=True)
+        from .ball_environment import BallPickupEnvironment
+        manifest = json.loads((source / 'policy.onnx.json').read_text(encoding='utf-8'))
+        if manifest.get('environment_version') != BallPickupEnvironment.version:
+            raise ValueError('模型使用旧抓球环境，请在新版物理与奖励环境重新训练')
         if any(job['kind'] in ('ball_pickup', 'ball_onnx_rollout') and job['status'] in ('queued', 'running') for job in self.jobs.list()):
             raise ValueError('已有抓球训练或 ONNX 推理运行中，请先停止或等待结束')
         return self.jobs.start('ball_onnx_rollout', {'source_directory': str(source), 'rounds': rounds, 'seed': seed},
