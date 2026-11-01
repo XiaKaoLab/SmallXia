@@ -50,6 +50,9 @@ class DesktopBridge:
         elif action == "clear":
             self.sessions.clear(request["session_id"])
             self.emit({"type": "data", "data": {"cleared": True}})
+        elif action == 'reinforcement_preview':
+            from ..reinforcement.preview import TrainingPreviewStream
+            TrainingPreviewStream(Path(__file__).resolve().parents[3] / 'data/reinforcement_api/jobs').run(self.emit)
         elif action in ('reinforcement_jobs', 'reinforcement_job', 'reinforcement_stop'):
             from ..reinforcement.client import ReinforcementClient
             from ..imitation.api_jobs import identifier

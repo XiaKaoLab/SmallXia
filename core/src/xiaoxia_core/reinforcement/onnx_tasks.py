@@ -24,6 +24,9 @@ class BallOnnxTasks:
         policy = BallOnnxPolicy(Path(self.request['source_directory']))
         urdf = Path(__file__).resolve().parents[4] / 'table/public/robots/so101/so101_new_calib.urdf'
         env = BallPickupEnvironment.vector(urdf, 1, self.request['seed'])[0]
+        from .preview import TrainingPreviewPublisher
+        preview = TrainingPreviewPublisher(self.worker.directory)
+        preview.publish([env], force=True)
         rounds = self.request['rounds']
         scores = deque(maxlen=100)
         successes = transitions = 0
@@ -35,6 +38,7 @@ class BallOnnxTasks:
                     action = policy.predict(np.asarray([state]))[0]
                     state, _, terminated, truncated, success = env.advance(action)
                     transitions += 1
+                    preview.publish([env])
                     done = terminated or truncated
                     if done:
                         scores.append(env.return_)
@@ -49,6 +53,7 @@ class BallOnnxTasks:
                         last_publish = monotonic()
                     if done:
                         break
+            preview.publish([env], force=True)
             return {'runtime': 'onnxruntime', 'completed_episodes': rounds, 'score': float(np.mean(scores)),
                     'successes': successes, 'transitions': transitions, 'training': False, 'physical': False}
         finally:

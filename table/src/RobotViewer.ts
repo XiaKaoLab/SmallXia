@@ -14,12 +14,13 @@ import { BallTrainingScene } from "./BallTrainingScene";
 
 export class RobotViewer {
   private readonly scene = new THREE.Scene();
-  private readonly training = new BallTrainingScene(this.scene);
+  private readonly training = new BallTrainingScene(this.scene, count => this.fitTraining(count));
   private readonly camera = new THREE.PerspectiveCamera(35, 1, 0.001, 100);
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
   private readonly controls: OrbitControls;
   private readonly observer: ResizeObserver;
   private disposed = false;
+  private modelReady = false;
   private robot: URDFRobot | undefined;
   private poseGuard: ModelPoseGuard | undefined;
   private targets: Record<string, number> = {};
@@ -84,6 +85,7 @@ export class RobotViewer {
       this.scene.add(robot);
       void Promise.all(meshes).then(() => {
         if (this.disposed) { this.release(robot); return; }
+        this.modelReady = true;
         robot.updateMatrixWorld(true);
         try { this.poseGuard = new ModelPoseGuard(robot); }
         catch (error) { console.error(error); window.dispatchEvent(new CustomEvent("table:pose-limit", { detail: String(error) })); }
@@ -117,9 +119,23 @@ export class RobotViewer {
     this.targets = { ...result.pose };
   }
 
+  private fitTraining(count: number): void {
+    const columns = Math.ceil(Math.sqrt(count)), rows = Math.ceil(count / columns);
+    const radius = Math.sqrt((columns * .62) ** 2 + (rows * .62) ** 2 + .5 ** 2) / 2;
+    const vertical = THREE.MathUtils.degToRad(this.camera.fov);
+    const horizontal = 2 * Math.atan(Math.tan(vertical / 2) * this.camera.aspect);
+    const distance = radius / Math.sin(Math.min(vertical, horizontal) / 2) * 1.15;
+    this.controls.target.set(0, 0, .15);
+    this.camera.position.copy(this.controls.target).add(new THREE.Vector3(1, -1.4, 1.2).normalize().multiplyScalar(distance));
+    this.controls.maxDistance = distance * 4;
+    this.camera.far = Math.max(100, distance * 10);
+    this.camera.updateProjectionMatrix(); this.controls.update();
+    this.host.dataset.trainingEnvs = String(count);
+  }
+
   private updateJoints(dt: number): void {
-    if (!this.robot) return;
-    if (this.training.active) { this.training.update(this.robot); return; }
+    if (!this.robot || !this.modelReady) return;
+    if (this.training.active) { this.training.update(this.robot, dt); return; }
     if (!this.poseGuard || !Object.keys(this.targets).length) return;
     if (Object.entries(this.targets).every(([name, target]) => Math.abs(this.robot!.joints[name].jointValue[0] - target) < 1e-8)) return;
     const next = Object.fromEntries(Object.entries(this.targets).map(([name, target]) => {

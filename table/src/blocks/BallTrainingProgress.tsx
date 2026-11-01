@@ -44,7 +44,6 @@ export function BallTrainingProgress() {
             .sort((first, second) => (second.created_at_ns ?? 0) - (first.created_at_ns ?? 0))[0];
         if (next) {
           selected.current = next; setJob(next); setError("");
-          if (next.snapshot) window.dispatchEvent(new CustomEvent("table:ball-training", { detail: next.snapshot }));
         }
       } catch (failure) { if (!stopped && selected.current) setError(`进度连接中断：${String(failure)}`); }
       finally { if (!stopped) timer = setTimeout(() => void poll(), 1500); }

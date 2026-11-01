@@ -9,7 +9,7 @@ import mujoco
 import numpy as np
 
 from ..contracts import Action
-from ..safety import JOINTS
+from ..safety import JOINTS, JointLimits
 from ..simulation.world import MujocoSimulation, SimulationConfig
 
 
@@ -29,6 +29,15 @@ class BallPickupEnvironment(MujocoSimulation):
         if gripper is None:
             raise ValueError('URDF 缺少 gripper_link，无法定位抓取点')
         ET.SubElement(gripper, 'site', name='pickup_tip', pos='-.0079 -.000218121 -.0981274', size='.003')
+        # 原生位置执行器在每个物理步计算 P 项，避免各环境在 Python 中逐轴逐步争用 GIL。
+        actuators = mjcf.find('actuator')
+        if actuators is None:
+            actuators = ET.SubElement(mjcf, 'actuator')
+        limits = JointLimits.from_urdf(self.config.urdf_path)
+        for name in JOINTS:
+            effort = min(self.config.max_torque, limits.joints[name].effort)
+            ET.SubElement(actuators, 'position', name=f'pickup_{name}', joint=name,
+                kp=str(self.config.position_gain), forcelimited='true', forcerange=f'{-effort} {effort}')
 
     @classmethod
     def vector(cls, urdf, count, seed):
@@ -75,8 +84,18 @@ class BallPickupEnvironment(MujocoSimulation):
         targets = {name: float(np.clip(current[name] + float(action[index]) * .08,
                    self.limits.joints[name].lower, self.limits.joints[name].upper)) for index, name in enumerate(JOINTS)}
         self.send_action(Action(targets))
-        super().step(100)
         model, data = self._state()
+        for _ in range(10):
+            data.qfrc_applied[:] = 0
+            for index, name in enumerate(JOINTS):
+                limit = self.limits.joints[name]
+                increment = min(self.config.max_velocity, limit.velocity) * self.config.timestep * 10
+                previous = self._setpoints[name]
+                self._setpoints[name] = previous + min(max(self._targets[name] - previous, -increment), increment)
+                dof = model.jnt_dofadr[self._joints[name]]
+                # P 项由原生执行器逐步计算；10 个物理步更新一次重力/偏置补偿和速度受限设定点。
+                data.ctrl[index] = self._setpoints[name] + data.qfrc_bias[dof] / self.config.position_gain
+            mujoco.mj_step(model, data, nstep=10)
         if not np.isfinite(data.qpos).all() or not np.isfinite(data.qvel).all():
             raise ValueError('小球仿真状态非有限值，停止训练')
         touching = set()

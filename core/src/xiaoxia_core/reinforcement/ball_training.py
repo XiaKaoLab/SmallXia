@@ -13,6 +13,7 @@ import numpy as np
 from .ball_environment import BallPickupEnvironment
 from .learning import SACLearner
 from ..imitation.api_jobs import atomic_json
+from .preview import TrainingPreviewPublisher
 
 
 class BallPickupTraining:
@@ -38,6 +39,10 @@ class BallPickupTraining:
         environments = BallPickupEnvironment.vector(urdf, count, seed)
         try:
             learner = SACLearner({'cameras': [], 'state_dim': 18}, self.request['device'])
+            if self.request.get('warm_start_checkpoint'):
+                learner.policy.load_state_dict(torch.load(self.request['warm_start_checkpoint'], map_location=self.request['device'], weights_only=True))
+            preview = TrainingPreviewPublisher(self.worker.directory)
+            preview.publish(environments, force=True)
             replay = deque(maxlen=50000)
             scores = deque(maxlen=100)
             completed = [0] * count
@@ -80,6 +85,7 @@ class BallPickupTraining:
                         updates += 1
                         if updates % 200 == 0:
                             learner.publish(self.worker.directory, updates)
+                    preview.publish(environments)
                     if monotonic() - last_publish >= .5 or min(completed) >= rounds:
                         done = sum(completed)
                         self.worker.progress(phase='learning' if updates else 'collecting', completed_episodes=done,
@@ -89,6 +95,7 @@ class BallPickupTraining:
                             snapshot=environments[0].snapshot(), **metrics)
                         last_publish = monotonic()
             checkpoint = learner.publish(self.worker.directory, updates)
+            preview.publish(environments, force=True)
             self.worker.progress(phase='exporting')
             from .onnx_export import BallOnnxExporter
             exported = BallOnnxExporter().export(Path(checkpoint), self.worker.directory, policy=learner.policy)

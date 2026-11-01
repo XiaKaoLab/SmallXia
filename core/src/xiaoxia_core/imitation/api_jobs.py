@@ -9,14 +9,25 @@ import subprocess
 import sys
 from pathlib import Path
 from threading import RLock
-from time import time_ns
+from time import time_ns, sleep
 from uuid import uuid4
 
 
 def atomic_json(path: Path, value: dict):
-    temporary = path.with_suffix('.tmp')
-    temporary.write_text(json.dumps(value, ensure_ascii=False, allow_nan=False), encoding='utf-8')
-    temporary.replace(path)
+    temporary = path.with_name(f'{path.stem}.{uuid4().hex}.tmp')
+    try:
+        temporary.write_text(json.dumps(value, ensure_ascii=False, allow_nan=False), encoding='utf-8')
+        for attempt in range(10):
+            try:
+                temporary.replace(path)
+                return
+            except PermissionError:
+                # Windows 读取句柄短暂占用目标文件时，保留原子替换语义并有限重试。
+                if attempt == 9:
+                    raise
+                sleep(.005 * 2 ** min(attempt, 4))
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def identifier(value):

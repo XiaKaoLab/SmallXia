@@ -22,8 +22,9 @@ class ReinforcementClient:
     def create_session(self, task, **configuration):
         return self.request('sessions', {'task': task, **configuration})
 
-    def train_ball(self, num_envs=4, rounds=100, device='cpu', seed=42):
-        return self.request('ball-trainings', {'num_envs': num_envs, 'rounds': rounds, 'device': device, 'seed': seed})
+    def train_ball(self, num_envs=4, rounds=100, device='cpu', seed=42, warm_start_job_id=None):
+        return self.request('ball-trainings', {'num_envs': num_envs, 'rounds': rounds, 'device': device,
+            'seed': seed, **({'warm_start_job_id': warm_start_job_id} if warm_start_job_id else {})})
 
     def export_onnx(self, training_job_id):
         return self.request('onnx-exports', {'training_job_id': training_job_id})

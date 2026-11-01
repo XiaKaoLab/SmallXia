@@ -174,8 +174,19 @@ class ReinforcementAPI:
                         raise ValueError('device 需要 cpu 或 cuda')
                     count = self.integer(body, 'num_envs', 4, 1, 16)
                     rounds = self.integer(body, 'rounds', 100, 1, 10000)
+                    warm = {}
+                    if body.get('warm_start_job_id'):
+                        source = self.jobs.root / identifier(body['warm_start_job_id'])
+                        state = self.jobs.get(source.name)
+                        if state['kind'] != 'ball_pickup' or state['status'] not in ('succeeded', 'cancelled', 'failed', 'interrupted'):
+                            raise ValueError('接续权重需要已结束且存在完整权重的抓球训练')
+                        weights = json.loads((source / 'weights.json').read_text(encoding='utf-8'))
+                        checkpoint = source / weights['file']
+                        if not checkpoint.resolve().is_relative_to(source.resolve()) or not checkpoint.is_file():
+                            raise ValueError('接续训练权重不可用')
+                        warm = {'warm_start_checkpoint': str(checkpoint), 'warm_start_job_id': source.name}
                     return 202, self.jobs.start('ball_pickup', {
-                        'task': '拿取小球', 'device': device,
+                        'task': '拿取小球', 'device': device, **warm,
                         'num_envs': count, 'rounds': rounds,
                         'seed': self.integer(body, 'seed', 42, 0, 2147483647)},
                         initial_state={'task': '拿取小球', 'num_envs': count, 'rounds': rounds,

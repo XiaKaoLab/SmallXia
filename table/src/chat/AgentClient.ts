@@ -47,6 +47,16 @@ export class AgentClient {
 
   bootstrap(): Promise<Bootstrap> { return this.request({ action: "bootstrap" }); }
 
+  async trainingPreview<T>(requestId: string, receive: (frame: T) => void): Promise<void> {
+    let failure = "";
+    await this.dispatch<{ type: "preview"; data: T } | { type: "completed" } | { type: "error"; message: string }>(
+      requestId, { action: "reinforcement_preview" }, event => {
+        if (event.type === "preview") receive(event.data);
+        if (event.type === "error") failure = event.message;
+      }, event => event.type === "completed" || event.type === "error");
+    if (failure) throw new Error(failure);
+  }
+
   async stream(requestId: string, sessionId: string, text: string, skills: string[], onEvent: (event: AgentEvent) => void): Promise<void> {
     let failure = "";
     let activeTool = "";
