@@ -10,15 +10,14 @@ Python 3.11+ 核心，使用标准库实现基础层，具体设备和算法通�
 | `inference` | 策略加载、状态重置、观测到动作的推理接口 |
 | `contracts.py` | 共享观测、动作类型，关节位置单位为弧度 |
 
-在本目录使用 Conda 管理环境：
+复用本机已有 Conda `base` 环境（Python 3.11+），不创建独立环境。当前模块仅使用标准库，无额外运行依赖。在本目录执行：
 
 ```powershell
-conda env create -f environment.yml
-conda activate xiaoxia-core
-python -m pip install --no-build-isolation --no-deps -e .
+conda activate base
+$env:PYTHONPATH = Join-Path (Get-Location) 'src'
 ```
 
-后续依赖统一添加到 `environment.yml`，执行 `conda env update -f environment.yml --prune` 更新。`pyproject.toml` 仅定义 Python 包元数据。
+以上 `PYTHONPATH` 仅对当前 PowerShell 会话生效，之后可直接导入 `xiaoxia_core`。`pyproject.toml` 保留包元数据，后续运行依赖统一记录在其中，使用 Conda 管理已有 `base` 环境。
 
 调用方用上下文管理器管理 `RobotTransport` 和 `EpisodeRecorder`，再将它们传给 `CollectionService`。采集节拍由调用方决定；图像记录为路径，图像文件由数据源保存。
 
