@@ -18,9 +18,6 @@
 .blocks-run:disabled { opacity: .55; }
 .blocks-status { overflow-wrap: anywhere; max-height: 100px; overflow-y: auto; }
 
-.blocks-add-camera { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: #587e9d; font-size: 12px; }
-.blocks-add-camera:hover:not(:disabled) { background: #e7eef3; }
-
 .joint-angle-control { display: flex; align-items: center; gap: 6px; width: 180px; height: 44px; padding: 0 5px; color: #fff; font: 600 12px "Segoe UI", sans-serif; }
 .joint-angle-slider { width: 112px; height: 32px; margin: 0; accent-color: #d8f4e6; cursor: pointer; }
 .joint-angle-value { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
@@ -28,3 +25,11 @@
 
 .blocks-heading { flex-wrap: wrap; gap: 6px; }
 .blocks-heading-actions { flex-wrap: wrap; gap: 4px; }
+
+.blocks-workspace .blocklyToolbox { background: #eaf0ed; border-right: 1px solid #dbe5df; padding: 12px 4px; }
+.blocks-workspace .blocklyToolboxCategoryContainer { margin: 3px 0; border-radius: 7px; }
+.blocks-workspace .blocklyToolboxCategory { min-height: 44px; padding: 0 9px 0 5px; display: flex; align-items: center; }
+.blocks-workspace .blocklyToolboxCategoryLabel { color: #455d54; font: 600 12px "Segoe UI", "Microsoft YaHei", sans-serif; }
+.blocks-workspace .blocklyToolboxSelected { background: #d7e5dd; }
+.blocks-workspace .blocklyToolboxCategoryContainer:focus-visible { outline: 2px solid #638b80; outline-offset: -2px; }
+.blocks-workspace .blocklyFlyoutBackground { fill: #eaf0ed; fill-opacity: .97; }

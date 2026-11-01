@@ -1,0 +1,50 @@
+/** 功能：策略积木通过既有模仿学习客户端创建任务、查询状态和停止任务。
+ * Created on 2026-11-02; Updated on 2026-11-02
+ * @author: https://github.com/Linmoqian
+ */
+import * as Blockly from "blockly/core";
+import { pythonGenerator, Order } from "blockly/python";
+
+export const POLICY_TRAIN = "table_policy_train";
+export const POLICY_PREDICT = "table_policy_predict";
+export const POLICY_ROLLOUT = "table_policy_rollout";
+export const POLICY_JOB = "table_policy_job";
+export const POLICY_STOP = "table_policy_stop";
+export const POLICY_TYPES = [POLICY_TRAIN, POLICY_PREDICT, POLICY_ROLLOUT, POLICY_JOB, POLICY_STOP];
+
+export class PolicyBlocks {
+  register(): void {
+    for (const type of POLICY_TYPES) {
+      Blockly.Blocks[type] = {
+        init(this: Blockly.Block) {
+          const labels: Record<string, string> = { [POLICY_TRAIN]: "训练策略", [POLICY_PREDICT]: "预测动作",
+            [POLICY_ROLLOUT]: "运行策略", [POLICY_JOB]: "任务状态", [POLICY_STOP]: "停止任务" };
+          this.appendDummyInput().appendField(labels[type]);
+          this.appendValueInput("ID").appendField(type === POLICY_TRAIN ? "数据集" : [POLICY_PREDICT, POLICY_ROLLOUT].includes(type) ? "训练任务" : "任务");
+          if (type === POLICY_TRAIN) {
+            this.appendDummyInput().appendField("步数").appendField(new Blockly.FieldNumber(1000, 1, 1000000, 1), "STEPS")
+              .appendField(new Blockly.FieldDropdown([["CPU", "cpu"], ["CUDA", "cuda"]]), "DEVICE");
+          }
+          if (type === POLICY_ROLLOUT) this.appendDummyInput().appendField("步数")
+            .appendField(new Blockly.FieldNumber(10, 1, 1000, 1), "STEPS");
+          this.setColour("#7d7297");
+          if (type === POLICY_STOP) { this.setPreviousStatement(true); this.setNextStatement(true); }
+          else this.setOutput(true);
+          this.setTooltip(type === POLICY_ROLLOUT ? "启动 table 模型回放任务，动作经过速度和碰撞限制。" : "调用模仿学习 API；任务异步执行，不等待训练完成。");
+        },
+      };
+      pythonGenerator.forBlock[type] = (block, generator) => {
+        const rawId = generator.valueToCode(block, "ID", Order.NONE) || "''";
+        const id = `(lambda value: value["id"] if isinstance(value, dict) else value)(${rawId})`;
+        const client = "__import__('xiaoxia_core.imitation.api_client', fromlist=['ImitationClient']).ImitationClient()";
+        let expression: string;
+        if (type === POLICY_TRAIN) expression = `${client}.train(${id}, steps=${block.getFieldValue("STEPS")}, device=${JSON.stringify(block.getFieldValue("DEVICE"))})`;
+        else if (type === POLICY_PREDICT) expression = `${client}.predict(${id})`;
+        else if (type === POLICY_ROLLOUT) expression = `${client}.rollout(${id}, steps=${block.getFieldValue("STEPS")})`;
+        else if (type === POLICY_JOB) expression = `${client}.job(${id})`;
+        else return `${client}.stop(${id})\n`;
+        return [expression, Order.FUNCTION_CALL];
+      };
+    }
+  }
+}

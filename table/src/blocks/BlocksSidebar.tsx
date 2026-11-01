@@ -1,4 +1,4 @@
-/** 功能：左侧 Blockly 单积木工作区与 Python 后台运行。
+/** 功能：左侧五分类 Blockly 工作区与 Python 后台运行。
  * Created on 2026-11-01; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
@@ -6,9 +6,12 @@ import { useEffect, useRef, useState } from "react";
 import { jointPreview } from "../JointPreview";
 import { LiveJointRunner } from "./LiveJointRunner";
 import { blocksDebug } from "../debug/BlocksDebug";
-import { CAMERA_BLOCK_TYPE, registerCameraBlock } from "./cameraBlock";
-import { FRAME_CAPTURE, FRAME_VARIABLE, registerFrameBlocks } from "./frameBlocks";
-import { Camera, Play } from "lucide-react";
+import { registerCameraBlock } from "./cameraBlock";
+import { registerFrameBlocks } from "./frameBlocks";
+import { BlocksToolbox, BLOCK_LIMITS } from "./BlocksToolbox";
+import { PolicyBlocks } from "./policyBlocks";
+import "blockly/blocks";
+import { Play } from "lucide-react";
 import { agentClient } from "../chat/AgentClient";
 import * as Blockly from "blockly/core";
 import * as Zh from "blockly/msg/zh-hans";
@@ -25,8 +28,6 @@ export function BlocksSidebar() {
   const runLock = useRef(false);
   const liveRef = useRef<LiveJointRunner | null>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
-  const [cameraAdded, setCameraAdded] = useState(false);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!host.current) return;
@@ -59,23 +60,27 @@ export function BlocksSidebar() {
         });
         registerCameraBlock();
         registerFrameBlocks();
+        new PolicyBlocks().register();
+        pythonGenerator.addReservedWords("CameraFrameClient,virtual_frame,real_frame");
         workspace = Blockly.inject(element, {
           media: `${import.meta.env.BASE_URL}blockly-media/`,
-          maxInstances: { [BLOCK_TYPE]: 1, [CAMERA_BLOCK_TYPE]: 1, [FRAME_CAPTURE]: 2, [FRAME_VARIABLE]: 2 },
+          maxInstances: BLOCK_LIMITS,
+          maxBlocks: 100, toolbox: new BlocksToolbox().definition(),
           renderer: "zelos", sounds: false, trashcan: false,
           scrollbars: true, move: { scrollbars: true, drag: true, wheel: true },
           zoom: { controls: false, wheel: false, startScale: 0.9 },
           grid: { spacing: 20, length: 1, colour: "#d4dedb", snap: false },
         });
         workspaceRef.current = workspace;
-        setReady(true);
+        workspace.registerButtonCallback("CREATE_VARIABLE", () => {
+          if (workspace) Blockly.Variables.createVariableButtonHandler(workspace);
+        });
         const block = workspace.newBlock(BLOCK_TYPE);
         block.initSvg();
         block.render();
         block.moveBy(16, 24);
         const update = () => {
           if (!workspace) return;
-          setCameraAdded(workspace.getBlocksByType(CAMERA_BLOCK_TYPE, false).length > 0);
           try { setCode(pythonGenerator.workspaceToCode(workspace)); setError(""); setNotice(""); }
           catch (failure) { setCode(""); setError(String(failure)); }
         };
@@ -112,25 +117,6 @@ export function BlocksSidebar() {
     return () => { abort.abort(); window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; detachDebug?.(); observer?.disconnect(); workspace?.dispose(); };
   }, []);
 
-  function addCamera() {
-    const workspace = workspaceRef.current;
-    if (!workspace || workspace.getBlocksByType(CAMERA_BLOCK_TYPE, false).length) return;
-    const block = workspace.newBlock(CAMERA_BLOCK_TYPE);
-    block.initSvg(); block.render(); block.moveBy(16, 340);
-    workspace.centerOnBlock(block.id);
-    setCameraAdded(true);
-    setCode(pythonGenerator.workspaceToCode(workspace));
-  }
-
-  function addFrame(type: string) {
-    const workspace = workspaceRef.current;
-    if (!workspace || workspace.getBlocksByType(type, false).length >= 2) return;
-    const block = workspace.newBlock(type);
-    block.initSvg(); block.render(); block.moveBy(16, type === FRAME_CAPTURE ? 440 : 520);
-    workspace.centerOnBlock(block.id);
-    setCode(pythonGenerator.workspaceToCode(workspace));
-  }
-
   async function run() {
     if (!code || runLock.current) return;
     if (!agentClient.desktop) { setError("运行 Python 需要打开 Tauri 桌面窗口"); return; }
@@ -161,15 +147,12 @@ export function BlocksSidebar() {
 
   return <aside className="blocks-sidebar" aria-label="机械臂积木编程">
     <header className="blocks-heading"><h2>积木编程</h2><div className="blocks-heading-actions">
-      <button type="button" className="blocks-add-camera" onClick={addCamera} disabled={!ready || cameraAdded || running} aria-label="添加虚拟相机积木" title="添加虚拟相机积木"><Camera size={15} /><span>相机</span></button>
-      <button type="button" className="blocks-add-camera" onClick={() => addFrame(FRAME_CAPTURE)} disabled={!ready || running}>获取画面</button>
-      <button type="button" className="blocks-add-camera" onClick={() => addFrame(FRAME_VARIABLE)} disabled={!ready || running}>画面变量</button>
       <button type="button" className="blocks-run" onClick={() => void run()} disabled={!code || running}
         aria-label={running ? "正在运行 Python" : "运行 Python"} aria-busy={running} title="运行 Python">
         <Play size={15} fill="currentColor" /><span>{running ? "运行中" : "运行"}</span>
       </button>
     </div></header>
-    <div ref={host} className="blocks-workspace" aria-label="设置机械臂位置积木" />
+    <div ref={host} className="blocks-workspace" aria-label="机械臂、相机、逻辑、变量和策略积木工作区" />
     <p className="blocks-status" role="status">{error || notice || "通过本机 API 控制显示模型"}</p>
   </aside>;
 }

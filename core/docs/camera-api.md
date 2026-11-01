@@ -16,7 +16,7 @@ Created on 2026-11-02; Updated on 2026-11-02
 
 虚拟画面来自装配相机后的独立渲染画布，最多 2 FPS 上传，采用丢帧而非排队；必须保持 Tauri table 窗口和 core 服务运行。不显示相机时停止上传。当前不作为高帧率训练采集链路或 LeRobot Camera 子类注册。
 
-积木工具栏提供“获取画面”和“画面变量”，来源可选虚拟/真实。先运行获取积木，再使用对应变量。两种来源各自保存为 `virtual_frame`、`real_frame`。变量是包含图像和元数据的字典；不是图像路径或 WebView 截图。Python 不显示在界面中。
+积木“相机”分类提供“获取画面”，“变量”分类提供“画面变量”，来源可选虚拟/真实。先运行获取积木，再使用对应变量。两种来源各自保存为 `virtual_frame`、`real_frame`。变量是包含图像和元数据的字典；不是图像路径或 WebView 截图。Python 不显示在界面中。
 
 ```python
 from xiaoxia_core.collection.frame_client import CameraFrameClient

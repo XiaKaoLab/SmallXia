@@ -23,6 +23,7 @@ export function registerPositionBlock(limits: Limits, onSlide: (block: Blockly.B
         const { lower, upper } = limits[name];
         this.appendDummyInput().appendField(`M${index + 1} ${label}`)
           .appendField(new JointAngleSlider(Math.max(lower, Math.min(0, upper)), lower, upper, `M${index + 1} ${label}`, (angle) => {
+            if (this.isInFlyout) return angle;
             const accepted = jointPreview.stage(name, angle);
             this.setFieldValue(String(accepted), name);
             onSlide(this);
@@ -31,7 +32,7 @@ export function registerPositionBlock(limits: Limits, onSlide: (block: Blockly.B
       }
       this.setColour("#638b80");
       this.setTooltip("拖动滑杆立即调整对应电机角度，显示单位为度，API 使用弧度。");
-      this.setDeletable(false);
+      this.setPreviousStatement(true); this.setNextStatement(true);
     },
   };
   pythonGenerator.forBlock[BLOCK_TYPE] = (block) => {

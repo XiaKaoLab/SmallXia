@@ -21,6 +21,7 @@ export function registerCameraBlock(): void {
   Blockly.Blocks[CAMERA_BLOCK_TYPE] = {
     init(this: Blockly.Block) {
       this.appendDummyInput().appendField("装配相机");
+      this.setPreviousStatement(true); this.setNextStatement(true);
       this.setColour("#587e9d");
       this.setTooltip("在固定腕部位置装配相机；点击运行后显示相机和画面。");
     },
