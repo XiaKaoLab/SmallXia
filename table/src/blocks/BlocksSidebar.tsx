@@ -3,6 +3,8 @@
  * @author: https://github.com/Linmoqian
  */
 import { useEffect, useRef, useState } from "react";
+import { Play } from "lucide-react";
+import { agentClient } from "../chat/AgentClient";
 import * as Blockly from "blockly/core";
 import * as Zh from "blockly/msg/zh-hans";
 import { pythonGenerator } from "blockly/python";
@@ -14,6 +16,8 @@ export function BlocksSidebar() {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [running, setRunning] = useState(false);
+  const runLock = useRef(false);
 
   useEffect(() => {
     if (!host.current) return;
@@ -77,6 +81,25 @@ export function BlocksSidebar() {
     return () => { abort.abort(); observer?.disconnect(); workspace?.dispose(); };
   }, []);
 
+  async function run() {
+    if (!code || runLock.current) return;
+    if (!agentClient.desktop) { setError("运行 Python 需要打开 Tauri 桌面窗口"); return; }
+    runLock.current = true;
+    setRunning(true);
+    setError("");
+    setNotice("正在运行 Python…");
+    try {
+      const result = await agentClient.request<{ output: string; exit_code: number }>({ action: "run_program", source: code });
+      setNotice(result.output.trim() ? `已运行：${result.output.trim()}` : "Python 运行完成");
+    } catch (failure) {
+      setError(String(failure));
+      setNotice("");
+    } finally {
+      runLock.current = false;
+      setRunning(false);
+    }
+  }
+
   async function copy() {
     try { await navigator.clipboard.writeText(code); setNotice("已复制 Python"); }
     catch { setNotice("复制失败，可下载 Python 文件"); }
@@ -88,7 +111,12 @@ export function BlocksSidebar() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   return <aside className="blocks-sidebar" aria-label="机械臂积木编程">
-    <header className="blocks-heading"><h2>积木编程</h2><span>Python</span></header>
+    <header className="blocks-heading"><h2>积木编程</h2><div className="blocks-heading-actions"><span>Python</span>
+      <button type="button" className="blocks-run" onClick={() => void run()} disabled={!code || running}
+        aria-label={running ? "正在运行 Python" : "运行 Python"} aria-busy={running} title="运行 Python">
+        <Play size={15} fill="currentColor" /><span>{running ? "运行中" : "运行"}</span>
+      </button>
+    </div></header>
     <p className="blocks-description">设置六轴角度，生成模型控制代码。</p>
     <div ref={host} className="blocks-workspace" aria-label="设置机械臂位置积木" />
     <section className="blocks-code" aria-label="生成的 Python 代码">

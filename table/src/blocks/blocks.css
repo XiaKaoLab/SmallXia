@@ -5,7 +5,7 @@
 .blocks-sidebar { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #ffffffe0; border-right: 1px solid #ffffffd9; }
 .blocks-heading { display: flex; align-items: center; justify-content: space-between; min-height: 70px; padding: 20px 20px 10px; }
 .blocks-heading h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.4px; }
-.blocks-heading > span { color: #638378; font-size: 11px; }
+.blocks-heading-actions > span { color: #638378; font-size: 11px; }
 .blocks-description { margin: 0; padding: 0 20px 16px; font-size: 11px; color: #828d91; }
 .blocks-workspace { position: relative; flex: 1; min-height: 290px; overflow: hidden; border-top: 1px solid #e7eeeb; }
 .blocks-workspace .blocklySvg { background: #f4f7f5; }
@@ -17,3 +17,9 @@
 .blocks-code pre { flex: 1; min-height: 0; overflow: auto; margin: 0; padding: 0 20px 16px; font: 10px/1.8 "Cascadia Code", Consolas, monospace; color: #485c54; tab-size: 4; }
 .blocks-status { min-height: 34px; margin: 0; padding: 8px 20px; color: #7c8883; font-size: 10px; border-top: 1px solid #e8eeeb; }
 @media (max-height: 700px) { .blocks-workspace { min-height: 250px; } .blocks-code { min-height: 90px; } }
+
+.blocks-heading-actions { display: flex; align-items: center; gap: 12px; }
+.blocks-run { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 72px; min-height: 44px; padding: 0 12px; border: 1px solid #248b53; border-radius: 10px; background: #2c9a60; color: #fff; font-size: 12px; font-weight: 600; }
+.blocks-run:hover:not(:disabled) { background: #238450; }
+.blocks-run:disabled { opacity: .55; }
+.blocks-status { overflow-wrap: anywhere; max-height: 100px; overflow-y: auto; }

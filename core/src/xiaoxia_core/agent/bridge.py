@@ -50,6 +50,9 @@ class DesktopBridge:
         elif action == "clear":
             self.sessions.clear(request["session_id"])
             self.emit({"type": "data", "data": {"cleared": True}})
+        elif action == "run_program":
+            from ..communication.program_runner import PythonProgramRunner
+            self.emit({"type": "data", "data": PythonProgramRunner().run(request.get("source"))})
         elif action == "run":
             with OpenAILLM(LLMConfig.from_env(), enable_mcp=True) as llm:
                 agent = SimpleAgent(llm, self.sessions, self.skills)

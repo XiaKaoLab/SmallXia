@@ -9,7 +9,7 @@ $env:XIAOXIA_MOTION_TOKEN = "与模型服务一致的令牌"
 & C:\Users\30470\Anaconda3\python.exe .\set_arm_position.py
 ```
 
-编辑积木不会自动发送指令；当前侧栏提供代码生成和导出，未增加内嵌 Python 执行器。API accepted 表示目标已接收，不能当作模型到位或实机反馈。
+编辑积木不会自动发送指令。顶部右侧绿色播放按钮通过现有 Tauri/Python 桥接执行当前生成的 Python，并调用模型 API；运行中禁用重复点击，底部显示回执或错误。执行超时为 5 秒，使用现有 base，不需要 OpenAI 配置。运行入口执行本地 Python 代码，当前来源为积木生成结果；不应连接不受信的远程页面。普通浏览器仅支持编辑与导出，运行需要 Tauri 桌面。API accepted 表示目标已接收，不能当作模型到位或实机反馈。
 
 `public/blockly-media` 来自已安装的 Blockly 13.4.0 npm 包，保留上游 LICENSE，供离线图标及光标资源使用。没有增加其他内置积木或生成语言。
 
