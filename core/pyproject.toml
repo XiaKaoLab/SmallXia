@@ -9,6 +9,7 @@ requires-python = ">=3.11"
 dependencies = [
     "lerobot==0.4.4",
     "mujoco==3.15.0",
+    "openai==2.24.0",
 ]
 
 [build-system]

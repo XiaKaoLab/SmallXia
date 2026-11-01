@@ -10,9 +10,10 @@ Python 3.11+ 核心，基础层使用标准库，机器人学习使用 LeRobot�
 | `inference` | 策略加载、状态重置、观测到动作的推理接口 |
 | `integrations` | LeRobot 原生数据集创建与读取入口 |
 | `simulation` | MuJoCo URDF 加载、状态读取、位置目标和显式物理步进 |
+| `llm` | OpenAI SDK 封装、模型配置、文本生成与 token 用量 |
 | `contracts.py` | 共享观测、动作类型，关节位置单位为弧度 |
 
-复用本机已有 Conda `base` 环境，不创建独立环境。依赖固定为 `lerobot==0.4.4`、`mujoco==3.15.0`，版本记录在 `pyproject.toml`，不自动升级已有 PyTorch。在本目录执行：
+复用本机已有 Conda `base` 环境，不创建独立环境。依赖固定为 `lerobot==0.4.4`、`mujoco==3.15.0`、`openai==2.24.0`，版本记录在 `pyproject.toml`。在本目录执行：
 
 ```powershell
 conda activate base
@@ -47,3 +48,19 @@ with MujocoSimulation(SimulationConfig(urdf_path=urdf)) as simulation:
 调用方用上下文管理器管理 `RobotTransport` 和 `EpisodeRecorder`，再将它们传给 `CollectionService`。采集节拍由调用方决定；图像记录为路径，图像文件由数据源保存。
 
 尚未实现 SO-ARM-101 串口协议、摄像头、具体训练算法、推理模型和桌面 IPC。训练和推理必须注入真实适配器；推理只返回动作，不自动发送到设备。
+
+## LLM
+
+`llm` 使用 OpenAI Responses API，调用方必须指定自己有权限使用的模型。PowerShell 中先设置 `OPENAI_API_KEY` 和 `OPENAI_MODEL`；可选 `OPENAI_BASE_URL` 必须指向支持 Responses API 的地址。`.env.example` 仅列出变量，模块不自动加载 `.env`。
+
+```python
+from xiaoxia_core.llm import LLMConfig, OpenAILLM
+
+with OpenAILLM(LLMConfig.from_env()) as llm:
+    result = llm.generate('解释机械臂关节位置与末端位置的区别。', instructions='用简体中文回答。')
+    print(result.text)
+```
+
+仅调用 `generate` 时发送请求；结果包含文本、响应 ID、实际模型与 token 用量。默认请求超时 60 秒、SDK 最多重试 2 次、输出上限 2048 token、`store=False`。API 异常直接交给调用方处理，未完成响应和空文本会显式报错。LLM 不直接控制机械臂。代码未进行真实 API 调用验证。
+
+接口依据 [OpenAI Python SDK 官方文档](https://developers.openai.com/api/reference/python)。
