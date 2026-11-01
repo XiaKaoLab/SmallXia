@@ -10,6 +10,7 @@ dependencies = [
     "lerobot[feetech]==0.4.4",
     "mujoco==3.15.0",
     "openai==2.24.0",
+    "mcp>=1.26,<2",
     "PyYAML>=6.0.2,<7",
     "numpy>=2.2,<3",
     "Pillow>=10,<13",

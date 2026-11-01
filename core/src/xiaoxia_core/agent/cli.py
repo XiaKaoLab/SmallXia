@@ -79,6 +79,10 @@ class AgentConsole:
                             print(event.delta, end="", flush=True)
                         elif event.type == "skill_loaded":
                             print(f"[技能: {event.skill}]")
+                        elif event.type == "tool_started":
+                            print(f"\n[工具: {event.name}]")
+                        elif event.type == "tool_completed":
+                            print(f"[工具结果: {event.output}]")
                         elif event.type == "completed":
                             print()
             except KeyboardInterrupt:
@@ -93,11 +97,12 @@ def main() -> None:
     parser.add_argument("--database", type=Path, default=core / "data" / "agent.sqlite3")
     parser.add_argument("--skills", type=Path, default=core / "skills")
     parser.add_argument("--session", default=None)
+    parser.add_argument("--no-mcp", action="store_true", help="禁用 table 模型 MCP 工具")
     args = parser.parse_args()
     try:
         skills = SkillRegistry(args.skills)
         sessions = SessionStore(args.database)
-        with OpenAILLM(LLMConfig.from_env()) as llm:
+        with OpenAILLM(LLMConfig.from_env(), enable_mcp=not args.no_mcp) as llm:
             AgentConsole(SimpleAgent(llm, sessions, skills), args.session).run()
     except Exception as error:
         parser.exit(1, f"Agent 启动失败: {error}\n")

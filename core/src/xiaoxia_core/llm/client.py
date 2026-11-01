@@ -27,8 +27,9 @@ class LLM(ABC):
 
 
 class OpenAILLM(LLM):
-    def __init__(self, config: LLMConfig, *, api_key: str | None = None) -> None:
+    def __init__(self, config: LLMConfig, *, api_key: str | None = None, enable_mcp: bool = False) -> None:
         self.config = config
+        self.enable_mcp = enable_mcp
         # SDK 默认读取 OPENAI_API_KEY。构造客户端不会发送模型请求。
         self._client = OpenAI(
             api_key=api_key,
@@ -79,6 +80,10 @@ class OpenAILLM(LLM):
     def stream_messages(
         self, messages: Sequence[LLMMessage], *, instructions: str = ""
     ) -> Iterator[LLMStreamEvent]:
+        if self.enable_mcp:
+            from ..mcp.runner import stream_with_mcp
+            yield from stream_with_mcp(self, messages, instructions)
+            return
         with self._client.responses.stream(
             model=self.config.model,
             input=self._input(messages),

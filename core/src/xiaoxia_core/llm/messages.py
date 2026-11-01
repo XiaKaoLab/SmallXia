@@ -21,6 +21,11 @@ class LLMMessage:
 
 @dataclass(frozen=True)
 class LLMStreamEvent:
-    type: Literal["delta", "completed"]
+    type: Literal["delta", "completed", "tool_started", "tool_completed"]
     delta: str = ""
     result: LLMResult | None = None
+
+    call_id: str = ""
+    name: str = ""
+    output: str = ""
+    failed: bool = False

@@ -16,11 +16,15 @@ from .skills import SkillRegistry
 
 @dataclass(frozen=True)
 class AgentEvent:
-    type: Literal["started", "skill_loaded", "delta", "completed"]
+    type: Literal["started", "skill_loaded", "delta", "completed", "tool_started", "tool_completed"]
     session_id: str
     delta: str = ""
     skill: str = ""
     result: LLMResult | None = None
+    call_id: str = ""
+    name: str = ""
+    output: str = ""
+    failed: bool = False
 
 
 class SimpleAgent:
@@ -62,6 +66,9 @@ class SimpleAgent:
                         if result is not None:
                             raise RuntimeError("LLM 完成事件后出现文本增量")
                         yield AgentEvent("delta", session_id, delta=event.delta)
+                    elif event.type in ("tool_started", "tool_completed"):
+                        yield AgentEvent(event.type, session_id, call_id=event.call_id,
+                                         name=event.name, output=event.output, failed=event.failed)
                     elif event.type == "completed":
                         if result is not None or event.result is None:
                             raise RuntimeError("LLM 完成事件缺失结果或重复")
