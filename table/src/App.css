@@ -1,0 +1,8 @@
+/* 功能：全窗口机械臂画布。
+ * Created on 2026-11-01; Updated on 2026-11-01
+ * @author: https://github.com/Linmoqian
+ */
+html, body, #root, .robot-viewer { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+body { background: #e8edf0; }
+.robot-viewer { touch-action: none; }
+.robot-viewer canvas { display: block; }
