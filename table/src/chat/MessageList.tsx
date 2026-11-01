@@ -20,7 +20,7 @@ function CopyMessage({ text }: { text: string }) {
     {state === "failed" && <small role="status">复制失败</small>}</span>;
 }
 
-export function MessageList({ messages, busy, onSuggest }: { messages: ChatMessage[]; busy: boolean; onSuggest: (text: string) => void }) {
+export function MessageList({ messages, busy }: { messages: ChatMessage[]; busy: boolean }) {
   const scroll = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
   const [showBottom, setShowBottom] = useState(false);
@@ -35,14 +35,7 @@ export function MessageList({ messages, busy, onSuggest }: { messages: ChatMessa
       pinned.current = element.scrollHeight - element.scrollTop - element.clientHeight < 72;
       setShowBottom(!pinned.current);
     }}>
-      {messages.length === 0 ? <div className="chat-empty">
-        <span className="empty-symbol"><Sparkles size={25} strokeWidth={1.35} /></span>
-        <h1>一起，把想法变成动作。</h1>
-        <p>聊聊机械臂，或从一个问题开始。</p>
-        <div className="suggestions">
-          {["认识这台机械臂", "如何开始采集数据？", "仿真和实机有什么区别？"].map((text) => <button key={text} onClick={() => onSuggest(text)}>{text}<span>↗</span></button>)}
-        </div>
-      </div> : <div className="message-list">
+      {messages.length > 0 && <div className="message-list">
         {messages.map((message) => <motion.article key={message.id} className={`message message-${message.role}`} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}>
           {message.role === "user" ? <div className="user-bubble">{message.content}</div> : <>
             <div className="assistant-label"><Sparkles size={13} /><span>小虾</span>{message.status === "streaming" && <span className="live-dot" />}</div>

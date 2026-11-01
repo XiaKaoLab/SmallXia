@@ -25,14 +25,6 @@
 .chat-loading { position: absolute; top: 92px; width: 100%; text-align: center; color: #8e969d; font-size: 11px; z-index: 1; }
 .conversation-shell { position: relative; flex: 1; min-height: 0; }
 .conversation-scroll { height: 100%; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #26313b20 transparent; }
-.chat-empty { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; min-height: 100%; padding: 35px 26px 65px; }
-.empty-symbol { display: grid; place-items: center; width: 49px; height: 49px; background: #ffffffa8; border: 1px solid #fff; border-radius: 17px; color: #626f73; box-shadow: 0 4px 15px #33424b05; margin-bottom: 23px; }
-.chat-empty h1 { margin: 0; font-size: clamp(17px, 1.4vw, 23px); line-height: 1.65; font-weight: 580; letter-spacing: -.8px; }
-.chat-empty p { margin: 8px 0 29px; font-size: 11px; color: #a0a6ab; line-height: 1.7; }
-.suggestions { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-.suggestions button { display: flex; justify-content: space-between; align-items: center; padding: 11px 13px; min-height: 44px; border: 1px solid #fff; border-radius: 10px; background: #ffffff70; text-align: left; font-size: 11px; color: #848d94; transition: background .16s, color .16s; }
-.suggestions button:hover { background: #fff; color: #303a40; }
-.suggestions button span { font-size: 14px; opacity: .6; }
 .message-list { display: flex; flex-direction: column; gap: 24px; padding: 26px 22px 25px; }
 .message { min-width: 0; }
 .message-user { display: flex; justify-content: flex-end; }
@@ -95,4 +87,4 @@
 .spin { animation: spin 1s linear infinite; }
 @keyframes breathe { to { opacity: .25; } } @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
-@media (max-width: 580px) { .chat-sidebar { border-left: 0; border-top: 1px solid #fff; }.chat-header { min-height: 62px; padding: 8px 16px; }.chat-empty { padding: 22px; }.empty-symbol { display: none; }.chat-menu { top: 58px; }.suggestions { gap: 4px; }.chat-empty p { margin-bottom: 16px; } }
+@media (max-width: 580px) { .chat-sidebar { border-left: 0; border-top: 1px solid #fff; }.chat-header { min-height: 62px; padding: 8px 16px; }.chat-menu { top: 58px; } }

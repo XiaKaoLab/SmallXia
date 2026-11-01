@@ -47,7 +47,7 @@ export function ChatSidebar() {
       </motion.section>}
     </AnimatePresence>
     {chat.loading && <div className="chat-loading" role="status">正在加载对话…</div>}
-    <MessageList messages={chat.messages} busy={chat.busy} onSuggest={setDraft} />
+    <MessageList messages={chat.messages} busy={chat.busy} />
     <footer className="chat-footer">
       {notice && <div className="chat-notice error" role="alert"><CircleAlert size={14} /><span>{notice}</span><IconButton label="重新连接" onClick={() => { setRefreshError(""); void chat.refresh().catch((failure: unknown) => setRefreshError(String(failure))); }}><RefreshCw size={14} /></IconButton></div>}
       {!chat.desktop ? <p className="chat-notice">请在桌面应用中连接助手。</p> : !chat.loading && !chat.error && !chat.data.configured ? <p className="chat-notice">配置模型和 API 密钥后，即可开始对话。</p> : null}
