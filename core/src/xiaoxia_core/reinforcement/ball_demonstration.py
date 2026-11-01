@@ -63,7 +63,9 @@ class BallDemonstrator:
                 _, reward, terminated, truncated, success = env.advance(action)
                 following = observer.read()
                 reward += env.last_visual_reward
-                rows.append((observation, action, reward, following, terminated))
+                # 不用定时等待帧教策略在接近/下降的阶段交界永久停住。
+                if stage not in ('approach', 'descend') or np.max(np.abs(action)) >= .04:
+                    rows.append((observation, action, reward, following, terminated))
                 observation = following
                 if terminated or truncated:
                     break

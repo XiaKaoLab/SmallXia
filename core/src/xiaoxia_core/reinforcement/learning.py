@@ -17,7 +17,7 @@ def make_policy(config, device):
         vision_encoder_name=None, latent_dim=128, image_encoder_hidden_dim=16, temperature_init=0.01,
         actor_network_kwargs=ActorNetworkConfig(hidden_dims=[128, 128]),
         critic_network_kwargs=CriticNetworkConfig(hidden_dims=[128, 128]),
-        policy_kwargs=PolicyConfig(std_min=-5, std_max=2))
+        policy_kwargs=PolicyConfig(std_min=config.get('actor_std_min', -5), std_max=config.get('actor_std_max', 2)))
     return SACPolicy(settings).to(device)
 
 

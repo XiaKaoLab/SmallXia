@@ -8,7 +8,7 @@ import numpy as np
 
 class BallObservation:
     camera_key = 'observation.images.wrist'
-    config = {'cameras': ['wrist'], 'state_dim': 18}
+    config = {'cameras': ['wrist'], 'state_dim': 18, 'actor_std_min': .01, 'actor_std_max': .1}
     noise = {'joint_position_std_rad': .002, 'joint_velocity_std': .005,
              'position_std_m': .001, 'rgb_std': .01, 'brightness_range': [.9, 1.1]}
 

@@ -197,3 +197,12 @@ sid = session["id"]
 当前 ball-trainings 默认环境为 so101_pickup_v4_visual_reward，奖励版本 pickup_v3_visual；保留 v3 图像、示教和噪声。每次动作后从腕部干净 RGB 判断红球可见（至少 6 像素满足 R>40、R>1.4G、R>1.4B），首次可见加 1 分，每回合最多一次，避免反复丢失/重新发现刷分。发现不代表抓取成功。训练与示教回放均包含此奖励，ONNX rollout 计分一致。
 
 夹爪闭合动作小于 -0.02 且双指都未与红球产生超过 0.01N 的接触时，扣 0.2×闭合指令幅度，单步最多扣 0.2；张开、静止或已有任一指接触红球不扣此项。原先抬升、成功、掉落及时间惩罚保留。新奖励不复用旧回放或旧模型，旧任务停止后从新示教重新训练。
+
+
+### 扩量训练与独立成功验收（2026-11-02）
+
+ball-trainings 增加 demonstration_episodes（8–256，默认8）、pretraining_updates（200–50000，默认200）、stop_on_success（布尔，默认false）。抓球 SAC 的标准差范围限制为 0.01–0.1，减少示教后的大幅随机动作；接近/下降阶段的定时静止帧不作为示教动作，避免将阶段等待误学成永久停住。
+
+stop_on_success 开启后，每1000次预训练更新及每500次在线更新，在独立球位置用确定性学习 Actor 评估5轮；至少成功3轮才提前结束并导出。评估不调用 IK/示教控制器，结果写入 evaluation.json，示教成功、在线成功、评估成功分别统计。
+
+`core/scripts/train_ball_until_success.py` 使用现有 base 环境和 CUDA 启动持续扩量流程：首批8环境×1000轮、64轮示教、5000次预训练；后续批次逐步增加示教与更新量，接续上一批模型权重但重新建立优化器/回放。每批结束独立执行20轮 ONNX 推理，至少成功1轮才结束流程；低于16/20时明确 robust_grasp_validated=false，不宣称稳定抓取。进程故障明确报告 failed，不悄悄重试掩盖故障。报告为 core/data/runtime/pickup-campaign.json；任务 ID 可通过原 stop 接口停止。

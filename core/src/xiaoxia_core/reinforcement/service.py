@@ -179,6 +179,8 @@ class ReinforcementAPI:
                         raise ValueError('device 需要 cpu 或 cuda')
                     count = self.integer(body, 'num_envs', 4, 1, 16)
                     rounds = self.integer(body, 'rounds', 100, 1, 10000)
+                    if type(body.get('stop_on_success', False)) is not bool:
+                        raise ValueError('stop_on_success 需要布尔值')
                     warm = {}
                     if body.get('warm_start_job_id'):
                         source = self.jobs.root / identifier(body['warm_start_job_id'])
@@ -196,6 +198,9 @@ class ReinforcementAPI:
                         warm = {'warm_start_checkpoint': str(checkpoint), 'warm_start_job_id': source.name}
                     return 202, self.jobs.start('ball_pickup', {
                         'task': '拿取小球', 'device': device, **warm,
+                        'demonstration_episodes': self.integer(body, 'demonstration_episodes', 8, 8, 256),
+                        'pretraining_updates': self.integer(body, 'pretraining_updates', 200, 200, 50000),
+                        'stop_on_success': body.get('stop_on_success', False),
                         'num_envs': count, 'rounds': rounds,
                         'seed': self.integer(body, 'seed', 42, 0, 2147483647)},
                         initial_state={'task': '拿取小球', 'num_envs': count, 'rounds': rounds,

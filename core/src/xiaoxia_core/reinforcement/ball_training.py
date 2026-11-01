@@ -14,6 +14,7 @@ from .ball_environment import BallPickupEnvironment
 from .learning import SACLearner
 from .ball_observation import BallObservation
 from .ball_demonstration import BallDemonstrator
+from .ball_evaluation import BallPolicyEvaluation
 from ..imitation.api_jobs import atomic_json
 from .preview import TrainingPreviewPublisher
 
@@ -27,11 +28,14 @@ class BallPickupTraining:
         import torch
         torch.set_num_threads(4)
         count, rounds = self.request['num_envs'], self.request['rounds']
+        demo_count = self.request.get('demonstration_episodes', 8)
+        pretraining = self.request.get('pretraining_updates', 200)
+        stop_on_success = self.request.get('stop_on_success', False)
         atomic_json(self.worker.directory / 'policy_config.json', {'task': 'ball_pickup', 'cameras': ['wrist'],
             'environment_version': BallPickupEnvironment.version,
-            'state_dim': 18, 'state_order': 'joint_positions_6,joint_velocities_6,ball_xyz_3,ball_minus_tip_xyz_3',
+            **BallObservation.config, 'state_order': 'joint_positions_6,joint_velocities_6,ball_xyz_3,ball_minus_tip_xyz_3',
             'action_space': 'normalized_joint_delta', 'action_scale': .08, 'num_envs': count, 'rounds': rounds,
-            'observation_noise': BallObservation.noise, 'demonstration_episodes': 8,
+            'observation_noise': BallObservation.noise, 'demonstration_episodes': demo_count, 'pretraining_updates': pretraining,
             'privileged_state': True, 'seed': self.request['seed'], 'physical': False})
         self.worker.progress(phase='initializing', task='拿取小球', num_envs=count, rounds=rounds,
                              environment_version=BallPickupEnvironment.version,
@@ -46,7 +50,7 @@ class BallPickupTraining:
         try:
             for i, env in enumerate(environments):
                 observers.append(BallObservation(env, seed + 100000 + i))
-            learner = SACLearner({'cameras': ['wrist'], 'state_dim': 18}, self.request['device'])
+            learner = SACLearner(BallObservation.config, self.request['device'])
             if self.request.get('warm_start_checkpoint'):
                 learner.policy.load_state_dict(torch.load(self.request['warm_start_checkpoint'], map_location=self.request['device'], weights_only=True))
             preview = TrainingPreviewPublisher(self.worker.directory)
@@ -57,20 +61,23 @@ class BallPickupTraining:
             self.worker.progress(phase='demonstrating', demonstration_successes=0)
             teacher = BallDemonstrator()
             demo_successes = 0
-            for attempt in range(24):
+            for attempt in range(demo_count * 3):
                 env, observer = environments[0], observers[0]
                 env.reset_episode()
-                trajectory = teacher.collect(env, observer)
+                try:
+                    trajectory = teacher.collect(env, observer)
+                except ValueError:
+                    continue
                 if not trajectory:
                     continue
                 demo_successes += 1
                 demos.extend(trajectory)
                 preview.publish(environments, force=True)
                 self.worker.progress(demonstration_successes=demo_successes, demonstration_transitions=len(demos))
-                if demo_successes == 8:
+                if demo_successes == demo_count:
                     break
-            if demo_successes < 8:
-                raise ValueError('24 次尝试未取得 8 轮成功示教，停止训练并检查物理/IK')
+            if demo_successes < demo_count:
+                raise ValueError(f'{demo_count * 3} 次尝试未取得 {demo_count} 轮成功示教')
             np.savez_compressed(self.worker.directory / 'demonstrations.npz',
                 state=np.stack([r[0]['observation.state'] for r in demos]),
                 wrist=np.stack([r[0][BallObservation.camera_key] for r in demos]),
@@ -79,10 +86,24 @@ class BallPickupTraining:
                 next_wrist=np.stack([r[3][BallObservation.camera_key] for r in demos]),
                 done=np.asarray([r[4] for r in demos]))
             self.worker.progress(phase='pretraining')
-            for step in range(200):
+            evaluator = BallPolicyEvaluation(urdf, self.request['device'])
+            evaluation = None
+            validated = False
+            for step in range(pretraining):
                 selected = rng.sample(demos, min(64, len(demos)))
-                learner.behavior_clone(BallObservation.batch([r[0] for r in selected], self.request['device']),
+                bc_loss = learner.behavior_clone(BallObservation.batch([r[0] for r in selected], self.request['device']),
                     torch.as_tensor(np.stack([r[1] for r in selected]), device=self.request['device']))
+                if (step + 1) % 100 == 0:
+                    self.worker.progress(phase='pretraining', pretraining_step=step + 1,
+                        pretraining_updates=pretraining, loss_bc=bc_loss)
+                if stop_on_success and (step + 1) % 1000 == 0:
+                    self.worker.progress(phase='evaluating', pretraining_step=step + 1)
+                    evaluation = evaluator.run(learner.policy, preview=preview)
+                    atomic_json(self.worker.directory / 'evaluation.json', evaluation)
+                    self.worker.progress(evaluation_successes=evaluation['successes'], evaluation_rounds=5)
+                    if evaluation['successes'] >= 3:
+                        validated = True
+                        break
             for env in environments:
                 env.reset_episode()
             scores = deque(maxlen=100)
@@ -93,7 +114,7 @@ class BallPickupTraining:
             metrics = {}
             self.worker.progress(phase='collecting', snapshot=environments[0].snapshot())
             with ThreadPoolExecutor(max_workers=min(count, 8)) as pool:
-                while min(completed) < rounds:
+                while min(completed) < rounds and not validated:
                     active = [index for index in range(count) if completed[index] < rounds]
                     observations = BallObservation.batch([states[index] for index in active], self.request['device'])
                     learner.policy.eval()
@@ -126,6 +147,12 @@ class BallPickupTraining:
                             BallObservation.batch([r[0] for r in selected[-16:]], self.request['device']),
                             tensor([r[1] for r in selected[-16:]]))
                         updates += 1
+                        if stop_on_success and updates % 500 == 0:
+                            self.worker.progress(phase='evaluating')
+                            evaluation = evaluator.run(learner.policy, preview=preview)
+                            atomic_json(self.worker.directory / 'evaluation.json', evaluation)
+                            self.worker.progress(evaluation_successes=evaluation['successes'], evaluation_rounds=5)
+                            validated = evaluation['successes'] >= 3
                         if updates % 200 == 0:
                             learner.publish(self.worker.directory, updates)
                     preview.publish(environments)
@@ -144,7 +171,8 @@ class BallPickupTraining:
             from .onnx_export import BallOnnxExporter
             exported = BallOnnxExporter().export(Path(checkpoint), self.worker.directory, policy=learner.policy, config=BallObservation.config, environment_version=BallPickupEnvironment.version)
             return {'checkpoint': checkpoint, **exported, 'completed_episodes': sum(completed), 'successes': successes,
-                    'score': float(np.mean(scores)), 'updates': updates, 'physical': False, 'task_success_validated': successes > 0}
+                    'score': float(np.mean(scores)) if scores else None, 'updates': updates, 'physical': False,
+                    'evaluation': evaluation, 'task_success_validated': validated, 'stopped_on_success': validated}
         finally:
             for observer in observers:
                 observer.close()
