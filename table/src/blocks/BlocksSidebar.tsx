@@ -173,6 +173,6 @@ export function BlocksSidebar() {
       </button>
     </div></header>
     <div ref={host} className="blocks-workspace" aria-label="机械臂、相机、逻辑、变量、策略和数据积木工作区" />
-    <p className="blocks-status" role="status">{error || notice || "通过本机 API 控制显示模型"}</p>
+    {(error || notice) && <p className="blocks-status" role="status">{error || notice}</p>}
   </aside>;
 }
