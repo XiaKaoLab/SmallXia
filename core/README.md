@@ -106,7 +106,7 @@ python -m xiaoxia_core.agent
 
 技能目录格式为 `<技能目录>/<名称>/SKILL.md`，YAML frontmatter 必须提供 `name`、`description`，正文是技能指令。名称使用小写字母数字及连字符。技能由调用方显式选择，不自动执行其中的脚本；当前会话切换不改变 CLI 已选技能，重启后需重新选择。
 
-`SimpleAgent.stream(session_id, text, skill_names=...)` 返回 `started`、`skill_loaded`、`delta`、`completed` 事件。`completed.result` 包含最终文本与用量，适合作为后续桌面 IPC 的事件源；本次未接入 `table`。
+`SimpleAgent.stream(session_id, text, skill_names=...)` 返回 `started`、`skill_loaded`、`delta`、`completed` 事件。`completed.result` 包含最终文本与用量。`agent.bridge` 已为 `table` 提供单请求 JSONL 桥接，支持 bootstrap/create/history/clear/run；由 Tauri 子进程调用，不开启 HTTP 监听，运行目录必须为 `core`。
 
 ```python
 from contextlib import closing
