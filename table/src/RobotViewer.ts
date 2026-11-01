@@ -5,6 +5,8 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import URDFLoader from "urdf-loader";
+import type { URDFRobot } from "urdf-loader";
+import { ModelMotionClient } from "./ModelMotionClient";
 
 export class RobotViewer {
   private readonly scene = new THREE.Scene();
@@ -13,6 +15,10 @@ export class RobotViewer {
   private readonly controls: OrbitControls;
   private readonly observer: ResizeObserver;
   private disposed = false;
+  private robot: URDFRobot | undefined;
+  private targets: Record<string, number> = {};
+  private readonly clock = new THREE.Clock();
+  private readonly motion = new ModelMotionClient((positions) => this.setJointTargets(positions));
 
   constructor(private readonly host: HTMLElement) {
     this.scene.background = new THREE.Color("#e8edf0");
@@ -31,6 +37,7 @@ export class RobotViewer {
     this.observer.observe(host);
     this.resize();
     this.renderer.setAnimationLoop(() => {
+      this.updateJoints(Math.min(this.clock.getDelta(), 0.05));
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
     });
@@ -40,6 +47,7 @@ export class RobotViewer {
     manager.onError = (url) => console.error("机械臂资源加载失败", url);
     loader.load(`${import.meta.env.BASE_URL}robots/so101/so101_new_calib.urdf`, (robot) => {
       if (this.disposed) { manager.onLoad = () => this.release(robot); return; }
+      this.robot = robot;
       this.scene.add(robot);
       manager.onLoad = () => {
         if (this.disposed) { this.release(robot); return; }
@@ -60,6 +68,28 @@ export class RobotViewer {
     }, undefined, (error) => console.error("机械臂 URDF 加载失败", error));
   }
 
+  private setJointTargets(positions: Record<string, number>): void {
+    if (!this.robot || !positions || typeof positions !== "object") return;
+    const names = Object.keys(this.robot.joints).filter((name) => this.robot!.joints[name].jointType === "revolute");
+    if (Object.keys(positions).length !== names.length) return;
+    for (const name of names) {
+      const value = positions[name];
+      const { lower, upper } = this.robot.joints[name].limit;
+      if (!Number.isFinite(value) || value < lower || value > upper) return;
+    }
+    this.targets = { ...positions };
+  }
+
+  private updateJoints(dt: number): void {
+    if (!this.robot) return;
+    for (const [name, target] of Object.entries(this.targets)) {
+      const joint = this.robot.joints[name];
+      const current = joint.jointValue[0];
+      const step = Math.min(0.25, joint.limit.velocity) * dt;
+      joint.setJointValue(current + Math.max(-step, Math.min(step, target - current)));
+    }
+  }
+
   private resize(): void {
     const width = Math.max(this.host.clientWidth, 1);
     const height = Math.max(this.host.clientHeight, 1);
@@ -78,6 +108,7 @@ export class RobotViewer {
 
   dispose(): void {
     this.disposed = true;
+    this.motion.dispose();
     this.observer.disconnect();
     this.renderer.setAnimationLoop(null);
     this.controls.dispose();
