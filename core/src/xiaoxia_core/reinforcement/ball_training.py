@@ -104,6 +104,7 @@ class BallPickupTraining:
                     for offset, index in enumerate(active):
                         state, reward, terminated, truncated, success = futures[offset].result()
                         state = observers[index].read()
+                        reward += environments[index].last_visual_reward
                         replay.append((states[index], actions[offset], reward, state, terminated))
                         transitions += 1
                         states[index] = state

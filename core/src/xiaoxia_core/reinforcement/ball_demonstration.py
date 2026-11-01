@@ -62,6 +62,7 @@ class BallDemonstrator:
                 action = np.clip((q - current) / .08, -1, 1).astype(np.float32)
                 _, reward, terminated, truncated, success = env.advance(action)
                 following = observer.read()
+                reward += env.last_visual_reward
                 rows.append((observation, action, reward, following, terminated))
                 observation = following
                 if terminated or truncated:

@@ -19,7 +19,9 @@ class BallObservation:
 
     def read(self):
         self.renderer.update_scene(self.env._data, camera='pickup_wrist')
-        image = self.renderer.render().copy().astype(np.float32) / 255
+        rgb = self.renderer.render().copy()
+        self.env.observe_ball_image(rgb)
+        image = rgb.astype(np.float32) / 255
         state = self.env.state().copy()
         if self.noisy:
             state += self.random.normal(0, [.002] * 6 + [.005] * 6 + [.001] * 6)

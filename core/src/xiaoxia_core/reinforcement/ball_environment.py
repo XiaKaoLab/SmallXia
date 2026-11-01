@@ -15,7 +15,7 @@ from .pickup_reward import PickupReward
 
 
 class BallPickupEnvironment(MujocoSimulation):
-    version = 'so101_pickup_v3_vision'
+    version = 'so101_pickup_v4_visual_reward'
     radius = 0.015
     episode_steps = 100
     floor_z = -.003
@@ -89,6 +89,9 @@ class BallPickupEnvironment(MujocoSimulation):
         self.spawn_position = self.initial_ball_position.copy()
         self.reward = PickupReward(float(np.linalg.norm(self.ball_position() - data.site_xpos[self.tip])))
         self.last_reward_terms = {}
+        self.visual_reward_step = 0
+        self.last_visual_reward = 0.0
+        self.ball_visible = False
         return self.state()
 
     def ball_position(self):
@@ -125,10 +128,22 @@ class BallPickupEnvironment(MujocoSimulation):
         truncated = self.steps >= self.episode_steps and not terminated
         reward, self.last_reward_terms = self.reward.calculate(distance=distance, lift_fraction=lifted,
             grasped=grasped, success=success, failed=failed, truncated=truncated,
-            action=action, floor_force=contact['arm_floor_force'])
+            action=action, floor_force=contact['arm_floor_force'],
+            ball_contact=any(force > .01 for force in contact['jaw_forces'].values()))
         self.return_ += reward
         self.ended = bool(terminated or truncated)
         return self.state(), reward, bool(terminated), bool(truncated), bool(success)
+
+    def observe_ball_image(self, rgb):
+        # 在主渲染线程读取干净 RGB；不把观测噪声当作奖励依据。
+        red = rgb[:, :, 0].astype(np.float32)
+        mask = (red > 40) & (red > rgb[:, :, 1] * 1.4) & (red > rgb[:, :, 2] * 1.4)
+        self.ball_visible = bool(np.count_nonzero(mask) >= 6)
+        if self.steps > self.visual_reward_step:
+            self.last_visual_reward = self.reward.observe_ball(self.ball_visible)
+            self.last_reward_terms['found_ball'] = self.last_visual_reward
+            self.return_ += self.last_visual_reward
+            self.visual_reward_step = self.steps
 
     def _physics_step(self, *, track_hold=True):
         model, data = self._state()
@@ -185,4 +200,4 @@ class BallPickupEnvironment(MujocoSimulation):
         return {'joint_positions': self.read_observation().joint_positions, 'ball_position': self.ball_position().tolist(),
                 'ball_radius': self.radius, 'floor_z': self.floor_z, 'episode_index': self.episode_index,
                 'spawn_position': self.spawn_position.tolist(), 'held_seconds': self.held_seconds,
-                'contacts': self.contact_state(), 'reward_terms': self.last_reward_terms, 'physical': False}
+                'ball_visible': self.ball_visible, 'contacts': self.contact_state(), 'reward_terms': self.last_reward_terms, 'physical': False}

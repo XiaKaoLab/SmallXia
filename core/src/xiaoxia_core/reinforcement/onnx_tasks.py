@@ -43,6 +43,8 @@ class BallOnnxTasks:
                     action = policy.predict(np.asarray([observation['observation.state'] if observation else state]),
                         np.asarray([observation[BallObservation.camera_key]], dtype=np.float32) / 255 if observation else None)[0]
                     state, _, terminated, truncated, success = env.advance(action)
+                    if observer:
+                        observer.read()  # 将当前动作后的相机发现奖励计入回合分数。
                     transitions += 1
                     preview.publish([env])
                     done = terminated or truncated

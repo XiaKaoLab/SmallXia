@@ -9,7 +9,9 @@ import numpy as np
 
 @dataclass(frozen=True)
 class PickupRewardConfig:
-    version: str = 'pickup_v2'
+    version: str = 'pickup_v3_visual'
+    found_ball: float = 1.0
+    empty_close_cost: float = .2
     approach_gain: float = 5.0
     first_grasp: float = 1.0
     lift_gain: float = 10.0
@@ -29,12 +31,15 @@ class PickupReward:
         self.previous_lift = 0.0
         self.grasp_rewarded = False
         self.was_lifted = False
+        self.ball_found_rewarded = False
 
-    def calculate(self, *, distance, lift_fraction, grasped, success, failed, truncated, action, floor_force):
+    def calculate(self, *, distance, lift_fraction, grasped, success, failed, truncated, action, floor_force, ball_contact=False):
         settings = self.config
         lift = lift_fraction if grasped else 0.0
         dropped = self.was_lifted and (not grasped or lift_fraction < .1)
         terms = {
+            'empty_close': -settings.empty_close_cost * min(1., max(0., -float(action[5])))
+                if float(action[5]) < -.02 and not ball_contact else 0.0,
             'approach': settings.approach_gain * (self.previous_distance - distance),
             'first_grasp': settings.first_grasp if grasped and not self.grasp_rewarded else 0.0,
             'lift_progress': settings.lift_gain * (lift - self.previous_lift),
@@ -50,6 +55,11 @@ class PickupReward:
         self.grasp_rewarded |= grasped
         self.was_lifted = grasped and lift_fraction >= .1
         return float(sum(terms.values())), terms
+
+    def observe_ball(self, visible):
+        reward = self.config.found_ball if visible and not self.ball_found_rewarded else 0.0
+        self.ball_found_rewarded |= visible
+        return reward
 
     def description(self):
         return asdict(self.config)
