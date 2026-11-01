@@ -3,6 +3,7 @@
  * @author: https://github.com/Linmoqian
  */
 import { useEffect, useRef, useState } from "react";
+import { blocksDebug } from "../debug/BlocksDebug";
 import { Play } from "lucide-react";
 import { agentClient } from "../chat/AgentClient";
 import * as Blockly from "blockly/core";
@@ -25,6 +26,7 @@ export function BlocksSidebar() {
     const abort = new AbortController();
     let workspace: Blockly.WorkspaceSvg | undefined;
     let observer: ResizeObserver | undefined;
+    let detachDebug: (() => void) | undefined;
     async function initialize() {
       try {
         const response = await fetch(`${import.meta.env.BASE_URL}robots/so101/so101_new_calib.urdf`, { signal: abort.signal });
@@ -55,6 +57,7 @@ export function BlocksSidebar() {
           update();
         });
         update();
+        if (import.meta.env.DEV) detachDebug = blocksDebug.attach(workspace, limits, () => { edited = true; update(); });
         observer = new ResizeObserver(() => { if (workspace) Blockly.svgResize(workspace); });
         observer.observe(element);
         // API 可用时以当前显示目标初始化；不可用时保留模型范围内的零位。
@@ -68,7 +71,7 @@ export function BlocksSidebar() {
           const positions = state.joint_positions;
           if (!positions || JOINTS.some(([name]) => !Number.isFinite(positions[name]) || positions[name] < limits[name].lower || positions[name] > limits[name].upper)) return;
           // 用户开始编辑后不覆盖字段。
-          if (edited) return;
+          if (edited || workspace.getBlockById(block.id) !== block) return;
           for (const [name] of JOINTS) block.setFieldValue(String(positions[name]), name);
           workspace.clearUndo();
           update();
@@ -78,7 +81,7 @@ export function BlocksSidebar() {
       }
     }
     void initialize();
-    return () => { abort.abort(); observer?.disconnect(); workspace?.dispose(); };
+    return () => { abort.abort(); detachDebug?.(); observer?.disconnect(); workspace?.dispose(); };
   }, []);
 
   async function run() {
@@ -124,7 +127,7 @@ export function BlocksSidebar() {
         <button type="button" disabled={!code} onClick={() => void copy()}>复制</button>
         <button type="button" disabled={!code} onClick={download}>下载 .py</button>
       </div></div>
-      <pre tabIndex={0}><code>{code || "正在加载积木…"}</code></pre>
+      <pre tabIndex={0}><code>{code || (error ? "代码生成失败" : "工作区为空或正在加载") }</code></pre>
     </section>
     <p className="blocks-status" role="status">{error || notice || "通过本机 API 控制显示模型"}</p>
   </aside>;

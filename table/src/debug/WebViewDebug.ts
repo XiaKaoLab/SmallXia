@@ -2,11 +2,13 @@
  * Created on 2026-11-01; Updated on 2026-11-01
  * @author: https://github.com/Linmoqian
  */
+import { blocksDebug, type BlocksDebugAPI } from "./BlocksDebug";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
 interface ScreenshotOptions { download?: boolean }
 interface Screenshot { dataUrl: string; mimeType: "image/png"; width: number; height: number }
 export interface WebViewDebugAPI {
+  readonly blocks: BlocksDebugAPI;
   fillInput(selector: string, value: string): Promise<{ selector: string; length: number }>;
   screenshot(options?: ScreenshotOptions): Promise<Screenshot>;
 }
@@ -18,6 +20,7 @@ declare global {
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
 class WebViewDebug implements WebViewDebugAPI {
+  readonly blocks = blocksDebug;
   private capturing = false;
 
   async fillInput(selector: string, value: string) {

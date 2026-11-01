@@ -30,3 +30,30 @@ await window.tableDebug.screenshot({ download: true });
 本次只同步 Cargo 锁文件并检查 Git 差异，没有执行构建、运行桌面或实际填写/截图验证。
 
 原生捕获接口参考 [Microsoft WebView2 CapturePreview](https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2#capturepreview)。
+
+
+## 管理积木
+
+通过 `window.tableDebug.blocks` 管理当前左侧工作区。只在开发模式注册，普通浏览器开发模式也能使用；无需启动模型 API，修改积木不会自动运行 Python。
+
+```javascript
+const blocks = window.tableDebug.blocks;
+blocks.ready();                           // 工作区是否完成初始化
+blocks.types();                           // 支持的类型、字段、模型限位
+const [block] = blocks.list();             // 查询 ID、类型、六轴字段和坐标
+blocks.setFields(block.id, { shoulder_pan: 0.2, gripper: 0.5 });
+blocks.move(block.id, 24, 40);              // 工作区绝对坐标
+const python = blocks.python();            // 即时生成当前 Python
+const snapshot = blocks.exportWorkspace(); // { version: 1, blocks: [...] }
+blocks.remove(block.id);                   // 按 ID 删除，不发送动作
+blocks.create({ shoulder_pan: 0.3 });       // 空工作区添加位置积木，其他轴取默认值
+blocks.clear();                            // 清空，不发送动作
+blocks.importWorkspace(snapshot);          // 替换为此前保存的快照
+blocks.importWorkspace(JSON.stringify(snapshot)); // 也支持 JSON 字符串
+```
+
+当前仅支持一个 `table_set_arm_position` 积木。新增前需清空或删除现有积木。字段名沿用六轴 API：`shoulder_pan`、`shoulder_lift`、`elbow_flex`、`wrist_flex`、`wrist_roll`、`gripper`，单位 rad。字段修改支持部分更新，但非法字段或越界值会在修改前拒绝，不静默截断；导入快照要求完整六轴字段，校验通过后才替换工作区。
+
+每次管理操作同步触发 Python 预览刷新；清空后代码为空，运行按钮禁用。工作区卸载后解除绑定，接口抛出明确的未就绪错误，避免继续操作旧工作区。UI 默认积木不可手动删除，开发接口可显式删除。
+
+本次只做代码差异检查，未构建或实际操作 WebView 验证。
