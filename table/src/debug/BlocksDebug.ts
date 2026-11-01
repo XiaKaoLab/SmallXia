@@ -6,6 +6,7 @@ import * as Blockly from "blockly/core";
 import { pythonGenerator } from "blockly/python";
 import { CAMERA_BLOCK_TYPE } from "../blocks/cameraBlock";
 import { BLOCK_TYPE, JOINTS, type Limits } from "../blocks/positionBlock";
+import { cameraCatalog } from "../blocks/CameraCatalog";
 import { FRAME_CAPTURE, FRAME_VARIABLE } from "../blocks/frameBlocks";
 import { BLOCK_LIMITS, TOOLBOX_TYPES } from "../blocks/BlocksToolbox";
 
@@ -50,7 +51,7 @@ class WorkspaceManager {
       [FRAME_CAPTURE]: "获取画面", [FRAME_VARIABLE]: "画面变量" };
     return TOOLBOX_TYPES.map(type => ({ type, label: labels[type] || type, maxInstances: BLOCK_LIMITS[type] ?? 100,
       fields: type === BLOCK_TYPE ? JOINTS.map(([name, label]) => ({ name, label, unit: "rad", ...this.limits[name] }))
-        : [FRAME_CAPTURE, FRAME_VARIABLE].includes(type) ? [{ name: "SOURCE", label: "来源", options: ["virtual", "real"] }] : [] }));
+        : [FRAME_CAPTURE, FRAME_VARIABLE].includes(type) ? [{ name: "SOURCE", label: "来源", options: cameraCatalog.options().map(([, id]) => id) }] : [] }));
   }
   list(): BlockSnapshot[] {
     return this.workspace.getAllBlocks(false).map(block => {

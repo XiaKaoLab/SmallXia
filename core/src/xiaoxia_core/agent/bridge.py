@@ -50,6 +50,12 @@ class DesktopBridge:
         elif action == "clear":
             self.sessions.clear(request["session_id"])
             self.emit({"type": "data", "data": {"cleared": True}})
+        elif action == "list_cameras":
+            from urllib.request import Request, urlopen
+            query = Request('http://127.0.0.1:8766/api/v1/cameras',
+                            headers={'Authorization': 'Bearer ' + os.environ['XIAOXIA_MOTION_TOKEN']})
+            with urlopen(query, timeout=4) as response:
+                self.emit({'type': 'data', 'data': json.load(response)})
         elif action == "publish_camera_frame":
             from urllib.request import Request, urlopen
             body = json.dumps({'image_base64': request['image_base64']}).encode()

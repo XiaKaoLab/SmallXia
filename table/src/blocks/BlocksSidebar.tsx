@@ -7,6 +7,7 @@ import { jointPreview } from "../JointPreview";
 import { LiveJointRunner } from "./LiveJointRunner";
 import { blocksDebug } from "../debug/BlocksDebug";
 import { registerCameraBlock } from "./cameraBlock";
+import { cameraCatalog } from "./CameraCatalog";
 import { registerFrameBlocks } from "./frameBlocks";
 import { BlocksToolbox, BLOCK_LIMITS } from "./BlocksToolbox";
 import { PolicyBlocks } from "./policyBlocks";
@@ -47,6 +48,7 @@ export function BlocksSidebar() {
     const live = new LiveJointRunner((message) => { if (!abort.signal.aborted) setNotice(message); });
     liveRef.current = live;
     let detachDebug: (() => void) | undefined;
+    let detachCameras: (() => void) | undefined;
     async function initialize() {
       try {
         const response = await fetch(`${import.meta.env.BASE_URL}robots/so101/so101_new_calib.urdf`, { signal: abort.signal });
@@ -72,6 +74,7 @@ export function BlocksSidebar() {
           grid: { spacing: 20, length: 1, colour: "#d4dedb", snap: false },
         });
         workspaceRef.current = workspace;
+        detachCameras = cameraCatalog.attach(workspace);
         workspace.registerButtonCallback("CREATE_VARIABLE", () => {
           if (workspace) Blockly.Variables.createVariableButtonHandler(workspace);
         });
@@ -114,7 +117,7 @@ export function BlocksSidebar() {
       }
     }
     void initialize();
-    return () => { abort.abort(); window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; detachDebug?.(); observer?.disconnect(); workspace?.dispose(); };
+    return () => { abort.abort(); window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; detachDebug?.(); detachCameras?.(); observer?.disconnect(); workspace?.dispose(); };
   }, []);
 
   async function run() {

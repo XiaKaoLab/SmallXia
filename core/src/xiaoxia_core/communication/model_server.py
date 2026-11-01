@@ -96,13 +96,13 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         if self._imitation('GET'):
             return
-        if self.path in ('/api/v1/cameras/virtual/frame', '/api/v1/cameras/real/frame'):
+        if self.path == '/api/v1/cameras' or (self.path.startswith('/api/v1/cameras/') and self.path.endswith('/frame') and len(self.path.split('/')) == 6):
             if not compare_digest(self.headers.get('Authorization', '').encode(), self.server.read_authorization.encode()):
                 self._reply(401, {'error': 'unauthorized'})
                 return
             try:
-                self._reply(200, self.server.frames.read(self.path.split('/')[4]))
-            except ValueError as error:
+                self._reply(200, self.server.frames.devices() if self.path == '/api/v1/cameras' else self.server.frames.read(self.path.split('/')[4]))
+            except (ValueError, ImportError, OSError) as error:
                 self._reply(409, {'error': str(error)})
             return
         # 仅模型状态允许本机匿名读取；运动写入始终要求令牌。

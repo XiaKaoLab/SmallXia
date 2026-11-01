@@ -7,6 +7,7 @@ from io import BytesIO
 from threading import RLock
 from time import monotonic, time_ns
 from PIL import Image
+from .camera_discovery import CameraDiscovery
 
 
 class CameraFrames:
@@ -15,7 +16,9 @@ class CameraFrames:
         self._virtual = None
         self._received = 0.0
         self._capture = None
+        self._device = None
         self._sequence = 0
+        self.discovery = CameraDiscovery()
 
     def publish(self, body):
         raw = base64.b64decode(body['image_base64'], validate=True)
@@ -47,6 +50,7 @@ class CameraFrames:
             capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             self._capture = capture
+            self._device = None
             return {'source': 'real', 'connected': True, 'device_index': index}
 
     def _frame(self, source, raw, width, height):
@@ -56,13 +60,32 @@ class CameraFrames:
                 'width': width, 'height': height, 'encoding': 'jpeg',
                 'image_base64': base64.b64encode(raw).decode('ascii')}
 
+    def devices(self):
+        devices = self.discovery.list()
+        with self._lock:
+            if self._virtual is not None and monotonic() - self._received <= 2:
+                devices.insert(0, {'id': 'virtual', 'name': '腕部虚拟相机', 'source': 'virtual', 'physical': False})
+        return {'cameras': devices}
+
     def read(self, source):
         with self._lock:
             if source == 'virtual':
                 if self._virtual is None or monotonic() - self._received > 2:
                     raise ValueError('虚拟画面未就绪或已过期，请先装配相机并保持 table 打开')
                 return {**self._virtual, 'age_ms': round((monotonic() - self._received) * 1000)}
-            if source != 'real' or self._capture is None:
+            if source.startswith('opencv_'):
+                device = self.discovery.resolve(source)
+                if self._capture is None or self._device != device['id']:
+                    import cv2
+                    self.close()
+                    capture = cv2.VideoCapture(device['device_index'], device['backend'])
+                    if not capture.isOpened():
+                        capture.release()
+                        raise ValueError('所选摄像头无法打开，可能被其他应用占用')
+                    capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                    self._capture, self._device = capture, device['id']
+            if not (source == 'real' or source.startswith('opencv_')) or self._capture is None:
                 raise ValueError('真实相机未连接，请先配置设备')
             import cv2
             ok, image = self._capture.read()
@@ -71,10 +94,11 @@ class CameraFrames:
             ok, raw = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, 80])
             if not ok:
                 raise ValueError('真实相机编码失败')
-            return {**self._frame('real', raw.tobytes(), image.shape[1], image.shape[0]), 'age_ms': 0}
+            return {**self._frame('real', raw.tobytes(), image.shape[1], image.shape[0]), 'camera_id': self._device, 'age_ms': 0}
 
     def close(self):
         with self._lock:
             if self._capture is not None:
                 self._capture.release()
                 self._capture = None
+                self._device = None

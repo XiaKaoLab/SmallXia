@@ -5,6 +5,7 @@ Created on 2026-11-02; Updated on 2026-11-02
 import base64
 import json
 import os
+import re
 from io import BytesIO
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
@@ -13,8 +14,8 @@ from time import monotonic, sleep
 
 class CameraFrameClient:
     def read(self, source: str) -> dict:
-        if source not in ('virtual', 'real'):
-            raise ValueError('画面来源必须是 virtual 或 real')
+        if source not in ('virtual', 'real') and not re.fullmatch(r'opencv_[0-9a-f]{16}', source):
+            raise ValueError('请选择已发现的摄像头')
         request = Request(f'http://127.0.0.1:8766/api/v1/cameras/{source}/frame',
                           headers={'Authorization': 'Bearer ' + os.environ['XIAOXIA_MOTION_TOKEN']})
         deadline = monotonic() + 2

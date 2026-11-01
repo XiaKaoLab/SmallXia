@@ -7,6 +7,8 @@ Created on 2026-11-02; Updated on 2026-11-02
 
 | 方法 | 路由 | 功能 |
 | --- | --- | --- |
+| GET | `/api/v1/cameras` | 枚举已发现的设备名称、稳定 ID、OpenCV 索引与后端；虚拟相机仅在最近有画面时列出 |
+| GET | `/api/v1/cameras/{camera_id}/frame` | 按枚举得到的 `opencv_…` ID 连接并读取所选设备；拔出后明确报错 |
 | POST | `/api/v1/cameras/virtual/frame` | table 上传 JPEG，参数 `image_base64`，最大 1 MB、最长边 1920 像素 |
 | GET | `/api/v1/cameras/virtual/frame` | 获取最新虚拟画面；超过 2 秒未收到新帧返回 409 |
 | POST | `/api/v1/cameras/real/config` | `{"device_index":0,"enabled":true}` 连接本机 OpenCV 设备；`enabled:false` 释放设备 |
@@ -16,7 +18,7 @@ Created on 2026-11-02; Updated on 2026-11-02
 
 虚拟画面来自装配相机后的独立渲染画布，最多 2 FPS 上传，采用丢帧而非排队；必须保持 Tauri table 窗口和 core 服务运行。不显示相机时停止上传。当前不作为高帧率训练采集链路或 LeRobot Camera 子类注册。
 
-积木“相机”分类提供“获取画面”，“变量”分类提供“画面变量”，来源可选虚拟/真实。先运行获取积木，再使用对应变量。两种来源各自保存为 `virtual_frame`、`real_frame`。变量是包含图像和元数据的字典；不是图像路径或 WebView 截图。Python 不显示在界面中。
+积木“相机”分类提供“获取画面”，“变量”分类提供“画面变量”，下拉框显示实际发现的设备名称及已就绪的腕部虚拟相机，不再使用固定的“虚拟/真实”两项。先运行获取积木，再使用对应变量。虚拟相机保存为 `virtual_frame`；发现的真实设备保存为 `frame_opencv_<稳定标识>`，避免多设备变量重名。旧 `real_frame` 调用仍兼容。变量是包含图像和元数据的字典；不是图像路径或 WebView 截图。Python 不显示在界面中。
 
 ```python
 from xiaoxia_core.collection.frame_client import CameraFrameClient
@@ -35,3 +37,5 @@ finally:
 ```
 
 真实相机依赖现有 base 环境中的 OpenCV；服务退出时释放设备。修改模型服务代码后需重启该 Python 服务，桌面前端使用 HMR。
+
+设备发现使用 [cv2-enumerate-cameras](https://github.com/lukehugh/cv2_enumerate_cameras) 1.4.0，Windows 固定 MSMF 后端，枚举时不创建 VideoCapture。选择后运行获取积木才连接该设备；同时只保持一个真实相机连接。界面每 10 秒刷新设备列表，也可在“相机”分类点击“刷新相机”。设备被占用或无法打开时返回错误，不自动切换到其他相机。
