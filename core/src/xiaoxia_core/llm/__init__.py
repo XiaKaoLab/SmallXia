@@ -5,5 +5,6 @@ Created on 2026-11-01; Updated on 2026-11-01
 
 from .client import LLM, LLMResult, OpenAILLM
 from .config import LLMConfig
+from .messages import LLMMessage, LLMStreamEvent
 
-__all__ = ["LLM", "LLMConfig", "LLMResult", "OpenAILLM"]
+__all__ = ["LLM", "LLMConfig", "LLMMessage", "LLMResult", "LLMStreamEvent", "OpenAILLM"]
