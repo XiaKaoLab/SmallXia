@@ -22,6 +22,21 @@ $env:PYTHONPATH = Join-Path (Get-Location) 'src'
 
 以上 `PYTHONPATH` 仅对当前 PowerShell 会话生效，之后可直接导入 `xiaoxia_core`。`pyproject.toml` 保留包元数据，后续运行依赖统一记录在其中，使用 Conda 管理已有 `base` 环境。
 
+### PyTorch GPU 依赖
+
+当前 Windows 主机使用 Python 3.13、RTX 4060 和 NVIDIA 驱动 566.24。与 LeRobot 0.4.4 的依赖范围匹配的 GPU 组合为 `torch==2.10.0`、`torchvision==0.25.0`、`torchaudio==2.10.0`，使用 CUDA 12.6 预编译包。需要重装时在已有 `base` 环境执行：
+
+```powershell
+conda activate base
+python -m pip install torch==2.10.0 torchvision==0.25.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu126
+```
+
+不创建新环境、不从源码编译 PyTorch。安装源参考 [PyTorch 官方版本说明](https://pytorch.org/get-started/previous-versions/)。
+
+2026-11-01 已在现有 `base` 安装上述三件套（版本后缀 `+cu126`），最小导入和 `torch.cuda.is_available()` 检查通过，识别 RTX 4060 Laptop GPU。SymPy 随之更新到 1.14.0；未运行训练或性能测试。
+
+共享 `base` 尚非全部依赖兼容：本次升级超出 `lightx2v==0.1.0` 对 torch/torchaudio≤2.8.0、torchvision≤0.23.0 的声明范围，LightX2V 运行未验收。原有 LeRobot 与 `diffusers==0.38.0.dev0`（要求 <0.36.0）、OSAM 与 `onnxruntime==1.20.1` 的依赖冲突也尚未处理，不能据此认为完整 LeRobot 训练已可运行。
+
 ## 库入口
 
 ```python
