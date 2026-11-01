@@ -75,8 +75,6 @@ export function BallTrainingProgress() {
       <span>当前分 <b>{job.current_score == null ? "—" : job.current_score.toFixed(2)}</b></span></div>
     <progress max={1} value={progress} aria-label="训练完成进度" />
     <div className="ball-training-detail"><span>{job.completed_episodes ?? 0} / {job.total_episodes ?? "—"} 回合</span><span>{(progress * 100).toFixed(1)}%</span></div>
-    <p>{job.num_envs ?? "—"} 个环境 · 每个 {job.rounds ?? "—"} 轮 · 成功 {job.successes ?? 0} 次</p>
-    <small>平均分为最近 100 个已完成回合的累计奖励；画面为环境 1。</small>
     {(error || job.error) && <p role="alert" className="ball-training-error">{error || job.error}</p>}
   </section>;
 }
