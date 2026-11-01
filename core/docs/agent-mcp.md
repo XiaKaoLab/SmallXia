@@ -25,7 +25,7 @@ Created on 2026-11-01; Updated on 2026-11-02
 
 ## RL 工具
 
-新增16个 rl_ 工具，复用 ReinforcementClient，不在 MCP 内重新实现算法：
+RL 工具复用 ReinforcementClient，不在 MCP 内重新实现算法：
 
 - rl_capabilities、rl_list_sessions、rl_get_session：执行范围和会话查询。
 - rl_create_session、rl_step、rl_reset：创建会话、显式执行 table 模型步、开启新 episode。
@@ -34,6 +34,8 @@ Created on 2026-11-01; Updated on 2026-11-02
 - rl_get_job、rl_stop_job、rl_stop_session：状态、停止任务和停止整个会话。
 
 创建会话不会自动训练/运动，任务返回不代表完成；状态与结果以 RL API 为准。动作空间是当前 table 的六关节归一化增量，不是实机末端空间。人工标签必须来自用户，不能由 LLM 臆测。
+
+`rl_train_ball(num_envs=4, rounds=100, device="cpu")` 启动拿取小球的独立 MuJoCo 环境与共享 SAC 学习器；轮数按每个环境计算。任务 ID 可通过 `rl_get_job` 查询分数、回合与进度，通过 `rl_stop_job` 停止。积木类型 `table_policy_rl_ball` 使用 NUM_ENVS、ROUNDS、DEVICE 字段；启动后中间顶部显示训练面板。仅显式要求训练时调用，不把启动成功表述为已学会抓球。
 
 ## 积木工具
 
@@ -51,4 +53,6 @@ catalog 返回六个分类和可用类型；list 返回 ID、字段、坐标。c
 
 ## 本次检查
 
-复用现有 MCP SDK，没有升级依赖。实际 stdio 工具发现得到31个工具：3个原模型工具、16个 RL 工具、12个积木工具。通过 MCP 查询 RL 能力、读取当前六分类目录，并创建 false 条件及条件分支、连接输入、导出 version=2 后删除本次创建的积木。未修改原有积木，未运行程序、训练、运动或 OpenAI API 请求。TypeScript 和 Python 语法检查通过，未构建桌面。
+首次接入时实际 stdio 工具发现得到31个工具：3个原模型工具、16个 RL 工具、12个积木工具。通过 MCP 查询 RL 能力、读取六分类目录，并创建 false 条件及条件分支、连接输入、导出 version=2 后删除本次创建的积木。未修改原有积木，未运行程序、训练、运动或 OpenAI API 请求。
+
+本次增加 rl_train_ball，未升级 MCP SDK。小球环境已做两个独立状态的单步检查和一次 SAC 参数更新，TypeScript 静态检查通过；未执行完整回合训练、真实 OpenAI 调用或实机动作，未构建桌面。

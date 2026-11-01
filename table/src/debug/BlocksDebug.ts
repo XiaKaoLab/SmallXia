@@ -9,6 +9,7 @@ import { BLOCK_TYPE, JOINTS, type Limits } from "../blocks/positionBlock";
 import { cameraCatalog } from "../blocks/CameraCatalog";
 import { FRAME_CAPTURE, FRAME_VARIABLE } from "../blocks/frameBlocks";
 import { BlocksToolbox, BLOCK_LIMITS, TOOLBOX_TYPES } from "../blocks/BlocksToolbox";
+import { POLICY_RL_BALL } from "../blocks/policyBlocks";
 
 export interface BlockSnapshot { id: string; type: string; fields: Record<string, number | string>; x: number; y: number }
 export interface BlocksSnapshot { version: 2; state: Record<string, unknown> }
@@ -60,9 +61,11 @@ class WorkspaceManager {
   }
   types() {
     const labels: Record<string, string> = { [BLOCK_TYPE]: "设置机械臂位置", [CAMERA_BLOCK_TYPE]: "装配相机",
-      [FRAME_CAPTURE]: "获取画面", [FRAME_VARIABLE]: "画面变量" };
+      [FRAME_CAPTURE]: "获取画面", [FRAME_VARIABLE]: "画面变量", [POLICY_RL_BALL]: "强化学习 · 拿取小球" };
     return TOOLBOX_TYPES.map(type => ({ type, label: labels[type] || type, maxInstances: BLOCK_LIMITS[type] ?? 100,
       fields: type === BLOCK_TYPE ? JOINTS.map(([name, label]) => ({ name, label, unit: "rad", ...this.limits[name] }))
+        : type === POLICY_RL_BALL ? [{ name: "NUM_ENVS", label: "同时训练数量", lower: 1, upper: 16 },
+          { name: "ROUNDS", label: "每环境训练轮数", lower: 1, upper: 10000 }, { name: "DEVICE", label: "设备", options: ["cpu", "cuda"] }]
         : [FRAME_CAPTURE, FRAME_VARIABLE].includes(type) ? [{ name: "SOURCE", label: "来源", options: cameraCatalog.options().map(([, id]) => id) }] : [] }));
   }
   list(): BlockSnapshot[] {

@@ -1,0 +1,15 @@
+/* 功能：三维区域顶部的小型半透明训练分数与进度面板。
+ * Created on 2026-11-02; Updated on 2026-11-02
+ * @author: https://github.com/Linmoqian
+ */
+.ball-training { position: absolute; z-index: 5; top: 16px; left: 50%; transform: translateX(-50%); width: min(360px, calc(100% - 32px)); padding: 10px 14px; border: 1px solid #ffffffb3; border-radius: 12px; background: #f5faf5c9; backdrop-filter: blur(16px); box-shadow: 0 4px 18px #29473712; color: #455d54; font-size: 11px; max-height: 220px; overflow-y: auto; touch-action: auto; }
+.ball-training-heading, .ball-training-scores, .ball-training-detail { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ball-training-heading > span { flex: 1; font-size: 11px; color: #72837a; }
+.ball-training button { border: 1px solid #c8d7ce; border-radius: 6px; background: #ffffffb0; min-height: 32px; padding: 0 9px; }
+.ball-training-scores { margin: 10px 0 8px; }
+.ball-training-scores b { margin-left: 5px; font-size: 16px; font-variant-numeric: tabular-nums; color: #347565; }
+.ball-training progress { display: block; width: 100%; height: 7px; accent-color: #638b80; }
+.ball-training-detail { margin-top: 5px; font-variant-numeric: tabular-nums; }
+.ball-training p { margin: 7px 0 4px; }
+.ball-training small { color: #72837a; font-size: 10px; }
+.ball-training .ball-training-error { color: #9b5145; overflow-wrap: anywhere; }

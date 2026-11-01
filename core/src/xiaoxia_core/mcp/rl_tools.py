@@ -9,6 +9,10 @@ class RLTools:
     def __init__(self):
         self.client = ReinforcementClient()
 
+    def rl_train_ball(self, num_envs: int = 4, rounds: int = 100, device: str = 'cpu') -> dict:
+        """启动拿取小球的 MuJoCo SAC 训练。num_envs=独立环境数量(1–16)，rounds=每环境回合数；仅仿真。"""
+        return self.client.train_ball(num_envs=num_envs, rounds=rounds, device=device)
+
     def rl_capabilities(self) -> dict:
         """读取 RL 后端与执行范围，当前是 table 的关节增量 SAC，非实机。"""
         return self.client.request('capabilities')

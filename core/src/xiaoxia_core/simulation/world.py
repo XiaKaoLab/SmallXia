@@ -1,5 +1,5 @@
 """加载 URDF 并提供显式步进和关节位置控制，仅作用于仿真。
-Created on 2026-11-01; Updated on 2026-11-01
+Created on 2026-11-01; Updated on 2026-11-02
 @author: https://github.com/Linmoqian
 """
 
@@ -100,6 +100,7 @@ class MujocoSimulation(RobotTransport):
                 first, second = parent.attrib["link"], child.attrib["link"]
                 if mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, first) > 0 and mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, second) > 0:
                     ElementTree.SubElement(contact, "exclude", {"body1": first, "body2": second})
+        self.extend_scene(mjcf)
         model = mujoco.MjModel.from_xml_string(ElementTree.tostring(mjcf, encoding="unicode"), assets=assets)
         model.opt.timestep = self.config.timestep
         model.opt.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
@@ -108,6 +109,8 @@ class MujocoSimulation(RobotTransport):
         self.limits = JointLimits.from_urdf(path)
         joints: dict[str, int] = {}
         for index in range(model.njnt):
+            if model.jnt_type[index] == mujoco.mjtJoint.mjJNT_FREE:
+                continue  # 场景物体自由关节不属于机械臂控制轴。
             if model.jnt_type[index] != mujoco.mjtJoint.mjJNT_HINGE:
                 raise ValueError("当前仿真适配器仅支持旋转关节")
             name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, index)
@@ -118,6 +121,9 @@ class MujocoSimulation(RobotTransport):
             raise ValueError("模型未包含可控制关节")
         self._model, self._data, self._joints = model, mujoco.MjData(model), joints
         self.reset()
+
+    def extend_scene(self, mjcf: ElementTree.Element) -> None:
+        """子类可在编译前添加任务物体；默认保持纯机械臂场景。"""
 
     def disconnect(self) -> None:
         self._model = self._data = None

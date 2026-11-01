@@ -10,9 +10,11 @@ import { ModelPoseGuard } from "./ModelPoseGuard";
 import { jointPreview } from "./JointPreview";
 import { VirtualCameraRig } from "./VirtualCameraRig";
 import { ModelMotionClient } from "./ModelMotionClient";
+import { BallTrainingScene } from "./BallTrainingScene";
 
 export class RobotViewer {
   private readonly scene = new THREE.Scene();
+  private readonly training = new BallTrainingScene(this.scene);
   private readonly camera = new THREE.PerspectiveCamera(35, 1, 0.001, 100);
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
   private readonly controls: OrbitControls;
@@ -25,6 +27,7 @@ export class RobotViewer {
   private readonly cameraRig: VirtualCameraRig;
   private readonly stopPreview: () => void;
   private readonly motion = new ModelMotionClient((positions, camera) => {
+    if (this.training.active) return;
     this.setJointTargets(jointPreview.reconcile(positions));
     if (this.robot) this.cameraRig.configure(this.robot, camera);
   });
@@ -116,6 +119,7 @@ export class RobotViewer {
 
   private updateJoints(dt: number): void {
     if (!this.robot) return;
+    if (this.training.active) { this.training.update(this.robot); return; }
     if (!this.poseGuard || !Object.keys(this.targets).length) return;
     if (Object.entries(this.targets).every(([name, target]) => Math.abs(this.robot!.joints[name].jointValue[0] - target) < 1e-8)) return;
     const next = Object.fromEntries(Object.entries(this.targets).map(([name, target]) => {
@@ -149,6 +153,7 @@ export class RobotViewer {
   dispose(): void {
     this.disposed = true;
     this.motion.dispose();
+    this.training.dispose();
     this.stopPreview();
     this.poseGuard?.dispose();
     this.observer.disconnect();

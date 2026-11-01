@@ -160,6 +160,11 @@ class ReinforcementWorker(ImitationWorker):
         Thread(target=self.watch_parent, daemon=True).start()
         self.progress(status='running', started_at_ns=time_ns())
         try:
+            if self.request['kind'] == 'ball_pickup':
+                from .ball_training import BallPickupTraining
+                result = BallPickupTraining(self).run()
+                self.progress(status='succeeded', phase='completed', progress=1, result=result, finished_at_ns=time_ns())
+                return
             methods = {'learner': self.learner, 'actor': self.actor, 'reward': self.reward, 'predict': lambda: self.actor(execute=False)}
             result = methods[self.request['kind']]()
             self.progress(status='succeeded', result=result, finished_at_ns=time_ns())

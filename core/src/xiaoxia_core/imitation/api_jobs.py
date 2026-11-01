@@ -37,7 +37,7 @@ class ImitationJobs:
             if state['status'] in ('queued', 'running'):
                 atomic_json(path, {**state, 'status': 'interrupted', 'error': '服务已重启，未自动恢复任务'})
 
-    def start(self, kind: str, payload: dict):
+    def start(self, kind: str, payload: dict, *, initial_state=None):
         with self._lock:
             if sum(process.poll() is None for process in self._processes.values()) >= self.max_running:
                 raise ValueError('后台任务数量已达上限，请等待或停止已有任务')
@@ -45,7 +45,7 @@ class ImitationJobs:
             directory = self.root / job_id
             directory.mkdir()
             atomic_json(directory / 'request.json', {'kind': kind, **payload, 'parent_pid': os.getpid()})
-            atomic_json(directory / 'status.json', {'id': job_id, 'kind': kind, 'status': 'queued', 'created_at_ns': time_ns()})
+            atomic_json(directory / 'status.json', {**(initial_state or {}), 'id': job_id, 'kind': kind, 'status': 'queued', 'created_at_ns': time_ns()})
             options = {'creationflags': subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {}
             source = Path(__file__).resolve().parents[2]
             environment = {**os.environ, 'PYTHONPATH': str(source) + os.pathsep + os.environ.get('PYTHONPATH', ''),

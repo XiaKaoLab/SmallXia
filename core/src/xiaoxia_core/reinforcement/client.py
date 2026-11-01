@@ -22,6 +22,9 @@ class ReinforcementClient:
     def create_session(self, task, **configuration):
         return self.request('sessions', {'task': task, **configuration})
 
+    def train_ball(self, num_envs=4, rounds=100, device='cpu', seed=42):
+        return self.request('ball-trainings', {'num_envs': num_envs, 'rounds': rounds, 'device': device, 'seed': seed})
+
     def session(self, session_id):
         return self.request(f'sessions/{session_id}')
 

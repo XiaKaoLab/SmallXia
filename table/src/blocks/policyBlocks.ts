@@ -10,11 +10,25 @@ export const POLICY_PREDICT = "table_policy_predict";
 export const POLICY_ROLLOUT = "table_policy_rollout";
 export const POLICY_JOB = "table_policy_job";
 export const POLICY_STOP = "table_policy_stop";
-export const POLICY_TYPES = [POLICY_TRAIN, POLICY_PREDICT, POLICY_ROLLOUT, POLICY_JOB, POLICY_STOP];
+export const POLICY_RL_BALL = "table_policy_rl_ball";
+export const POLICY_TYPES = [POLICY_TRAIN, POLICY_PREDICT, POLICY_ROLLOUT, POLICY_JOB, POLICY_STOP, POLICY_RL_BALL];
 
 export class PolicyBlocks {
   register(): void {
+    Blockly.Blocks[POLICY_RL_BALL] = {
+      init(this: Blockly.Block) {
+        this.appendDummyInput().appendField("强化学习 · 拿取小球");
+        this.appendDummyInput().appendField("同时训练").appendField(new Blockly.FieldNumber(4, 1, 16, 1), "NUM_ENVS").appendField("个");
+        this.appendDummyInput().appendField("每个训练").appendField(new Blockly.FieldNumber(100, 1, 10000, 1), "ROUNDS").appendField("轮");
+        this.appendDummyInput().appendField("设备").appendField(new Blockly.FieldDropdown([["CPU", "cpu"], ["CUDA", "cuda"]]), "DEVICE");
+        this.setPreviousStatement(true); this.setNextStatement(true); this.setColour("#7d7297");
+        this.setTooltip("启动独立 MuJoCo 抓球环境，共训练 数量×轮数 个回合；实时显示奖励与进度，仅仿真。");
+      },
+    };
+    pythonGenerator.forBlock[POLICY_RL_BALL] = block =>
+      `print(__import__('json').dumps({'ball_training': __import__('xiaoxia_core.reinforcement.client', fromlist=['ReinforcementClient']).ReinforcementClient().train_ball(num_envs=${block.getFieldValue("NUM_ENVS")}, rounds=${block.getFieldValue("ROUNDS")}, device=${JSON.stringify(block.getFieldValue("DEVICE"))})}))\n`;
     for (const type of POLICY_TYPES) {
+      if (type === POLICY_RL_BALL) continue;
       Blockly.Blocks[type] = {
         init(this: Blockly.Block) {
           const labels: Record<string, string> = { [POLICY_TRAIN]: "训练策略", [POLICY_PREDICT]: "预测动作",

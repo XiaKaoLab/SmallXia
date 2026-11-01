@@ -141,13 +141,18 @@ export function BlocksSidebar() {
     try {
       await liveRef.current?.pause();
       const result = await agentClient.request<{ output: string; exit_code: number }>({ action: "run_program", source });
+      let ballTraining = false;
       for (const line of result.output.trim().split("\n")) {
         try {
           const receipt = JSON.parse(line);
+          if (receipt.ball_training?.kind === "ball_pickup") {
+            ballTraining = true;
+            window.dispatchEvent(new CustomEvent("table:ball-training-started", { detail: receipt.ball_training }));
+          }
           if (receipt.limited && receipt.applied_joint_positions) jointPreview.confirm(receipt.applied_joint_positions, revision);
         } catch { /* 相机积木等非 JSON 文本不属于关节回执。 */ }
       }
-      setNotice(result.output.trim() ? `已运行：${result.output.trim()}` : "Python 运行完成");
+      setNotice(ballTraining ? "小球训练已启动" : result.output.trim() ? `已运行：${result.output.trim()}` : "Python 运行完成");
       return result;
     } catch (failure) {
       setError(String(failure));

@@ -50,6 +50,17 @@ class DesktopBridge:
         elif action == "clear":
             self.sessions.clear(request["session_id"])
             self.emit({"type": "data", "data": {"cleared": True}})
+        elif action in ('reinforcement_jobs', 'reinforcement_job', 'reinforcement_stop'):
+            from ..reinforcement.client import ReinforcementClient
+            from ..imitation.api_jobs import identifier
+            client = ReinforcementClient()
+            if action == 'reinforcement_jobs':
+                result = client.request('jobs')
+            elif action == 'reinforcement_job':
+                result = client.job(identifier(request.get('job_id')))
+            else:
+                result = client.stop_job(identifier(request.get('job_id')))
+            self.emit({'type': 'data', 'data': result})
         elif action in ('blocks_poll', 'blocks_reply'):
             from urllib.request import Request, urlopen
             endpoint = 'poll' if action == 'blocks_poll' else 'replies'

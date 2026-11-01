@@ -9,7 +9,7 @@ def make_policy(config, device):
     from lerobot.configs.types import FeatureType, PolicyFeature
     from lerobot.policies.sac.configuration_sac import SACConfig, ActorNetworkConfig, CriticNetworkConfig, PolicyConfig
     from lerobot.policies.sac.modeling_sac import SACPolicy
-    inputs = {'observation.state': PolicyFeature(FeatureType.STATE, (6,))}
+    inputs = {'observation.state': PolicyFeature(FeatureType.STATE, (config.get('state_dim', 6),))}
     inputs.update({f'observation.images.{camera}': PolicyFeature(FeatureType.VISUAL, (3, 64, 64))
                    for camera in config['cameras']})
     settings = SACConfig(input_features=inputs, output_features={'action': PolicyFeature(FeatureType.ACTION, (6,))},

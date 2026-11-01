@@ -5,7 +5,17 @@ Created on 2026-11-02; Updated on 2026-11-02
 
 流程参考 [LeRobot HIL-SERL 指南](https://hugging-face.cn/docs/lerobot/hilserl) 和 [0.4.4 版本指南](https://huggingface.co/docs/lerobot/v0.4.4/hilserl)。当前实现是面向 table 的适配：复用 LeRobot 0.4.4 原生 SACPolicy，通过 HTTP 与 SQLite 交换转换数据和权重；人工提供示教与成功/失败反馈，可选本地视觉奖励分类器。它不是官方 gRPC、实机末端位移和 IK 流水线的直接启动器。
 
-服务 `http://127.0.0.1:8766`，统一前缀 `/api/v1/reinforcement`。所有路由要求已有 `Authorization: Bearer <XIAOXIA_MOTION_TOKEN>`；POST 使用 JSON。复用现有 Conda base，不新建环境、不自动下载视觉预训练权重、不上传 Hub、不改动前端、不连接串口。
+服务 `http://127.0.0.1:8766`，统一前缀 `/api/v1/reinforcement`。所有路由要求已有 `Authorization: Bearer <XIAOXIA_MOTION_TOKEN>`；POST 使用 JSON。复用现有 Conda base，不新建环境、不自动下载视觉预训练权重、不上传 Hub、不连接串口。
+
+## 拿取小球
+
+左侧「策略 → 强化学习 · 拿取小球」积木配置同时训练数量（1–16，默认 4）、每个环境训练轮数（1–10000，默认 100）和 CPU/CUDA。绿色运行按钮只启动后台任务，Python 源码保持隐藏。中间三维区域顶部的小型半透明面板显示当前分数、最近 100 个已完成回合的平均累计奖励、完成回合/总回合、百分比和成功次数，支持停止任务。开始时没有已完成回合，平均分显示「—」。画面展示独立环境 1 的物理状态，不修改普通模型 API 的显示目标。
+
+`POST /ball-trainings` 请求 `{"num_envs":4,"rounds":100,"device":"cpu","seed":42}`，返回 202 和 `kind=ball_pickup` 的任务对象；同一时刻只允许一项小球训练。每环境各训练 rounds 回合，总回合为 num_envs×rounds。多个 MuJoCo MjData 独立推进，线程池最多 8 个工作线程，批量策略采样并共享 SAC 学习器；不是多份互不相关的模型训练。状态沿用 `/jobs/{id}`，停止沿用 `/jobs/{id}/stop`。MCP 对应 `rl_train_ball`。
+
+该任务复用 SO-101 URDF 关节与碰撞网格，添加地面和半径 1.5cm、质量 12g 的自由小球。状态包含六关节位置、速度、小球位置和相对夹爪位置。每步物理推进 0.2 秒，每回合最多 100 步；时间截断继续 bootstrap，真正终止不 bootstrap。奖励包含接近距离增益、双指接触、夹持抬升和成功奖励；分数可以为负，不能视为百分制或成功率。成功要求两侧夹爪同时接触小球、球心抬升至少 5cm，并连续保持 5 步。仅靠接近或把球推高不算成功。
+
+任务状态提供 `num_envs`、`rounds`、`completed_episodes`、`total_episodes`、`env_rounds`、`progress`（0–1）、`score`、`current_score`、`successes`、`success_rate`、`transitions`、`updates`、loss 和 `snapshot`。抓球环境使用仿真真值状态，不要求相机或人工奖励标签。模型和分数属于仿真，未证明真机抓取或策略收敛；MuJoCo 网格接触近似和实际硬件存在差异。
 
 ## 会话与数据
 

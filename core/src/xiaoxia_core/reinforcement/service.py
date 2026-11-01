@@ -135,7 +135,10 @@ class ReinforcementAPI:
                 if parts == ['capabilities']:
                     return 200, {'backend': 'lerobot_sac', 'lerobot_version': version('lerobot'), 'target': 'table',
                         'physical': False, 'action_space': 'normalized_joint_delta', 'transport': 'HTTP+SQLite',
-                        'reward_classifier': 'local_cnn', 'official_grpc_pipeline': False}
+                        'reward_classifier': 'local_cnn', 'official_grpc_pipeline': False,
+                        'ball_pickup': {'backend': 'mujoco+lerobot_sac', 'num_envs': [1, 16],
+                            'rounds_per_env': [1, 10000], 'success_lift_m': 0.05, 'success_hold_s': 1,
+                            'score': 'mean_episode_return_last_100', 'physical': False}}
                 if parts == ['sessions']:
                     return 200, {'sessions': [self.store(p.parent.name).summary() for p in (self.root / 'sessions').glob('*/session.json')]}
                 if parts == ['jobs']:
@@ -150,6 +153,22 @@ class ReinforcementAPI:
                     return 200, {'transitions': self.store(parts[1]).rows(limit=100)}
             if method != 'POST':
                 return 404, {'error': 'route_not_found'}
+            if parts == ['ball-trainings']:
+                with self._lock:
+                    if any(job['kind'] == 'ball_pickup' and job['status'] in ('queued', 'running') for job in self.jobs.list()):
+                        raise ValueError('已有小球训练在运行，请先停止或等待完成')
+                    device = body.get('device', 'cpu')
+                    if device not in ('cpu', 'cuda'):
+                        raise ValueError('device 需要 cpu 或 cuda')
+                    count = self.integer(body, 'num_envs', 4, 1, 16)
+                    rounds = self.integer(body, 'rounds', 100, 1, 10000)
+                    return 202, self.jobs.start('ball_pickup', {
+                        'task': '拿取小球', 'device': device,
+                        'num_envs': count, 'rounds': rounds,
+                        'seed': self.integer(body, 'seed', 42, 0, 2147483647)},
+                        initial_state={'task': '拿取小球', 'num_envs': count, 'rounds': rounds,
+                            'completed_episodes': 0, 'total_episodes': count * rounds, 'progress': 0,
+                            'score': None, 'successes': 0, 'physical': False})
             if parts == ['sessions']:
                 return 201, self.create(body)
             if parts in (['learners'], ['actors'], ['reward-trainings'], ['predictions']):
