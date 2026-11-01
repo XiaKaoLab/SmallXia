@@ -1,0 +1,24 @@
+{
+  "repository": "https://github.com/TheRobotStudio/SO-ARM100",
+  "commit": "a758567c3978dfeefe282ede0500085a48fe8f78",
+  "upstream_path": "Optional/Wrist_Cam_Mount_32x32_UVC_Module/stl/Wrist_Cam_Mount_32x32_UVC_Module_SO101.stl",
+  "local_file": "wrist_camera_mount_so101.stl",
+  "sha256": "b4345ccf23f1f2ed3f4885c205cac5afbed6ddd1b183617c4801751e3bafb7b4",
+  "format": "ASCII STL",
+  "vertex_count": 62556,
+  "raw_bounds": [
+    [
+      -35.2,
+      -24.21821,
+      -14.84902
+    ],
+    [
+      30.0,
+      89.36899,
+      105.375
+    ]
+  ],
+  "runtime_scale": 0.001,
+  "alignment": "Preserve CAD origin and inherit original wrist_roll_follower_so101_v1.stl visual transform; common body bounds match after mm-to-m scaling. No optical extrinsics are implied.",
+  "license": "../LICENSE"
+}

@@ -1,0 +1,4 @@
+# 保留上游 STL 原始字节，避免 Windows 换行转换导致 SHA256 漂移。
+# Created on 2026-11-02; Updated on 2026-11-02
+# @author: https://github.com/Linmoqian
+*.stl -text

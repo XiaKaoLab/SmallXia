@@ -3,6 +3,7 @@
  * @author: https://github.com/Linmoqian
  */
 import * as THREE from "three";
+import { WristCameraMount } from "./WristCameraMount";
 import { VirtualCameraPreview } from "./VirtualCameraPreview";
 import type { URDFRobot } from "urdf-loader";
 
@@ -25,6 +26,7 @@ export class VirtualCameraRig {
   private signature = "";
   private readonly preview: VirtualCameraPreview;
   private shown = false;
+  private readonly bracket = new WristCameraMount();
 
   constructor(private readonly scene: THREE.Scene, host: HTMLElement) {
     this.preview = new VirtualCameraPreview(host);
@@ -40,7 +42,7 @@ export class VirtualCameraRig {
   configure(robot: URDFRobot, config: VirtualCameraConfig | null): void {
     if (!config || config.visible !== true) {
       this.mount.removeFromParent(); this.helper.visible = false; this.signature = "";
-      this.shown = false; this.preview.setVisible(false); return;
+      this.shown = false; this.preview.setVisible(false); this.bracket.setVisible(robot, false); return;
     }
     const signature = JSON.stringify(config);
     if (signature === this.signature) return;
@@ -56,6 +58,7 @@ export class VirtualCameraRig {
     this.camera.fov = config.fov;
     this.camera.updateProjectionMatrix();
     this.helper.visible = true;
+    this.bracket.setVisible(robot, true);
     this.preview.setVisible(true);
     this.shown = true;
     this.signature = signature;
@@ -77,6 +80,7 @@ export class VirtualCameraRig {
   }
 
   dispose(): void {
+    this.bracket.dispose();
     this.preview.dispose();
     this.mount.removeFromParent();
     this.helper.removeFromParent(); this.helper.dispose();
