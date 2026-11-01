@@ -17,6 +17,18 @@ class WorkspaceManager {
   constructor(private readonly workspace: Blockly.WorkspaceSvg,
     private readonly limits: Limits, private readonly changed: () => void) {}
 
+  visualTarget(id?: string, field?: string): { x: number; y: number } | undefined {
+    const block = id ? this.workspace.getBlockById(id) : null;
+    const element = (field ? block?.getField(field)?.getSvgRoot() : null) ?? block?.getSvgRoot();
+    const bounds = this.workspace.getParentSvg().getBoundingClientRect();
+    const rect = element?.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return undefined;
+    return {
+      x: Math.max(bounds.left + 12, Math.min(bounds.right - 20, rect ? rect.left + Math.min(rect.width / 2, 70) : bounds.left + bounds.width / 2)),
+      y: Math.max(bounds.top + 12, Math.min(bounds.bottom - 30, rect ? rect.top + Math.min(rect.height / 2, 24) : bounds.top + 60)),
+    };
+  }
+
   private known(type: string): void {
     if (!TOOLBOX_TYPES.includes(type)) throw new Error(`未知积木类型：${type}`);
   }
@@ -135,6 +147,9 @@ export class BlocksDebugAPI {
     return () => { if (this.manager === manager) this.manager = undefined; };
   }
   ready(): boolean { return !!this.manager; }
+  visualTarget(id?: string, field?: string): { x: number; y: number } | undefined {
+    return this.manager?.visualTarget(id, field);
+  }
   private active(): WorkspaceManager {
     if (!this.manager) throw new Error("Blockly 工作区尚未就绪或已卸载"); return this.manager;
   }

@@ -1,9 +1,10 @@
 /** 功能：封装 Tauri Channel 与 Python Agent 的请求和取消操作。
- * Created on 2026-11-01; Updated on 2026-11-01
+ * Created on 2026-11-01; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
 import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
 import type { AgentEvent, Bootstrap } from "./types";
+import { agentCursor } from "../interaction/AgentCursor";
 
 export class AgentClient {
   readonly desktop = isTauri();
@@ -48,12 +49,21 @@ export class AgentClient {
 
   async stream(requestId: string, sessionId: string, text: string, skills: string[], onEvent: (event: AgentEvent) => void): Promise<void> {
     let failure = "";
+    let activeTool = "";
     try {
       await this.dispatch<AgentEvent>(requestId, { action: "run", session_id: sessionId, text, skill_names: skills }, (event) => {
         if (event.type === "error") failure = event.message;
         onEvent(event);
+        if (event.type === "tool_started") {
+          activeTool = event.call_id;
+          agentCursor.toolStarted(event.call_id, event.name);
+        } else if (event.type === "tool_completed") {
+          agentCursor.finish(`tool:${event.call_id}`, event.failed);
+          activeTool = "";
+        }
       }, (event) => event.type === "completed" || event.type === "error");
     } catch (error) { throw new Error(failure || String(error)); }
+    finally { if (activeTool) agentCursor.hide(`tool:${activeTool}`); }
     if (failure) throw new Error(failure);
   }
 

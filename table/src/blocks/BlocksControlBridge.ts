@@ -4,10 +4,12 @@
  */
 import { agentClient } from "../chat/AgentClient";
 import { blocksDebug } from "../debug/BlocksDebug";
+import { BlocksCursorPresenter } from "./BlocksCursorPresenter";
 
 interface Command { id: string; operation: string; arguments: Record<string, unknown>; expires_at_ms: number }
 export class BlocksControlBridge {
   private stopped = false;
+  private readonly cursor = new BlocksCursorPresenter();
   private readonly clientId = crypto.randomUUID().replace(/-/g, "");
   constructor(private readonly run: () => Promise<unknown>, private readonly busy: () => boolean) {}
 
@@ -40,13 +42,15 @@ export class BlocksControlBridge {
         let result: unknown = null, error: string | undefined;
         try {
           if (this.stopped) throw new Error("工作区已关闭，未执行命令");
+          this.cursor.begin(command);
           result = await this.execute(command);
         } catch (failure) { error = String(failure); }
+        if (!this.stopped) this.cursor.complete(command, result, error !== undefined);
         await agentClient.request({ action: "blocks_reply", client_id: this.clientId, command_id: command.id,
           ok: error === undefined, result, error });
       } catch { if (!this.stopped) await new Promise(resolve => setTimeout(resolve, 1000)); }
     }
   }
 
-  stop(): void { this.stopped = true; }
+  stop(): void { this.stopped = true; this.cursor.stop(); }
 }

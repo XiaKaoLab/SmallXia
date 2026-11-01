@@ -1,0 +1,12 @@
+/* 功能：Agent 虚拟鼠标的移动、点击和拖动反馈。
+ * Created on 2026-11-02; Updated on 2026-11-02
+ * @author: https://github.com/Linmoqian
+ */
+.agent-cursor { position: fixed; left: 0; top: 0; z-index: 10000; pointer-events: none; opacity: 0; transition: transform 240ms ease, opacity 140ms ease; filter: drop-shadow(0 2px 4px #244c4133); }
+.agent-cursor.is-visible { opacity: 1; }
+.agent-cursor-label { position: absolute; top: 25px; left: 19px; padding: 5px 10px; border: 1px solid #ffffff99; border-radius: 12px; background: #347565ed; color: white; white-space: nowrap; font: 12px/1.4 system-ui, sans-serif; }
+.agent-cursor.label-left .agent-cursor-label { left: auto; right: 8px; }
+.agent-cursor.is-dragging svg { transform: scale(.88); }
+.agent-cursor.is-failed .agent-cursor-label { background: #9b5145ed; }
+.agent-cursor-ring { position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; border: 2px solid #347565; border-radius: 50%; opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .agent-cursor { transition: opacity 80ms; } }
