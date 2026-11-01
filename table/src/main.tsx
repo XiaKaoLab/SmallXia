@@ -4,6 +4,9 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { installWebViewDebug } from "./debug/WebViewDebug";
+
+installWebViewDebug();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

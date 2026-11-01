@@ -18,7 +18,7 @@ export function Composer({ value, onChange, onSend, onStop, busy, disabled, skil
     input.current.style.height = `${Math.min(input.current.scrollHeight, 150)}px`;
   }, [value]);
   return <form className="composer" onSubmit={(event) => { event.preventDefault(); if (!busy && !disabled && value.trim()) onSend(); }}>
-    <textarea ref={input} value={value} rows={1} aria-label="发送消息给小虾" placeholder="有什么想法？" onChange={(event) => onChange(event.target.value)} onKeyDown={(event) => {
+    <textarea id="chat-message-input" ref={input} value={value} rows={1} aria-label="发送消息给小虾" placeholder="有什么想法？" onChange={(event) => onChange(event.target.value)} onKeyDown={(event) => {
       if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
         event.preventDefault();
         if (!busy && !disabled && value.trim()) onSend();
