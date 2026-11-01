@@ -98,6 +98,15 @@ sid = session["id"]
 # rl.stop_session(sid)
 ```
 
-## 本次检查边界
+## 检查记录与边界
 
-完成 Python 语法、SAC 后端导入与临时目录中的会话/接管/reset/stop/非法动作契约检查。检查没有模型动作、没有实机访问、没有策略实例化或训练。梯度更新、视觉分类器效果、在线执行与任务成功率未运行验收；不能把 API 完成或导入成功视为训练效果证明。
+初始 API 检查覆盖 Python 语法、SAC 后端导入与临时目录中的会话/接管/reset/stop/非法动作契约，没有实机访问。视觉分类器效果、HIL 在线执行与真机任务成功率仍未验收。
+
+2026-11-02 通过有限 MCP 调试接口完成一次积木训练闭环：`blocks_catalog → blocks_export → blocks_import（临时空工作区）→ blocks_create → blocks_run → rl_get_job → blocks_import（恢复）→ blocks_export（比对）`。没有直接调用训练启动 API，也没有手写训练程序替代积木生成代码。工作区只放置 `table_policy_rl_ball`，字段为 `NUM_ENVS=1, ROUNDS=1, DEVICE=cpu`。
+
+- 任务 `27cdc74ec4534aa7bd7677affd69fb52`：succeeded，完成 1/1 回合，进度 100%，从任务启动到完成约 39 秒。
+- 采集 100 个转换样本，完成 37 次 SAC 参数更新，生成 `policy-00000037.pt`；最终累计奖励/平均分均为 1.3075079019860936，界面显示 1.31。
+- 本轮抓取成功 0 次，`task_success_validated=false`。本次证明积木启动、经验采集、参数更新、进度展示和权重保存闭环可用，不证明策略已学会抓球或收敛。
+- WebView 只读检查确认面板位于三维区顶部 16px、水平居中、宽 360px，显示训练完成、1/1、100% 与实际分数。原工作区恢复后完整快照比对一致，未执行原有机械臂位置积木。
+
+本机详细回执保存在 Git 忽略的 `core/data/runtime/ball-block-check.json`，工作区备份为同目录 `ball-block-workspace-backup.json`；面板完成态记录为 `ball-panel-final.json`。没有构建桌面、发送真实 LLM 请求或连接实机。
