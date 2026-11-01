@@ -6,12 +6,14 @@ import * as Blockly from "blockly/core";
 import { pythonGenerator } from "blockly/python";
 
 export const CAMERA_BLOCK_TYPE = "table_mount_camera";
-// 安装连杆来自腕部替换支架；光心偏移为固定显示示意，非实测外参。
+// STL 安装板：CAD 法向 (0, -sin25°, cos25°)，平面距原点 -33.261 mm。
+// 板中心沿板长轴 63.779 mm；光心在板外 8 mm，经 URDF visual 原点转换。
+// 固定于真实支架板，镜头高度为显示近似，非实测标定外参。
 export const CAMERA_PRESET = {
   visible: true,
   parent_link: "gripper_link",
-  position: [0.03, 0, -0.015],
-  rotation: [0, 0, 0],
+  position: [0.0025, -0.068697378, -0.003110223],
+  rotation: [25 * Math.PI / 180, 0, 0],
   fov: 60,
 } as const;
 

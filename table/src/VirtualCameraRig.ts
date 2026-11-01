@@ -17,9 +17,9 @@ export interface VirtualCameraConfig {
 
 export class VirtualCameraRig {
   private readonly mount = new THREE.Group();
-  private readonly camera = new THREE.PerspectiveCamera(60, 4 / 3, 0.015, 0.25);
+  private readonly camera = new THREE.PerspectiveCamera(60, 4 / 3, 0.003, 0.25);
   private readonly helper = new THREE.CameraHelper(this.camera);
-  private readonly body = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.025, 0.02),
+  private readonly body = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.032, 0.002),
     new THREE.MeshStandardMaterial({ color: 0x376b8c, roughness: 0.4 }));
   private readonly lens = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.012, 16),
     new THREE.MeshStandardMaterial({ color: 0x132d3e, metalness: 0.3, roughness: 0.2 }));
@@ -31,9 +31,10 @@ export class VirtualCameraRig {
   constructor(private readonly scene: THREE.Scene, host: HTMLElement) {
     this.preview = new VirtualCameraPreview(host);
     this.mount.name = "virtual_camera_mount";
-    this.body.position.z = 0.01;
+    // 光心为装配坐标原点，32 mm 电路板位于镜头后方、贴合支架板。
+    this.body.position.z = 0.007;
     this.lens.rotation.x = Math.PI / 2;
-    this.lens.position.z = -0.005;
+    this.lens.position.z = 0.001;
     this.mount.add(this.body, this.lens, this.camera);
     this.helper.visible = false;
     scene.add(this.helper);

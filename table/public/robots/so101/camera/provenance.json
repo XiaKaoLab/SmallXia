@@ -20,5 +20,16 @@
   ],
   "runtime_scale": 0.001,
   "alignment": "Preserve CAD origin and inherit original wrist_roll_follower_so101_v1.stl visual transform; common body bounds match after mm-to-m scaling. No optical extrinsics are implied.",
-  "license": "../LICENSE"
+  "license": "../LICENSE",
+  "camera_mount_reference": {
+    "plate_normal_cad": [
+      0,
+      -0.422618262,
+      0.906307787
+    ],
+    "plate_plane_distance_mm": -33.261,
+    "plate_center_tangent_mm": 63.779,
+    "optical_standoff_mm": 8,
+    "note": "Fixed display placement on the STL mounting plate; 32x32 mm PCB. Lens standoff is illustrative, not measured optical calibration."
+  }
 }
