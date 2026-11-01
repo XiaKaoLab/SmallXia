@@ -77,3 +77,6 @@ $env:XIAOXIA_MOTION_TOKEN = "替换成自己的随机令牌"
 
 
 虚拟相机装配：POST `/api/v1/robots/table/camera`，Bearer 鉴权，JSON 为 `{parent_link, position:[x,y,z], rotation:[roll,pitch,yaw], fov}`，分别使用米、弧度、角度。校验连杆存在、三维向量有限及范围，返回 202 和当前配置；GET state 增加 camera 字段。配置可附加布尔字段 visible；只有 visible=true 才显示相机、视锥和虚拟画面，缺省为 false。该配置不代表渲染到位或真实图像采集。
+
+
+显示模型碰撞限位：POST motions 的越碰撞目标不再整条拒绝，而沿当前到目标的关节路径推进至边界前，返回 accepted、applied_joint_positions、limited 和 limit_reason。API 使用 MuJoCo 碰撞网格凸包及离散路径采样，存在近似和容差；不代表实机碰撞认证。关节角度超出 URDF 仍为非法参数。

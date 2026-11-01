@@ -9,7 +9,7 @@ export class JointAngleSlider extends Blockly.FieldNumber {
   private output: HTMLOutputElement | undefined;
 
   constructor(value: number, lower: number, upper: number,
-    private readonly label: string, private readonly onSlide: (value: number) => void) {
+    private readonly label: string, private readonly onSlide: (value: number) => number) {
     super(value, lower, upper);
   }
 
@@ -34,8 +34,9 @@ export class JointAngleSlider extends Blockly.FieldNumber {
     }
     slider.addEventListener("input", () => {
       this.setValue(Number(slider.value) * Math.PI / 180);
+      const accepted = this.onSlide(Number(this.getValue()));
+      this.setValue(accepted);
       this.render_();
-      this.onSlide(Number(this.getValue()));
     });
     control.append(slider, output); foreign.append(control); this.fieldGroup_?.append(foreign);
     this.slider = slider; this.output = output;

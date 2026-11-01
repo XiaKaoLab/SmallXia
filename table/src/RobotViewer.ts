@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import URDFLoader from "urdf-loader";
 import type { URDFRobot } from "urdf-loader";
+import { ModelPoseGuard } from "./ModelPoseGuard";
 import { jointPreview } from "./JointPreview";
 import { VirtualCameraRig } from "./VirtualCameraRig";
 import { ModelMotionClient } from "./ModelMotionClient";
@@ -18,6 +19,7 @@ export class RobotViewer {
   private readonly observer: ResizeObserver;
   private disposed = false;
   private robot: URDFRobot | undefined;
+  private poseGuard: ModelPoseGuard | undefined;
   private targets: Record<string, number> = {};
   private readonly clock = new THREE.Clock();
   private readonly cameraRig: VirtualCameraRig;
@@ -31,9 +33,12 @@ export class RobotViewer {
     this.cameraRig = new VirtualCameraRig(this.scene, host);
     this.stopPreview = jointPreview.subscribe((name, angle) => {
       const joint = this.robot?.joints[name];
-      if (!joint || !Number.isFinite(angle) || angle < joint.limit.lower || angle > joint.limit.upper) return;
-      this.targets[name] = angle;
-      joint.setJointValue(angle);
+      if (!joint || !this.poseGuard) return joint?.jointValue[0] ?? 0;
+      const result = this.poseGuard.limit({ [name]: angle });
+      this.robot!.setJointValues(result.pose);
+      this.targets = { ...result.pose };
+      if (result.blocked) window.dispatchEvent(new CustomEvent("table:pose-limit", { detail: result.reason }));
+      return result.pose[name];
     });
     this.scene.background = new THREE.Color("#e8edf0");
     this.camera.up.set(0, 0, 1);
@@ -60,14 +65,25 @@ export class RobotViewer {
     const manager = new THREE.LoadingManager();
     const loader = new URDFLoader(manager);
     loader.parseCollision = false;
+    const meshes: Promise<void>[] = [];
+    // 请求去重时 LoadingManager 可能先结束；以每个网格回调为准。
+    loader.loadMeshCb = (path, meshManager, material, done) => {
+      meshes.push(new Promise<void>((resolve, reject) => {
+        loader.defaultMeshLoader(path, meshManager, material, (mesh, error) => {
+          if (error) { reject(error); return; }
+          done(mesh); resolve();
+        });
+      }));
+    };
     manager.onError = (url) => console.error("机械臂资源加载失败", url);
     loader.load(`${import.meta.env.BASE_URL}robots/so101/so101_new_calib.urdf`, (robot) => {
-      if (this.disposed) { manager.onLoad = () => this.release(robot); return; }
       this.robot = robot;
       this.scene.add(robot);
-      manager.onLoad = () => {
+      void Promise.all(meshes).then(() => {
         if (this.disposed) { this.release(robot); return; }
         robot.updateMatrixWorld(true);
+        try { this.poseGuard = new ModelPoseGuard(robot); }
+        catch (error) { console.error(error); window.dispatchEvent(new CustomEvent("table:pose-limit", { detail: String(error) })); }
         const bounds = new THREE.Box3().setFromObject(robot);
         const center = bounds.getCenter(new THREE.Vector3());
         const radius = Math.max(bounds.getSize(new THREE.Vector3()).length() / 2, 0.1);
@@ -80,7 +96,7 @@ export class RobotViewer {
         this.camera.far = distance * 20;
         this.camera.updateProjectionMatrix();
         this.controls.update();
-      };
+      }).catch((error) => console.error("机械臂网格加载失败", error));
     }, undefined, (error) => console.error("机械臂 URDF 加载失败", error));
   }
 
@@ -93,17 +109,24 @@ export class RobotViewer {
       const { lower, upper } = this.robot.joints[name].limit;
       if (!Number.isFinite(value) || value < lower || value > upper) return;
     }
-    this.targets = { ...positions };
+    if (!this.poseGuard) return;
+    const result = this.poseGuard.limit(positions);
+    this.targets = { ...result.pose };
   }
 
   private updateJoints(dt: number): void {
     if (!this.robot) return;
-    for (const [name, target] of Object.entries(this.targets)) {
-      const joint = this.robot.joints[name];
+    if (!this.poseGuard || !Object.keys(this.targets).length) return;
+    if (Object.entries(this.targets).every(([name, target]) => Math.abs(this.robot!.joints[name].jointValue[0] - target) < 1e-8)) return;
+    const next = Object.fromEntries(Object.entries(this.targets).map(([name, target]) => {
+      const joint = this.robot!.joints[name];
       const current = joint.jointValue[0];
       const step = Math.min(0.25, joint.limit.velocity) * dt;
-      joint.setJointValue(current + Math.max(-step, Math.min(step, target - current)));
-    }
+      return [name, current + Math.max(-step, Math.min(step, target - current))];
+    }));
+    const result = this.poseGuard.limit(next);
+    this.robot.setJointValues(result.pose);
+    if (result.blocked) this.targets = { ...result.pose };
   }
 
   private resize(): void {
@@ -116,9 +139,10 @@ export class RobotViewer {
 
   private release(object: THREE.Object3D): void {
     object.traverse((child) => {
-      if (!(child instanceof THREE.Mesh)) return;
-      child.geometry.dispose();
-      (Array.isArray(child.material) ? child.material : [child.material]).forEach((material) => material.dispose());
+      if (!(child as THREE.Mesh).isMesh) return;
+      const mesh = child as THREE.Mesh;
+      mesh.geometry.dispose();
+      (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((material) => material.dispose());
     });
   }
 
@@ -126,6 +150,7 @@ export class RobotViewer {
     this.disposed = true;
     this.motion.dispose();
     this.stopPreview();
+    this.poseGuard?.dispose();
     this.observer.disconnect();
     this.renderer.setAnimationLoop(null);
     this.controls.dispose();

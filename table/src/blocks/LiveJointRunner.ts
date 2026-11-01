@@ -2,10 +2,11 @@
  * Created on 2026-11-02; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
+import { jointPreview } from "../JointPreview";
 import { agentClient } from "../chat/AgentClient";
 
 export class LiveJointRunner {
-  private pending: string | undefined;
+  private pending: { source: string; revision: number } | undefined;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private busy = false;
   private stopped = false;
@@ -17,19 +18,23 @@ export class LiveJointRunner {
   schedule(source: string): void {
     if (this.stopped) return;
     if (!agentClient.desktop) { this.status("本地预览；API 同步需要 Tauri 桌面"); return; }
-    this.pending = source;
+    this.pending = { source, revision: jointPreview.revision };
     clearTimeout(this.timer);
     this.timer = setTimeout(() => void this.send(), 120);
   }
 
   private async send(): Promise<void> {
     if (this.stopped || this.paused || this.busy || !this.pending) return;
-    const source = this.pending;
+    const { source, revision } = this.pending;
     this.pending = undefined;
     this.busy = true;
     try {
-      await agentClient.request({ action: "run_program", source });
-      if (!this.stopped && !this.pending) this.status("角度已同步到模型 API");
+      const result = await agentClient.request<{ output: string }>({ action: "run_program", source });
+      const receipt = JSON.parse(result.output.trim().split("\n").slice(-1)[0] || "{}");
+      if (!this.stopped && receipt.limited && receipt.applied_joint_positions) {
+        jointPreview.confirm(receipt.applied_joint_positions, revision);
+      }
+      if (!this.stopped && !this.pending) this.status(receipt.limited ? "已停在碰撞边界前" : "角度已同步到模型 API");
     } catch (error) {
       if (!this.stopped) this.status(`当前为本地预览；API 同步失败：${String(error)}`);
     } finally {

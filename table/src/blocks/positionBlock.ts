@@ -23,8 +23,10 @@ export function registerPositionBlock(limits: Limits, onSlide: (block: Blockly.B
         const { lower, upper } = limits[name];
         this.appendDummyInput().appendField(`M${index + 1} ${label}`)
           .appendField(new JointAngleSlider(Math.max(lower, Math.min(0, upper)), lower, upper, `M${index + 1} ${label}`, (angle) => {
-            jointPreview.stage(name, angle);
+            const accepted = jointPreview.stage(name, angle);
+            this.setFieldValue(String(accepted), name);
             onSlide(this);
+            return accepted;
           }), name);
       }
       this.setColour("#638b80");
@@ -40,7 +42,7 @@ export function registerPositionBlock(limits: Limits, onSlide: (block: Blockly.B
       }
       return `    "${name}": ${value},`;
     }).join("\n");
-    return `# 功能：通过本机 API 设置 table 模型六轴目标。\n# Created on 2026-11-01; Updated on 2026-11-02\n# @author: https://github.com/Linmoqian\nimport json\nimport os\nimport time\nimport uuid\nfrom urllib.request import Request, urlopen\n\njoint_positions = {\n${positions}\n}\n\nrequest = Request(\n    "http://127.0.0.1:8766/api/v1/robots/table/motions",\n    data=json.dumps({\n        "request_id": str(uuid.uuid4()),\n        "expires_at_ms": int(time.time() * 1000) + 200,\n        "unit": "rad",\n        "joint_positions": joint_positions,\n    }, allow_nan=False).encode("utf-8"),\n    headers={\n        "Content-Type": "application/json",\n        "Authorization": "Bearer " + os.environ["XIAOXIA_MOTION_TOKEN"],\n    },\n    method="POST",\n)\n# 不自动重试：超时后先查询模型状态。\nwith urlopen(request, timeout=1) as response:\n    print(json.loads(response.read()))\n`;
+    return `# 功能：通过本机 API 设置 table 模型六轴目标。\n# Created on 2026-11-01; Updated on 2026-11-02\n# @author: https://github.com/Linmoqian\nimport json\nimport os\nimport time\nimport uuid\nfrom urllib.request import Request, urlopen\n\njoint_positions = {\n${positions}\n}\n\nrequest = Request(\n    "http://127.0.0.1:8766/api/v1/robots/table/motions",\n    data=json.dumps({\n        "request_id": str(uuid.uuid4()),\n        "expires_at_ms": int(time.time() * 1000) + 200,\n        "unit": "rad",\n        "joint_positions": joint_positions,\n    }, allow_nan=False).encode("utf-8"),\n    headers={\n        "Content-Type": "application/json",\n        "Authorization": "Bearer " + os.environ["XIAOXIA_MOTION_TOKEN"],\n    },\n    method="POST",\n)\n# 不自动重试：超时后先查询模型状态。\nwith urlopen(request, timeout=1) as response:\n    print(json.dumps(json.loads(response.read()), ensure_ascii=False))\n`;
   };
 }
 

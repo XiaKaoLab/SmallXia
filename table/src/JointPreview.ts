@@ -3,12 +3,22 @@
  * @author: https://github.com/Linmoqian
  */
 class JointPreview {
+  revision = 0;
   private overrides: Record<string, number> = {};
-  private listeners = new Set<(name: string, angle: number) => void>();
+  private listeners = new Set<(name: string, angle: number) => number>();
 
-  stage(name: string, angle: number): void {
-    this.overrides[name] = angle;
-    this.listeners.forEach((listener) => listener(name, angle));
+  stage(name: string, angle: number): number {
+    let accepted = angle;
+    this.listeners.forEach((listener) => { accepted = listener(name, accepted); });
+    this.revision++;
+    this.overrides[name] = accepted;
+    return accepted;
+  }
+
+  confirm(positions: Record<string, number>, revision: number): void {
+    if (revision !== this.revision) return;
+    this.overrides = {};
+    window.dispatchEvent(new CustomEvent("table:joint-confirmed", { detail: positions }));
   }
 
   reconcile(positions: Record<string, number>): Record<string, number> {
@@ -18,7 +28,7 @@ class JointPreview {
     return { ...positions, ...this.overrides };
   }
 
-  subscribe(listener: (name: string, angle: number) => void): () => void {
+  subscribe(listener: (name: string, angle: number) => number): () => void {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };
   }

@@ -1,5 +1,5 @@
 """分发运动 API 到已注册设备；连接与实机使能由宿主显式管理。
-Created on 2026-11-01; Updated on 2026-11-01
+Created on 2026-11-01; Updated on 2026-11-02
 @author: https://github.com/Linmoqian
 """
 
@@ -83,6 +83,7 @@ class MotionRouteService:
                 except Exception:
                     receipt["status"] = "unknown"
                     return 503, {**receipt, "error": "dispatch_failed_read_state_before_retry"}
+                receipt.update(getattr(transport, "motion_receipt", {}))
                 receipt["status"] = "accepted"
                 return 202, dict(receipt)
             except (ValueError, TypeError, KeyError, AttributeError):

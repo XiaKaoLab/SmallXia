@@ -3,6 +3,7 @@
  * @author: https://github.com/Linmoqian
  */
 import { useEffect, useRef, useState } from "react";
+import { jointPreview } from "../JointPreview";
 import { LiveJointRunner } from "./LiveJointRunner";
 import { blocksDebug } from "../debug/BlocksDebug";
 import { CAMERA_BLOCK_TYPE, registerCameraBlock } from "./cameraBlock";
@@ -32,6 +33,15 @@ export function BlocksSidebar() {
     const abort = new AbortController();
     let workspace: Blockly.WorkspaceSvg | undefined;
     let observer: ResizeObserver | undefined;
+    const onLimit = (event: Event) => { setNotice(`已限制：${(event as CustomEvent<string>).detail}`); };
+    window.addEventListener("table:pose-limit", onLimit);
+    const onConfirmed = (event: Event) => {
+      const block = workspace?.getBlocksByType(BLOCK_TYPE, false)[0];
+      if (!block) return;
+      const positions = (event as CustomEvent<Record<string, number>>).detail;
+      for (const [name] of JOINTS) block.setFieldValue(String(positions[name]), name);
+    };
+    window.addEventListener("table:joint-confirmed", onConfirmed);
     const live = new LiveJointRunner((message) => { if (!abort.signal.aborted) setNotice(message); });
     liveRef.current = live;
     let detachDebug: (() => void) | undefined;
@@ -97,7 +107,7 @@ export function BlocksSidebar() {
       }
     }
     void initialize();
-    return () => { abort.abort(); live.dispose(); liveRef.current = null; workspaceRef.current = null; detachDebug?.(); observer?.disconnect(); workspace?.dispose(); };
+    return () => { abort.abort(); window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; detachDebug?.(); observer?.disconnect(); workspace?.dispose(); };
   }, []);
 
   function addCamera() {
@@ -114,12 +124,19 @@ export function BlocksSidebar() {
     if (!code || runLock.current) return;
     if (!agentClient.desktop) { setError("运行 Python 需要打开 Tauri 桌面窗口"); return; }
     runLock.current = true;
+    const revision = jointPreview.revision;
     setRunning(true);
     setError("");
     setNotice("正在运行 Python…");
     try {
       await liveRef.current?.pause();
       const result = await agentClient.request<{ output: string; exit_code: number }>({ action: "run_program", source: code });
+      for (const line of result.output.trim().split("\n")) {
+        try {
+          const receipt = JSON.parse(line);
+          if (receipt.limited && receipt.applied_joint_positions) jointPreview.confirm(receipt.applied_joint_positions, revision);
+        } catch { /* 相机积木等非 JSON 文本不属于关节回执。 */ }
+      }
       setNotice(result.output.trim() ? `已运行：${result.output.trim()}` : "Python 运行完成");
     } catch (failure) {
       setError(String(failure));

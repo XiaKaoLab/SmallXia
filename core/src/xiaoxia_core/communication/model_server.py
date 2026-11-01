@@ -1,5 +1,5 @@
 """提供 table 模型专用的本机运动路由；不接触串口或实机。
-Created on 2026-11-01; Updated on 2026-11-01
+Created on 2026-11-01; Updated on 2026-11-02
 @author: https://github.com/Linmoqian
 """
 
@@ -16,13 +16,16 @@ from ..safety import JointLimits
 from .motion_service import MotionRouteService
 from .transport import RobotTransport
 from .virtual_camera import VirtualCameraStore
+from .model_pose_guard import ModelPoseGuard
 
 
 class ModelTransport(RobotTransport):
     """保存显示目标；state 是模型目标，不是实机反馈或渲染到位回执。"""
 
-    def __init__(self, limits: JointLimits) -> None:
+    def __init__(self, limits: JointLimits, guard: ModelPoseGuard) -> None:
         self.limits = limits
+        self.guard = guard
+        self.motion_receipt = {}
         self.positions = {name: max(limit.lower, min(0.0, limit.upper))
                           for name, limit in limits.joints.items()}
 
@@ -37,7 +40,9 @@ class ModelTransport(RobotTransport):
 
     def send_action(self, action: Action) -> None:
         self.limits.validate(action.joint_positions)
-        self.positions = dict(action.joint_positions)
+        pose, reason = self.guard.limit_path(self.positions, action.joint_positions)
+        self.positions = pose
+        self.motion_receipt = {"applied_joint_positions": dict(pose), "limited": bool(reason), "limit_reason": reason}
 
 
 class ModelHTTPServer(ThreadingHTTPServer):
@@ -47,7 +52,7 @@ class ModelHTTPServer(ThreadingHTTPServer):
         urdf = Path(__file__).resolve().parents[4] / "table/public/robots/so101/so101_new_calib.urdf"
         self.camera = VirtualCameraStore({link.attrib["name"] for link in ElementTree.parse(urdf).getroot().findall("link")})
         self.routes = MotionRouteService(token=token)
-        self.routes.register("table", ModelTransport(limits), limits)
+        self.routes.register("table", ModelTransport(limits, ModelPoseGuard(urdf)), limits)
         self.read_authorization = f"Bearer {token}"
         super().__init__(("127.0.0.1", 8766), ModelRequestHandler)
 
