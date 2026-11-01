@@ -16,16 +16,13 @@ $env:XIAOXIA_MOTION_TOKEN = "与模型服务一致的令牌"
 实现参考 [Blockly 自定义积木生成器](https://docs.blockly.com/guides/create-custom-blocks/code-generation/block-code/)。本次未构建或启动桌面，视觉效果与 API 联动尚未运行验收。
 
 
-## 装配虚拟相机
+## 装配相机
 
-点击左侧顶部“相机”添加积木，选择安装连杆，填写局部 X/Y/Z（米）、Roll/Pitch/Yaw（弧度）、垂直视场角（10～140 度），再点绿色运行按钮。位置范围为 ±2 米，旋转为 ±π；该范围仅是参数保护，不代表碰撞或安装可行性验证。
+点击左侧顶部“相机”按钮添加“装配相机”积木。积木只有名称，没有安装连杆、显示开关、XYZ、旋转或视场角输入。使用 cameraBlock.ts 的固定 CAMERA_PRESET，运行时由后台 Python 调用相机 API。
 
-Python 通过 POST `/api/v1/robots/table/camera` 提交 `{parent_link, position:[x,y,z], rotation:[roll,pitch,yaw], fov}`。令牌沿用 `XIAOXIA_MOTION_TOKEN`。同一台虚拟相机重复运行只更新装配，不重复叠加。GET state 的 camera 字段返回当前配置；服务重启不持久保存相机配置，需重新运行积木。
+固定挂在 gripper_link，偏移为 (0.03, 0, -0.015) m、旋转 (0, 0, 0) rad、FOV 60°；安装支架使用上游 STL。光心偏移和镜头参数仍是显示示意，不是实测标定。
 
-模型将相机外形和视锥挂在所选 URDF 连杆下，随连杆运动；旋转顺序为 Rz(yaw)Ry(pitch)Rx(roll)，镜头光轴为局部 -Z。只有积木“相机及画面”明确选择“显示”并运行后，才显示相机外形、视锥和实时虚拟画面；默认“不显示”，没有配置或缺少 visible 时均隐藏。画面来自场景中的虚拟相机，不访问 USB 相机。
-
-本次完成 TypeScript 无输出类型检查、Python 语法检查，并确认当前 WebView 中出现新积木类型和相机按钮。未执行虚拟相机装配后的视觉验收，未构建桌面安装包。
-
+只有将“装配相机”积木加入工作区并点击绿色运行，才提交显示相机和虚拟画面的请求。编辑或添加积木本身不发送请求，未执行装配时默认隐藏。重复运行更新同一相机。
 
 ## 文档安装位置与按需显示
 
@@ -33,7 +30,7 @@ Python 通过 POST `/api/v1/robots/table/camera` 提交 `{parent_link, position:
 
 指南没有提供相机光心相对 URDF 的精确 XYZ/RPY 或标定外参。默认局部偏移 `(0.03, 0, -0.015)` m、旋转 `(0, 0, 0)` rad 只是可编辑的显示示意；镜头朝局部 -Z，接近 gripper_frame_link 所在方向。它们不能作为文档测量值或真实手眼标定值。FOV 60° 也是显示参数。
 
-“相机及画面”默认“不显示”。显式改为“显示”后运行，API 提交 visible=true，在模型区右下角创建 4:3 实时虚拟画面；改为“不显示”后运行，移除相机外形、视锥和预览，并释放预览 WebGL 资源。不显示时不创建预览 canvas。未加入相机积木不会主动安装或显示相机。
+“装配相机”积木的运行即显式显示请求，API 提交 visible=true，在模型区右下角创建 4:3 实时虚拟画面；底层 visible=false 仍可隐藏并释放预览资源，积木不再暴露此开关。
 
 
 ## URDF 缺失时使用 STL 支架

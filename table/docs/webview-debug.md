@@ -59,16 +59,10 @@ blocks.importWorkspace(JSON.stringify(snapshot)); // 也支持 JSON 字符串
 本次只做代码差异检查，未构建或实际操作 WebView 验证。
 
 
-虚拟相机积木管理示例：
+固定相机积木管理示例：
 
 ```javascript
-const camera = window.tableDebug.blocks.createCamera({
-  parent_link: "gripper_link", x: 0.03, y: 0, z: 0.05,
-  roll: 0, pitch: 0, yaw: 0, fov: 60, display: "hidden",
-});
-window.tableDebug.blocks.setFields(camera.id, { parent_link: "wrist_link", fov: 75 });
+const camera = window.tableDebug.blocks.createCamera();
 ```
 
-也可调用 `create(fields, x, y, "table_mount_camera")`；原 create(fields, x, y) 仍默认创建位置积木。list、types、move、remove、clear、python、导入导出同时支持这两种积木。快照 version 仍为 1，可保留旧位置积木快照；导入拒绝重复类型和重复 ID。
-
-相机字段 display 允许 hidden / shown，默认 hidden；显式设置 shown 后仍需点击运行才提交显示请求。旧快照没有该字段时按 hidden 导入。默认安装位置与文档来源见 blocks.md。
+“装配相机”没有可编辑字段，list 中 fields 为 {}。旧相机快照导入时移除旧参数，采用固定安装。运行该积木才会提交相机显示请求，新增积木本身不执行。

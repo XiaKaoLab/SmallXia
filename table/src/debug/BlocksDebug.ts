@@ -4,7 +4,7 @@
  */
 import * as Blockly from "blockly/core";
 import { pythonGenerator } from "blockly/python";
-import { CAMERA_BLOCK_TYPE, CAMERA_LINKS, CAMERA_NUMBERS } from "../blocks/cameraBlock";
+import { CAMERA_BLOCK_TYPE } from "../blocks/cameraBlock";
 import { BLOCK_TYPE, JOINTS, type Limits } from "../blocks/positionBlock";
 
 export interface BlockSnapshot {
@@ -28,7 +28,7 @@ class WorkspaceManager {
 
   private specs(type: string): Record<string, { label: string; lower?: number; upper?: number; options?: string[]; unit?: string }> {
     if (type === BLOCK_TYPE) return Object.fromEntries(JOINTS.map(([name, label]) => [name, { label, unit: "rad", ...this.limits[name] }]));
-    if (type === CAMERA_BLOCK_TYPE) return { parent_link: { label: "安装连杆", options: CAMERA_LINKS.map(([, value]) => value) }, display: { label: "相机及画面", options: ["hidden", "shown"] }, ...CAMERA_NUMBERS };
+    if (type === CAMERA_BLOCK_TYPE) return {};
     throw new Error(`未知积木类型：${type}`);
   }
 
@@ -52,7 +52,7 @@ class WorkspaceManager {
 
   types() {
     return [BLOCK_TYPE, CAMERA_BLOCK_TYPE].map((type) => ({ type,
-      label: type === BLOCK_TYPE ? "设置机械臂位置" : "装配虚拟相机", maxInstances: 1,
+      label: type === BLOCK_TYPE ? "设置机械臂位置" : "装配相机", maxInstances: 1,
       fields: Object.entries(this.specs(type)).map(([name, spec]) => ({ name, ...spec })) }));
   }
 
@@ -110,7 +110,7 @@ class WorkspaceManager {
       if (!block || ![BLOCK_TYPE, CAMERA_BLOCK_TYPE].includes(block.type) || typeof block.id !== "string" || !block.id || block.id.length > 128) {
         throw new Error("快照包含未知积木类型或无效 ID");
       }
-      if (block.type === CAMERA_BLOCK_TYPE && block.fields && !("display" in block.fields)) block.fields = { ...block.fields, display: "hidden" };
+      if (block.type === CAMERA_BLOCK_TYPE) block.fields = {}; // 旧快照迁移为固定安装，不再提供可编辑参数。
       this.validateFields(block.fields, block.type);
       if (Object.keys(block.fields).length !== Object.keys(this.specs(block.type)).length) throw new Error("快照必须包含完整字段");
       this.validatePosition(block.x, block.y);
