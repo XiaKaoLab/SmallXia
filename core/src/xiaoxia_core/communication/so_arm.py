@@ -13,7 +13,7 @@ from .transport import RobotTransport
 
 
 class SOArmTransport(RobotTransport):
-    def __init__(self, port: str, calibration: ArmCalibration, role: str, max_velocity: float = 0.25, timeout: float = 0.25) -> None:
+    def __init__(self, port: str, calibration: ArmCalibration, role: str, max_velocity: float = 0.25, timeout: float = 0.25, *, identity_confirmed: bool = False) -> None:
         if role not in ("leader", "follower") or not port:
             raise ValueError("需要明确主从角色和串口")
         if not all(isfinite(v) and v > 0 for v in (max_velocity, timeout)):
@@ -21,12 +21,15 @@ class SOArmTransport(RobotTransport):
         self.port, self.calibration, self.role = port, calibration, role
         self.limits = calibration.limits
         self.max_velocity, self.timeout = max_velocity, timeout
+        self.identity_confirmed = identity_confirmed
         self._bus = None
         self._armed = False
         self._last_command: dict[str, float] | None = None
         self._last_sent = 0.0
 
     def connect(self) -> None:
+        if not self.identity_confirmed:
+            raise RuntimeError("需要操作者确认设备身份；电机响应或 USB 描述不能证明它是目标机械臂")
         from lerobot.motors import Motor, MotorCalibration, MotorNormMode
         from lerobot.motors.feetech import FeetechMotorsBus
 
@@ -69,11 +72,15 @@ class SOArmTransport(RobotTransport):
             raise RuntimeError("主臂只读，禁止力矩使能")
         bus = self._connected()
         current = self.read_observation().joint_positions
-        bus.sync_write("Goal_Position", self.calibration.ticks(current), normalize=False)
+        ticks = self.calibration.ticks(current)
+        bus.sync_write("Goal_Position", ticks, normalize=False)
+        if bus.sync_read("Goal_Position", normalize=False) != ticks:
+            raise RuntimeError("使能前目标寄存器未确认，禁止启动力矩")
         self._armed = True  # 使能中途异常时 disconnect 也必须释放已启用的轴。
         try:
             bus.enable_torque()
-            if not all(bus.sync_read("Torque_Enable", normalize=False).values()):
+            enabled = bus.sync_read("Torque_Enable", normalize=False)
+            if set(enabled) != set(JOINTS) or not all(enabled.values()):
                 raise RuntimeError("从臂力矩使能回读不完整")
             self._last_command, self._last_sent = dict(current), monotonic()
         except BaseException:
@@ -97,6 +104,8 @@ class SOArmTransport(RobotTransport):
                 command = self.limits.constrain(command, self._last_command, max(dt, 0.0001), self.max_velocity)
             ticks = self.calibration.ticks(command.joint_positions)
             bus.sync_write("Goal_Position", ticks, normalize=False)
+            if bus.sync_read("Goal_Position", normalize=False) != ticks:
+                raise RuntimeError("目标位置寄存器回读与本次命令不一致")
             self._last_command = self.calibration.angles(ticks)
             self._last_sent = now
         except BaseException:

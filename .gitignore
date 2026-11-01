@@ -13,3 +13,5 @@
 !.env.example
 core/data/
 core/checkpoints/
+core/configs/*.local.yaml
+core/configs/*.local.json

@@ -25,8 +25,8 @@ class LeaderFollowerPair:
         if self._stack is not None:
             raise RuntimeError("主从已经连接")
         with ExitStack() as stack:
-            stack.enter_context(self.leader)
             stack.enter_context(self.follower)
+            stack.enter_context(self.leader)
             self._stack = stack.pop_all()
 
     def capture(self) -> tuple[Observation, Action]:

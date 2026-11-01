@@ -1,0 +1,12 @@
+{
+  "verified": false,
+  "description": "填写实测 URDF 零角对应的已应用 Homing Offset 后的位置刻度，以及编码器增加方向。不得用校准区间中点代替实测零点。",
+  "joints": {
+    "shoulder_pan": { "zero_tick": null, "direction": null },
+    "shoulder_lift": { "zero_tick": null, "direction": null },
+    "elbow_flex": { "zero_tick": null, "direction": null },
+    "wrist_flex": { "zero_tick": null, "direction": null },
+    "wrist_roll": { "zero_tick": null, "direction": null },
+    "gripper": { "zero_tick": null, "direction": null }
+  }
+}
