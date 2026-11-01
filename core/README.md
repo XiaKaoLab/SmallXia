@@ -5,16 +5,18 @@ Python 3.11+ 核心，基础层使用标准库，机器人学习使用 LeRobot�
 | 模块 | 职责 |
 | --- | --- |
 | `collection` | 单帧采集与 JSONL episode 记录，已有文件不会覆盖 |
-| `communication` | 设备连接、观测读取、动作发送的抽象接口 |
+| `communication` | SO-100/101 共用 Feetech 通信、只读连接和显式使能 |
 | `training` | 训练配置、结果和算法适配接口 |
 | `inference` | 策略加载、状态重置、观测到动作的推理接口 |
 | `integrations` | LeRobot 原生数据集创建与读取入口 |
 | `simulation` | MuJoCo URDF 加载、状态读取、位置目标和显式物理步进 |
 | `llm` | OpenAI SDK 封装、模型配置、文本生成与 token 用量 |
 | `agent` | SQLite 会话历史、SKILL.md 加载、流式对话和命令行入口 |
+| `safety` | 六轴 URDF 范围、编码器映射交集及发送速度约束 |
+| `imitation` | 实体/键盘主臂、LeRobot 记录、ACT 训练和策略回放 |
 | `contracts.py` | 共享观测、动作类型，关节位置单位为弧度 |
 
-复用本机已有 Conda `base` 环境，不创建独立环境。运行依赖包含 `lerobot==0.4.4`、`mujoco==3.15.0`、`openai==2.24.0`、`PyYAML>=6.0.2,<7`，记录在 `pyproject.toml`。在本目录执行：
+复用本机已有 Conda `base` 环境。本次 ACT 数据记录、训练和推理已实际跑通，无需转 UV。运行依赖包含 `lerobot[feetech]==0.4.4`、`mujoco==3.15.0`、`openai==2.24.0`、PyYAML、NumPy，记录在 `pyproject.toml`。在本目录执行：
 
 ```powershell
 conda activate base
@@ -34,7 +36,7 @@ python -m pip install torch==2.10.0 torchvision==0.25.0 torchaudio==2.10.0 --ind
 
 不创建新环境、不从源码编译 PyTorch。安装源参考 [PyTorch 官方版本说明](https://pytorch.org/get-started/previous-versions/)。
 
-2026-11-01 已在现有 `base` 安装上述三件套（版本后缀 `+cu126`），最小导入和 `torch.cuda.is_available()` 检查通过，识别 RTX 4060 Laptop GPU。SymPy 随之更新到 1.14.0；未运行训练或性能测试。
+2026-11-01 已在现有 `base` 安装上述三件套（版本后缀 `+cu126`），识别 RTX 4060 Laptop GPU。SymPy 随之更新到 1.14.0；ACT 已完成小规模 GPU 参数更新和检查点推理，未进行性能基准或任务成功率验收。
 
 共享 `base` 尚非全部依赖兼容：本次升级超出 `lightx2v==0.1.0` 对 torch/torchaudio≤2.8.0、torchvision≤0.23.0 的声明范围，LightX2V 运行未验收。原有 LeRobot 与 `diffusers==0.38.0.dev0`（要求 <0.36.0）、OSAM 与 `onnxruntime==1.20.1` 的依赖冲突也尚未处理，不能据此认为完整 LeRobot 训练已可运行。
 
@@ -45,8 +47,8 @@ from pathlib import Path
 from xiaoxia_core.integrations import LeRobotDatasets
 from xiaoxia_core.simulation import MujocoSimulation, SimulationConfig
 
-# 在 core 目录运行，复用 table 中已有的模型及网格。
-urdf = Path('../table/public/robots/so101/so101_new_calib.urdf')
+# 在 core 目录运行，使用独立的 SO-100 模型；不改动前端 SO-101 展示。
+urdf = Path('assets/so100/so100.urdf')
 with MujocoSimulation(SimulationConfig(urdf_path=urdf)) as simulation:
     observation = simulation.read_observation()
     observation = simulation.step()
@@ -57,13 +59,13 @@ with MujocoSimulation(SimulationConfig(urdf_path=urdf)) as simulation:
 
 `MujocoSimulation` 实现 `RobotTransport`，可直接传给 `CollectionService`。`send_action` 仅更新目标，`step` 才推进物理时间；观测时间戳来自仿真时间，与实机时钟不同。默认固定步长 0.002 秒，重力采用 MuJoCo 默认值，底座固定。
 
-位置控制使用有力矩上限的 PD 控制器；默认增益和力矩上限仅为可调整的仿真参数，未经实机标定。网格碰撞由 MuJoCo 导入处理，尚未验收自碰撞、接触精度和控制稳定性。模块不自动打开渲染窗口、不驱动物理设备。
+位置控制使用有力矩上限、目标速度约束、隐式阻尼和重力偏置补偿的控制器；参数未经实机标定。导入时显式排除直接相邻 link 接触，保留其他自碰撞，并通过内存网格解决 Windows 中文路径问题。小幅主从轨迹已验证，完整接触精度与实机稳定性未验收。模块不自动打开渲染窗口、不驱动物理设备。
 
-`LeRobotDatasets.create` 返回原生 `LeRobotDataset`，由调用方使用 `add_frame`、`save_episode` 写入数据。已有 JSONL 记录器不等同于 LeRobot 数据集，尚无格式转换器。训练可使用 LeRobot 自带的 `lerobot-train` 入口；当前核心尚未封装具体策略训练与推理。
+`LeRobotDatasets.create` 返回原生 `LeRobotDataset`。`imitation.DemonstrationWriter` 已接入原生记录及 finalize；原有 JSONL 记录器仍是另一种格式，尚无转换器。`imitation.act` 提供 ACT 训练和本地策略加载，不依赖全量策略工厂，也不自动下载视觉骨干权重。
 
 调用方用上下文管理器管理 `RobotTransport` 和 `EpisodeRecorder`，再将它们传给 `CollectionService`。采集节拍由调用方决定；图像记录为路径，图像文件由数据源保存。
 
-尚未实现 SO-ARM-101 串口协议、摄像头、具体训练算法、推理模型和桌面 IPC。训练和推理必须注入真实适配器；推理只返回动作，不自动发送到设备。
+SO 系列串口、可选 OpenCV 相机、ACT 训练与推理入口已实现。实机运行须先完成设备身份、校准和 URDF 映射确认；当前尚未通过实机示教/抓取验收。操作命令和本次证据见 [模仿学习说明](docs/imitation.md)。
 
 ## LLM
 
