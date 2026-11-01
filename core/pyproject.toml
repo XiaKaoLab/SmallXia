@@ -6,7 +6,10 @@ name = "xiaoxia-core"
 version = "0.1.0"
 description = "小虾台采集、通信、训练与推理核心"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "lerobot==0.4.4",
+    "mujoco==3.15.0",
+]
 
 [build-system]
 requires = ["hatchling>=1.27,<2"]

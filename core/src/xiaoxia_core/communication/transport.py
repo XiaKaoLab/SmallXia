@@ -20,7 +20,7 @@ class RobotTransport(ABC):
 
     @abstractmethod
     def read_observation(self) -> Observation:
-        """读取一帧真实观测，失败应抛出异常。"""
+        """读取一帧设备或仿真观测，失败应抛出异常。"""
 
     @abstractmethod
     def send_action(self, action: Action) -> None:
