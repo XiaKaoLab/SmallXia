@@ -17,9 +17,12 @@ class TrainingPreviewPublisher:
     def publish(self, environments, *, force=False):
         if not force and monotonic() - self.last_publish < .08:
             return
-        atomic_json(self.directory / 'preview.json', {'job_id': self.directory.name,
-            'timestamp_ns': time_ns(), 'physical': False,
-            'snapshots': [{**env.snapshot(), 'env_index': index} for index, env in enumerate(environments)]})
+        try:
+            atomic_json(self.directory / 'preview.json', {'job_id': self.directory.name,
+                'timestamp_ns': time_ns(), 'physical': False,
+                'snapshots': [{**env.snapshot(), 'env_index': index} for index, env in enumerate(environments)]})
+        except PermissionError:
+            return  # 预览可丢帧，不能因为 Windows 读取句柄占用而终止训练。
         self.last_publish = monotonic()
 
 

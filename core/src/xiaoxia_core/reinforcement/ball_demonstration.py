@@ -75,3 +75,40 @@ class BallDemonstrator:
             if env.ended:
                 break
         return rows if success else []
+
+    def corrections(self, env, observer, policy, device, preview=None):
+        # DAgger：在模型偏离示教后的实际状态标注专家动作，仅用于行为克隆。
+        # 混合执行动作不会写入 SAC 示教回放，避免伪造 action/next_state 转换。
+        initial = env.ball_position().copy()
+        labels = []
+        stage, q, grasp_angle = 0, None, None
+        heights = [.065, .002, .002, .075]
+        openings = [1., 1., -.16, -.16]
+        policy.eval()
+        for _ in range(env.episode_steps):
+            observation = observer.read()
+            current = np.array([env.read_observation().joint_positions[name] for name in JOINTS])
+            if q is None:
+                target = initial + [0, 0, heights[stage]]
+                q = self.solve(env, target, grasp_angle if stage == 3 and grasp_angle is not None else openings[stage])
+            if stage < 2 and np.max(np.abs(q - current)) < .015:
+                stage += 1
+                q = None
+                continue
+            if stage == 2 and env.contact_state()['both_jaws']:
+                grasp_angle = current[5] - .02
+                stage, q = 3, None
+                continue
+            expert = np.clip((q - current) / .08, -1, 1).astype(np.float32)
+            labels.append((observation, expert))
+            with torch.inference_mode():
+                batch = observer.batch([observation], device)
+                actor = policy.actor
+                predicted = torch.tanh(actor.mean_layer(actor.network(actor.encoder(batch))))[0].cpu().numpy()
+            env.advance(np.clip(.7 * expert + .3 * predicted, -1, 1))
+            observer.read()
+            if preview:
+                preview.publish([env])
+            if env.ended:
+                break
+        return labels

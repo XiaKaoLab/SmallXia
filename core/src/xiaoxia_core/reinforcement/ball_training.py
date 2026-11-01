@@ -61,23 +61,37 @@ class BallPickupTraining:
             self.worker.progress(phase='demonstrating', demonstration_successes=0)
             teacher = BallDemonstrator()
             demo_successes = 0
-            for attempt in range(demo_count * 3):
-                env, observer = environments[0], observers[0]
-                env.reset_episode()
+            if self.request.get('demonstration_directory'):
+                archive = np.load(Path(self.request['demonstration_directory']) / 'demonstrations.npz', allow_pickle=False)
                 try:
-                    trajectory = teacher.collect(env, observer)
-                except ValueError:
-                    continue
-                if not trajectory:
-                    continue
-                demo_successes += 1
-                demos.extend(trajectory)
-                preview.publish(environments, force=True)
-                self.worker.progress(demonstration_successes=demo_successes, demonstration_transitions=len(demos))
-                if demo_successes == demo_count:
-                    break
-            if demo_successes < demo_count:
-                raise ValueError(f'{demo_count * 3} 次尝试未取得 {demo_count} 轮成功示教')
+                    demos = [({'observation.state': archive['state'][i], BallObservation.camera_key: archive['wrist'][i]},
+                        archive['action'][i], float(archive['reward'][i]),
+                        {'observation.state': archive['next_state'][i], BallObservation.camera_key: archive['next_wrist'][i]},
+                        bool(archive['done'][i])) for i in range(len(archive['action']))]
+                    if sum(row[4] for row in demos) < demo_count:
+                        raise ValueError('归档的成功示教数量不足')
+                    self.worker.progress(demonstration_successes=demo_count, demonstration_transitions=len(demos),
+                        demonstration_reused=True)
+                finally:
+                    archive.close()
+            else:
+                for attempt in range(demo_count * 3):
+                    env, observer = environments[0], observers[0]
+                    env.reset_episode()
+                    try:
+                        trajectory = teacher.collect(env, observer)
+                    except ValueError:
+                        continue
+                    if not trajectory:
+                        continue
+                    demo_successes += 1
+                    demos.extend(trajectory)
+                    preview.publish(environments, force=True)
+                    self.worker.progress(demonstration_successes=demo_successes, demonstration_transitions=len(demos))
+                    if demo_successes == demo_count:
+                        break
+                if demo_successes < demo_count:
+                    raise ValueError(f'{demo_count * 3} 次尝试未取得 {demo_count} 轮成功示教')
             np.savez_compressed(self.worker.directory / 'demonstrations.npz',
                 state=np.stack([r[0]['observation.state'] for r in demos]),
                 wrist=np.stack([r[0][BallObservation.camera_key] for r in demos]),
@@ -89,13 +103,19 @@ class BallPickupTraining:
             evaluator = BallPolicyEvaluation(urdf, self.request['device'])
             evaluation = None
             validated = False
+            correction_labels = []
             for step in range(pretraining):
                 selected = rng.sample(demos, min(64, len(demos)))
-                bc_loss = learner.behavior_clone(BallObservation.batch([r[0] for r in selected], self.request['device']),
-                    torch.as_tensor(np.stack([r[1] for r in selected]), device=self.request['device']))
+                labels = [(r[0], r[1]) for r in selected]
+                if correction_labels:
+                    labels = labels[:32] + rng.sample(correction_labels, min(32, len(correction_labels)))
+                bc_loss = learner.behavior_clone(BallObservation.batch([r[0] for r in labels], self.request['device']),
+                    torch.as_tensor(np.stack([r[1] for r in labels]), device=self.request['device']))
                 if (step + 1) % 100 == 0:
                     self.worker.progress(phase='pretraining', pretraining_step=step + 1,
                         pretraining_updates=pretraining, loss_bc=bc_loss)
+                if (step + 1) % 1000 == 0:
+                    learner.publish(self.worker.directory, step + 1)
                 if stop_on_success and (step + 1) % 1000 == 0:
                     self.worker.progress(phase='evaluating', pretraining_step=step + 1)
                     evaluation = evaluator.run(learner.policy, preview=preview)
@@ -104,6 +124,17 @@ class BallPickupTraining:
                     if evaluation['successes'] >= 3:
                         validated = True
                         break
+                    if self.request.get('corrective_demonstrations', False):
+                        self.worker.progress(phase='correcting')
+                        for _ in range(8):
+                            environments[0].reset_episode()
+                            try:
+                                correction_labels.extend(teacher.corrections(environments[0], observers[0],
+                                    learner.policy, self.request['device'], preview))
+                            except ValueError:
+                                continue
+                        correction_labels = correction_labels[-10000:]
+                        self.worker.progress(correction_labels=len(correction_labels))
             for env in environments:
                 env.reset_episode()
             scores = deque(maxlen=100)
@@ -154,7 +185,7 @@ class BallPickupTraining:
                             self.worker.progress(evaluation_successes=evaluation['successes'], evaluation_rounds=5)
                             validated = evaluation['successes'] >= 3
                         if updates % 200 == 0:
-                            learner.publish(self.worker.directory, updates)
+                            learner.publish(self.worker.directory, pretraining + updates)
                     preview.publish(environments)
                     if monotonic() - last_publish >= .5 or min(completed) >= rounds:
                         done = sum(completed)
@@ -165,7 +196,7 @@ class BallPickupTraining:
                             env_rounds=completed, transitions=transitions, updates=updates,
                             snapshot=environments[0].snapshot(), **metrics)
                         last_publish = monotonic()
-            checkpoint = learner.publish(self.worker.directory, updates)
+            checkpoint = learner.publish(self.worker.directory, pretraining + updates)
             preview.publish(environments, force=True)
             self.worker.progress(phase='exporting')
             from .onnx_export import BallOnnxExporter

@@ -179,6 +179,8 @@ class ReinforcementAPI:
                         raise ValueError('device 需要 cpu 或 cuda')
                     count = self.integer(body, 'num_envs', 4, 1, 16)
                     rounds = self.integer(body, 'rounds', 100, 1, 10000)
+                    if type(body.get('corrective_demonstrations', False)) is not bool:
+                        raise ValueError('corrective_demonstrations 需要布尔值')
                     if type(body.get('stop_on_success', False)) is not bool:
                         raise ValueError('stop_on_success 需要布尔值')
                     warm = {}
@@ -196,11 +198,21 @@ class ReinforcementAPI:
                         if not checkpoint.resolve().is_relative_to(source.resolve()) or not checkpoint.is_file():
                             raise ValueError('接续训练权重不可用')
                         warm = {'warm_start_checkpoint': str(checkpoint), 'warm_start_job_id': source.name}
+                    if body.get('demonstration_job_id'):
+                        source = self.jobs.root / identifier(body['demonstration_job_id'])
+                        demo_config = json.loads((source / 'policy_config.json').read_text(encoding='utf-8'))
+                        from .ball_environment import BallPickupEnvironment
+                        if (demo_config.get('environment_version') != BallPickupEnvironment.version
+                                or demo_config.get('demonstration_episodes', 0) < body.get('demonstration_episodes', 8)
+                                or not (source / 'demonstrations.npz').is_file()):
+                            raise ValueError('示教归档不兼容或数量不足')
+                        warm['demonstration_directory'] = str(source)
                     return 202, self.jobs.start('ball_pickup', {
                         'task': '拿取小球', 'device': device, **warm,
                         'demonstration_episodes': self.integer(body, 'demonstration_episodes', 8, 8, 256),
                         'pretraining_updates': self.integer(body, 'pretraining_updates', 200, 200, 50000),
                         'stop_on_success': body.get('stop_on_success', False),
+                        'corrective_demonstrations': body.get('corrective_demonstrations', False),
                         'num_envs': count, 'rounds': rounds,
                         'seed': self.integer(body, 'seed', 42, 0, 2147483647)},
                         initial_state={'task': '拿取小球', 'num_envs': count, 'rounds': rounds,
