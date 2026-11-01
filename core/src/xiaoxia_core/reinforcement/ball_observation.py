@@ -8,7 +8,8 @@ import numpy as np
 
 class BallObservation:
     camera_key = 'observation.images.wrist'
-    config = {'cameras': ['wrist'], 'state_dim': 18, 'actor_std_min': .01, 'actor_std_max': .1}
+    config = {'cameras': ['wrist'], 'state_dim': 18, 'actor_std_min': .01, 'actor_std_max': .1,
+              'state_scale': [.5] * 6 + [.1] * 6 + [5.] * 3 + [20.] * 3}
     noise = {'joint_position_std_rad': .002, 'joint_velocity_std': .005,
              'position_std_m': .001, 'rgb_std': .01, 'brightness_range': [.9, 1.1]}
 
@@ -31,9 +32,11 @@ class BallObservation:
     @staticmethod
     def batch(observations, device):
         import torch
-        return {key: torch.as_tensor(np.stack([row[key] for row in observations]), device=device,
+        batch = {key: torch.as_tensor(np.stack([row[key] for row in observations]), device=device,
                     dtype=torch.float32) / (255 if key.startswith('observation.images.') else 1)
                 for key in observations[0]}
+        batch['observation.state'] *= torch.tensor(BallObservation.config['state_scale'], device=device)
+        return batch
 
     def close(self):
         self.renderer.close()

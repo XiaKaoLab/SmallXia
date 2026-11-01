@@ -20,12 +20,13 @@ class BallOnnxExporter:
         from .learning import make_policy
 
         class DeterministicActor(torch.nn.Module):
-            def __init__(self, actor):
+            def __init__(self, actor, state_scale):
                 super().__init__()
                 self.actor = actor
+                self.register_buffer('state_scale', torch.tensor(state_scale, dtype=torch.float32))
 
             def forward(self, state, wrist=None):
-                observations = {'observation.state': state}
+                observations = {'observation.state': state * self.state_scale}
                 if wrist is not None:
                     observations['observation.images.wrist'] = wrist
                 features = self.actor.encoder(observations)
@@ -38,7 +39,7 @@ class BallOnnxExporter:
             policy.load_state_dict(torch.load(checkpoint, map_location='cpu', weights_only=True))
         # 使用独立 CPU 副本，不改变训练器的设备或权重。
         from copy import deepcopy
-        model = DeterministicActor(deepcopy(policy.actor).cpu().eval()).eval()
+        model = DeterministicActor(deepcopy(policy.actor).cpu().eval(), config.get('state_scale', [1.] * 18)).eval()
         temporary = directory / 'policy.exporting.onnx'
         path = directory / 'policy.onnx'
         inputs = (torch.zeros(1, 18), torch.zeros(1, 3, 64, 64)) if visual else (torch.zeros(1, 18),)
@@ -65,7 +66,7 @@ class BallOnnxExporter:
             manifest = {'task': 'ball_pickup', 'environment_version': environment_version, 'format': 'onnx', 'opset': 17, 'state_dim': 18,
                 'input': {'name': 'state', 'dtype': 'float32', 'shape': ['batch', 18]},
                 'output': {'name': 'action', 'dtype': 'float32', 'shape': ['batch', 6]},
-                'cameras': config['cameras'], 'image_input': {'name': 'wrist', 'shape': ['batch', 3, 64, 64],
+                'state_scale': config.get('state_scale', [1.] * 18), 'cameras': config['cameras'], 'image_input': {'name': 'wrist', 'shape': ['batch', 3, 64, 64],
                     'dtype': 'float32', 'range': [0, 1]} if visual else None,
                 'privileged_state': True, 'joint_order': list(JOINTS), 'state_order': 'joint_positions_6,joint_velocities_6,ball_xyz_3,ball_minus_tip_xyz_3',
                 'action_space': 'normalized_joint_delta', 'action_scale_rad': .08,

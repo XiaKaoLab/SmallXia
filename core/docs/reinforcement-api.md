@@ -206,3 +206,5 @@ ball-trainings 增加 demonstration_episodes（8–256，默认8）、pretrainin
 stop_on_success 开启后，每1000次预训练更新及每500次在线更新，在独立球位置用确定性学习 Actor 评估5轮；至少成功3轮才提前结束并导出。评估不调用 IK/示教控制器，结果写入 evaluation.json，示教成功、在线成功、评估成功分别统计。
 
 `core/scripts/train_ball_until_success.py` 使用现有 base 环境和 CUDA 启动持续扩量流程：首批8环境×1000轮、64轮示教、5000次预训练；后续批次逐步增加示教与更新量，接续上一批模型权重但重新建立优化器/回放。每批结束独立执行20轮 ONNX 推理，至少成功1轮才结束流程；低于16/20时明确 robust_grasp_validated=false，不宣称稳定抓取。进程故障明确报告 failed，不悄悄重试掩盖故障。报告为 core/data/runtime/pickup-campaign.json；任务 ID 可通过原 stop 接口停止。
+
+抓球观测在进入网络时按量纲缩放：关节位置×0.5、速度×0.1、球世界坐标×5、球与夹爪差向量×20。原始采样/示教文件/HTTP 输入仍使用弧度和米，ONNX 将该缩放固化在图中并在 manifest 记录 state_scale，避免位置差特征被数值更大的关节角淹没。
