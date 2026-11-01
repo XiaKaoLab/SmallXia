@@ -1,4 +1,4 @@
-/** 功能：左侧 Blockly 单积木工作区及 Python 代码预览与导出。
+/** 功能：左侧 Blockly 单积木工作区与 Python 后台运行。
  * Created on 2026-11-01; Updated on 2026-11-01
  * @author: https://github.com/Linmoqian
  */
@@ -103,16 +103,6 @@ export function BlocksSidebar() {
     }
   }
 
-  async function copy() {
-    try { await navigator.clipboard.writeText(code); setNotice("已复制 Python"); }
-    catch { setNotice("复制失败，可下载 Python 文件"); }
-  }
-  function download() {
-    const url = URL.createObjectURL(new Blob([code], { type: "text/x-python;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = url; link.download = "set_arm_position.py"; link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
   return <aside className="blocks-sidebar" aria-label="机械臂积木编程">
     <header className="blocks-heading"><h2>积木编程</h2><div className="blocks-heading-actions"><span>Python</span>
       <button type="button" className="blocks-run" onClick={() => void run()} disabled={!code || running}
@@ -120,15 +110,8 @@ export function BlocksSidebar() {
         <Play size={15} fill="currentColor" /><span>{running ? "运行中" : "运行"}</span>
       </button>
     </div></header>
-    <p className="blocks-description">设置六轴角度，生成模型控制代码。</p>
+    <p className="blocks-description">设置六轴角度，点击运行更新模型。</p>
     <div ref={host} className="blocks-workspace" aria-label="设置机械臂位置积木" />
-    <section className="blocks-code" aria-label="生成的 Python 代码">
-      <div className="blocks-code-toolbar"><span>Python 代码</span><div>
-        <button type="button" disabled={!code} onClick={() => void copy()}>复制</button>
-        <button type="button" disabled={!code} onClick={download}>下载 .py</button>
-      </div></div>
-      <pre tabIndex={0}><code>{code || (error ? "代码生成失败" : "工作区为空或正在加载") }</code></pre>
-    </section>
     <p className="blocks-status" role="status">{error || notice || "通过本机 API 控制显示模型"}</p>
   </aside>;
 }

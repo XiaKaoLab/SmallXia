@@ -1,4 +1,4 @@
-/* 功能：左侧积木工作区及 Python 预览，沿用半透明侧栏风格。
+/* 功能：左侧积木工作区与运行按钮，沿用半透明侧栏风格。
  * Created on 2026-11-01; Updated on 2026-11-01
  * @author: https://github.com/Linmoqian
  */
@@ -10,13 +10,8 @@
 .blocks-workspace { position: relative; flex: 1; min-height: 290px; overflow: hidden; border-top: 1px solid #e7eeeb; }
 .blocks-workspace .blocklySvg { background: #f4f7f5; }
 .blocks-workspace .blocklyMainBackground { stroke: none; }
-.blocks-code { display: flex; flex-direction: column; flex: 0 1 34%; min-height: 140px; overflow: hidden; border-top: 1px solid #e2e9e6; }
-.blocks-code-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 4px 12px 4px 20px; font-size: 11px; color: #6d7c77; }
-.blocks-code-toolbar button { border: 0; background: transparent; min-height: 44px; padding: 0 8px; font-size: 11px; }
-.blocks-code-toolbar button:hover:not(:disabled) { color: #2c6553; background: #eaf0ec; border-radius: 7px; }
-.blocks-code pre { flex: 1; min-height: 0; overflow: auto; margin: 0; padding: 0 20px 16px; font: 10px/1.8 "Cascadia Code", Consolas, monospace; color: #485c54; tab-size: 4; }
 .blocks-status { min-height: 34px; margin: 0; padding: 8px 20px; color: #7c8883; font-size: 10px; border-top: 1px solid #e8eeeb; }
-@media (max-height: 700px) { .blocks-workspace { min-height: 250px; } .blocks-code { min-height: 90px; } }
+@media (max-height: 700px) { .blocks-workspace { min-height: 250px; } }
 
 .blocks-heading-actions { display: flex; align-items: center; gap: 12px; }
 .blocks-run { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 72px; min-height: 44px; padding: 0 12px; border: 1px solid #248b53; border-radius: 10px; background: #2c9a60; color: #fff; font-size: 12px; font-weight: 600; }
