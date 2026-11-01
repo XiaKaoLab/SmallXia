@@ -110,7 +110,6 @@ export function BlocksSidebar() {
         <Play size={15} fill="currentColor" /><span>{running ? "运行中" : "运行"}</span>
       </button>
     </div></header>
-    <p className="blocks-description">设置六轴角度，点击运行更新模型。</p>
     <div ref={host} className="blocks-workspace" aria-label="设置机械臂位置积木" />
     <p className="blocks-status" role="status">{error || notice || "通过本机 API 控制显示模型"}</p>
   </aside>;
