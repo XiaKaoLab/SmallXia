@@ -12,7 +12,7 @@ class BallPolicyEvaluation:
     def __init__(self, urdf, device):
         self.urdf, self.device = urdf, device
 
-    def run(self, policy, rounds=20, seed=20261102, preview=None, level=2, noisy=noisy):
+    def run(self, policy, rounds=20, seed=20261102, preview=None, level=2, noisy=False):
         env = BallPickupEnvironment.vector(self.urdf, 1, seed)[0]
         env.curriculum_level = level
         env.reset_episode()
