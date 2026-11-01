@@ -20,3 +20,8 @@
 
 .blocks-add-camera { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: #587e9d; font-size: 12px; }
 .blocks-add-camera:hover:not(:disabled) { background: #e7eef3; }
+
+.joint-angle-control { display: flex; align-items: center; gap: 6px; width: 180px; height: 44px; padding: 0 5px; color: #fff; font: 600 12px "Segoe UI", sans-serif; }
+.joint-angle-slider { width: 112px; height: 32px; margin: 0; accent-color: #d8f4e6; cursor: pointer; }
+.joint-angle-value { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
+.joint-angle-slider:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }

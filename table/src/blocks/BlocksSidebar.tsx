@@ -1,8 +1,9 @@
 /** 功能：左侧 Blockly 单积木工作区与 Python 后台运行。
- * Created on 2026-11-01; Updated on 2026-11-01
+ * Created on 2026-11-01; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
 import { useEffect, useRef, useState } from "react";
+import { LiveJointRunner } from "./LiveJointRunner";
 import { blocksDebug } from "../debug/BlocksDebug";
 import { CAMERA_BLOCK_TYPE, registerCameraBlock } from "./cameraBlock";
 import { Camera, Play } from "lucide-react";
@@ -20,6 +21,7 @@ export function BlocksSidebar() {
   const [notice, setNotice] = useState("");
   const [running, setRunning] = useState(false);
   const runLock = useRef(false);
+  const liveRef = useRef<LiveJointRunner | null>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const [cameraAdded, setCameraAdded] = useState(false);
   const [ready, setReady] = useState(false);
@@ -30,6 +32,8 @@ export function BlocksSidebar() {
     const abort = new AbortController();
     let workspace: Blockly.WorkspaceSvg | undefined;
     let observer: ResizeObserver | undefined;
+    const live = new LiveJointRunner((message) => { if (!abort.signal.aborted) setNotice(message); });
+    liveRef.current = live;
     let detachDebug: (() => void) | undefined;
     async function initialize() {
       try {
@@ -38,7 +42,10 @@ export function BlocksSidebar() {
         const limits = parseModelLimits(await response.text());
         if (abort.signal.aborted) return;
         Blockly.setLocale(Object.fromEntries(Object.entries(Zh).filter((entry): entry is [string, string] => typeof entry[1] === "string")));
-        registerPositionBlock(limits);
+        registerPositionBlock(limits, (block) => {
+          const source = pythonGenerator.forBlock[BLOCK_TYPE](block, pythonGenerator);
+          if (typeof source === "string") live.schedule(source);
+        });
         registerCameraBlock();
         workspace = Blockly.inject(element, {
           media: `${import.meta.env.BASE_URL}blockly-media/`,
@@ -90,7 +97,7 @@ export function BlocksSidebar() {
       }
     }
     void initialize();
-    return () => { abort.abort(); workspaceRef.current = null; detachDebug?.(); observer?.disconnect(); workspace?.dispose(); };
+    return () => { abort.abort(); live.dispose(); liveRef.current = null; workspaceRef.current = null; detachDebug?.(); observer?.disconnect(); workspace?.dispose(); };
   }, []);
 
   function addCamera() {
@@ -111,12 +118,14 @@ export function BlocksSidebar() {
     setError("");
     setNotice("正在运行 Python…");
     try {
+      await liveRef.current?.pause();
       const result = await agentClient.request<{ output: string; exit_code: number }>({ action: "run_program", source: code });
       setNotice(result.output.trim() ? `已运行：${result.output.trim()}` : "Python 运行完成");
     } catch (failure) {
       setError(String(failure));
       setNotice("");
     } finally {
+      liveRef.current?.resume();
       runLock.current = false;
       setRunning(false);
     }

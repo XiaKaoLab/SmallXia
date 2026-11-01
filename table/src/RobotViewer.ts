@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import URDFLoader from "urdf-loader";
 import type { URDFRobot } from "urdf-loader";
+import { jointPreview } from "./JointPreview";
 import { VirtualCameraRig } from "./VirtualCameraRig";
 import { ModelMotionClient } from "./ModelMotionClient";
 
@@ -20,13 +21,20 @@ export class RobotViewer {
   private targets: Record<string, number> = {};
   private readonly clock = new THREE.Clock();
   private readonly cameraRig: VirtualCameraRig;
+  private readonly stopPreview: () => void;
   private readonly motion = new ModelMotionClient((positions, camera) => {
-    this.setJointTargets(positions);
+    this.setJointTargets(jointPreview.reconcile(positions));
     if (this.robot) this.cameraRig.configure(this.robot, camera);
   });
 
   constructor(private readonly host: HTMLElement) {
     this.cameraRig = new VirtualCameraRig(this.scene, host);
+    this.stopPreview = jointPreview.subscribe((name, angle) => {
+      const joint = this.robot?.joints[name];
+      if (!joint || !Number.isFinite(angle) || angle < joint.limit.lower || angle > joint.limit.upper) return;
+      this.targets[name] = angle;
+      joint.setJointValue(angle);
+    });
     this.scene.background = new THREE.Color("#e8edf0");
     this.camera.up.set(0, 0, 1);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -117,6 +125,7 @@ export class RobotViewer {
   dispose(): void {
     this.disposed = true;
     this.motion.dispose();
+    this.stopPreview();
     this.observer.disconnect();
     this.renderer.setAnimationLoop(null);
     this.controls.dispose();
