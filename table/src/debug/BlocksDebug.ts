@@ -4,6 +4,7 @@
  */
 import * as Blockly from "blockly/core";
 import { pythonGenerator } from "blockly/python";
+import { FRAME_CAPTURE, FRAME_VARIABLE } from "../blocks/frameBlocks";
 import { CAMERA_BLOCK_TYPE } from "../blocks/cameraBlock";
 import { BLOCK_TYPE, JOINTS, type Limits } from "../blocks/positionBlock";
 
@@ -22,13 +23,14 @@ class WorkspaceManager {
 
   private get(id: string): Blockly.BlockSvg {
     const block = this.workspace.getBlockById(id);
-    if (!block || ![BLOCK_TYPE, CAMERA_BLOCK_TYPE].includes(block.type)) throw new Error(`找不到位置积木：${id}`);
+    if (!block || ![BLOCK_TYPE, CAMERA_BLOCK_TYPE, FRAME_CAPTURE, FRAME_VARIABLE].includes(block.type)) throw new Error(`找不到位置积木：${id}`);
     return block;
   }
 
   private specs(type: string): Record<string, { label: string; lower?: number; upper?: number; options?: string[]; unit?: string }> {
     if (type === BLOCK_TYPE) return Object.fromEntries(JOINTS.map(([name, label]) => [name, { label, unit: "rad", ...this.limits[name] }]));
     if (type === CAMERA_BLOCK_TYPE) return {};
+    if ([FRAME_CAPTURE, FRAME_VARIABLE].includes(type)) return { SOURCE: { label: "来源", options: ["virtual", "real"] } };
     throw new Error(`未知积木类型：${type}`);
   }
 
@@ -51,8 +53,8 @@ class WorkspaceManager {
   }
 
   types() {
-    return [BLOCK_TYPE, CAMERA_BLOCK_TYPE].map((type) => ({ type,
-      label: type === BLOCK_TYPE ? "设置机械臂位置" : "装配相机", maxInstances: 1,
+    return [BLOCK_TYPE, CAMERA_BLOCK_TYPE, FRAME_CAPTURE, FRAME_VARIABLE].map((type) => ({ type,
+      label: ({ [BLOCK_TYPE]: "设置机械臂位置", [CAMERA_BLOCK_TYPE]: "装配相机", [FRAME_CAPTURE]: "获取画面", [FRAME_VARIABLE]: "画面变量" })[type], maxInstances: [FRAME_CAPTURE, FRAME_VARIABLE].includes(type) ? 2 : 1,
       fields: Object.entries(this.specs(type)).map(([name, spec]) => ({ name, ...spec })) }));
   }
 
@@ -68,7 +70,7 @@ class WorkspaceManager {
   create(fields: Record<string, number | string> = {}, x = 16, y = 24, type = BLOCK_TYPE): BlockSnapshot {
     this.validateFields(fields, type);
     this.validatePosition(x, y);
-    if (this.workspace.getBlocksByType(type, false).length) throw new Error("每种积木最多保留一个，请先删除已有同类积木");
+    if (this.workspace.getBlocksByType(type, false).length >= ([FRAME_CAPTURE, FRAME_VARIABLE].includes(type) ? 2 : 1)) throw new Error("此类积木已达到数量限制，请先删除已有同类积木");
     const block = this.workspace.newBlock(type);
     for (const [name, value] of Object.entries(fields)) block.setFieldValue(String(value), name);
     block.initSvg(); block.render(); block.moveBy(x, y);
@@ -102,12 +104,12 @@ class WorkspaceManager {
 
   importWorkspace(value: unknown): BlocksSnapshot {
     const state = typeof value === "string" ? JSON.parse(value) : value;
-    if (!state || state.version !== 1 || !Array.isArray(state.blocks) || state.blocks.length > 2) {
-      throw new Error("工作区快照需要 version=1 和最多两个积木");
+    if (!state || state.version !== 1 || !Array.isArray(state.blocks) || state.blocks.length > 6) {
+      throw new Error("工作区快照需要 version=1 和最多六个积木");
     }
     // 全部检查通过后才替换工作区，非法导入不删除现有积木。
     for (const block of state.blocks) {
-      if (!block || ![BLOCK_TYPE, CAMERA_BLOCK_TYPE].includes(block.type) || typeof block.id !== "string" || !block.id || block.id.length > 128) {
+      if (!block || ![BLOCK_TYPE, CAMERA_BLOCK_TYPE, FRAME_CAPTURE, FRAME_VARIABLE].includes(block.type) || typeof block.id !== "string" || !block.id || block.id.length > 128) {
         throw new Error("快照包含未知积木类型或无效 ID");
       }
       if (block.type === CAMERA_BLOCK_TYPE) block.fields = {}; // 旧快照迁移为固定安装，不再提供可编辑参数。
@@ -115,7 +117,7 @@ class WorkspaceManager {
       if (Object.keys(block.fields).length !== Object.keys(this.specs(block.type)).length) throw new Error("快照必须包含完整字段");
       this.validatePosition(block.x, block.y);
     }
-    if (new Set(state.blocks.map((block: BlockSnapshot) => block.type)).size !== state.blocks.length
+    if (state.blocks.some((item: BlockSnapshot) => state.blocks.filter((other: BlockSnapshot) => other.type === item.type).length > ([FRAME_CAPTURE, FRAME_VARIABLE].includes(item.type) ? 2 : 1))
       || new Set(state.blocks.map((block: BlockSnapshot) => block.id)).size !== state.blocks.length) throw new Error("快照包含重复类型或 ID");
     Blockly.Events.setGroup(true);
     try {

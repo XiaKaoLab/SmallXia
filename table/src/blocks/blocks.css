@@ -1,5 +1,5 @@
 /* 功能：左侧积木工作区与运行按钮，沿用半透明侧栏风格。
- * Created on 2026-11-01; Updated on 2026-11-01
+ * Created on 2026-11-01; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
 .blocks-sidebar { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #ffffffe0; border-right: 1px solid #ffffffd9; }
@@ -25,3 +25,6 @@
 .joint-angle-slider { width: 112px; height: 32px; margin: 0; accent-color: #d8f4e6; cursor: pointer; }
 .joint-angle-value { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
 .joint-angle-slider:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.blocks-heading { flex-wrap: wrap; gap: 6px; }
+.blocks-heading-actions { flex-wrap: wrap; gap: 4px; }

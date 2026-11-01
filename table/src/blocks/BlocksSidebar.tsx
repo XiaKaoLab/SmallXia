@@ -7,6 +7,7 @@ import { jointPreview } from "../JointPreview";
 import { LiveJointRunner } from "./LiveJointRunner";
 import { blocksDebug } from "../debug/BlocksDebug";
 import { CAMERA_BLOCK_TYPE, registerCameraBlock } from "./cameraBlock";
+import { FRAME_CAPTURE, FRAME_VARIABLE, registerFrameBlocks } from "./frameBlocks";
 import { Camera, Play } from "lucide-react";
 import { agentClient } from "../chat/AgentClient";
 import * as Blockly from "blockly/core";
@@ -57,9 +58,10 @@ export function BlocksSidebar() {
           if (typeof source === "string") live.schedule(source);
         });
         registerCameraBlock();
+        registerFrameBlocks();
         workspace = Blockly.inject(element, {
           media: `${import.meta.env.BASE_URL}blockly-media/`,
-          maxInstances: { [BLOCK_TYPE]: 1, [CAMERA_BLOCK_TYPE]: 1 },
+          maxInstances: { [BLOCK_TYPE]: 1, [CAMERA_BLOCK_TYPE]: 1, [FRAME_CAPTURE]: 2, [FRAME_VARIABLE]: 2 },
           renderer: "zelos", sounds: false, trashcan: false,
           scrollbars: true, move: { scrollbars: true, drag: true, wheel: true },
           zoom: { controls: false, wheel: false, startScale: 0.9 },
@@ -120,6 +122,15 @@ export function BlocksSidebar() {
     setCode(pythonGenerator.workspaceToCode(workspace));
   }
 
+  function addFrame(type: string) {
+    const workspace = workspaceRef.current;
+    if (!workspace || workspace.getBlocksByType(type, false).length >= 2) return;
+    const block = workspace.newBlock(type);
+    block.initSvg(); block.render(); block.moveBy(16, type === FRAME_CAPTURE ? 440 : 520);
+    workspace.centerOnBlock(block.id);
+    setCode(pythonGenerator.workspaceToCode(workspace));
+  }
+
   async function run() {
     if (!code || runLock.current) return;
     if (!agentClient.desktop) { setError("运行 Python 需要打开 Tauri 桌面窗口"); return; }
@@ -151,6 +162,8 @@ export function BlocksSidebar() {
   return <aside className="blocks-sidebar" aria-label="机械臂积木编程">
     <header className="blocks-heading"><h2>积木编程</h2><div className="blocks-heading-actions">
       <button type="button" className="blocks-add-camera" onClick={addCamera} disabled={!ready || cameraAdded || running} aria-label="添加虚拟相机积木" title="添加虚拟相机积木"><Camera size={15} /><span>相机</span></button>
+      <button type="button" className="blocks-add-camera" onClick={() => addFrame(FRAME_CAPTURE)} disabled={!ready || running}>获取画面</button>
+      <button type="button" className="blocks-add-camera" onClick={() => addFrame(FRAME_VARIABLE)} disabled={!ready || running}>画面变量</button>
       <button type="button" className="blocks-run" onClick={() => void run()} disabled={!code || running}
         aria-label={running ? "正在运行 Python" : "运行 Python"} aria-busy={running} title="运行 Python">
         <Play size={15} fill="currentColor" /><span>{running ? "运行中" : "运行"}</span>

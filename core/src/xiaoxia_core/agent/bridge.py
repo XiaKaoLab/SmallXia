@@ -1,5 +1,5 @@
 """为 Tauri 提供单请求 JSONL 桥接，复用会话、技能与 Agent 流。
-Created on 2026-11-01; Updated on 2026-11-01
+Created on 2026-11-01; Updated on 2026-11-02
 @author: https://github.com/Linmoqian
 """
 
@@ -50,6 +50,16 @@ class DesktopBridge:
         elif action == "clear":
             self.sessions.clear(request["session_id"])
             self.emit({"type": "data", "data": {"cleared": True}})
+        elif action == "publish_camera_frame":
+            from urllib.request import Request, urlopen
+            body = json.dumps({'image_base64': request['image_base64']}).encode()
+            if len(body) > 1500000:
+                raise ValueError('画面过大')
+            upload = Request('http://127.0.0.1:8766/api/v1/cameras/virtual/frame', data=body,
+                             headers={'Content-Type': 'application/json',
+                                      'Authorization': 'Bearer ' + os.environ['XIAOXIA_MOTION_TOKEN']}, method='POST')
+            with urlopen(upload, timeout=2) as response:
+                self.emit({'type': 'data', 'data': json.load(response)})
         elif action == "run_program":
             from ..communication.program_runner import PythonProgramRunner
             self.emit({"type": "data", "data": PythonProgramRunner().run(request.get("source"))})

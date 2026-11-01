@@ -16,6 +16,7 @@ from ..safety import JointLimits
 from .motion_service import MotionRouteService
 from .transport import RobotTransport
 from .virtual_camera import VirtualCameraStore
+from .camera_frames import CameraFrames
 from .model_pose_guard import ModelPoseGuard
 
 
@@ -50,11 +51,16 @@ class ModelHTTPServer(ThreadingHTTPServer):
 
     def __init__(self, token: str, limits: JointLimits) -> None:
         urdf = Path(__file__).resolve().parents[4] / "table/public/robots/so101/so101_new_calib.urdf"
+        self.frames = CameraFrames()
         self.camera = VirtualCameraStore({link.attrib["name"] for link in ElementTree.parse(urdf).getroot().findall("link")})
         self.routes = MotionRouteService(token=token)
         self.routes.register("table", ModelTransport(limits, ModelPoseGuard(urdf)), limits)
         self.read_authorization = f"Bearer {token}"
         super().__init__(("127.0.0.1", 8766), ModelRequestHandler)
+
+    def server_close(self):
+        self.frames.close()
+        super().server_close()
 
 
 class ModelRequestHandler(BaseHTTPRequestHandler):
@@ -75,6 +81,15 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self) -> None:
+        if self.path in ('/api/v1/cameras/virtual/frame', '/api/v1/cameras/real/frame'):
+            if not compare_digest(self.headers.get('Authorization', '').encode(), self.server.read_authorization.encode()):
+                self._reply(401, {'error': 'unauthorized'})
+                return
+            try:
+                self._reply(200, self.server.frames.read(self.path.split('/')[4]))
+            except ValueError as error:
+                self._reply(409, {'error': str(error)})
+            return
         # 仅模型状态允许本机匿名读取；运动写入始终要求令牌。
         if self.path != "/api/v1/robots/table/state":
             self._reply(404, {"error": "route_not_found"})
@@ -85,15 +100,28 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         try:
             length = int(self.headers.get("Content-Length", "0"))
-            if not 0 < length <= 16384:
+            if not 0 < length <= (1500000 if self.path == "/api/v1/cameras/virtual/frame" else 16384):
                 self._reply(413, {"error": "body_size_invalid"})
                 return
             if self.headers.get_content_type() != "application/json":
                 self._reply(415, {"error": "json_required"})
                 return
             body = json.loads(self.rfile.read(length))
+            if not isinstance(body, dict):
+                raise ValueError("对象必需")
         except (ValueError, UnicodeDecodeError):
             self._reply(400, {"error": "invalid_json"})
+            return
+        if self.path in ('/api/v1/cameras/virtual/frame', '/api/v1/cameras/real/config'):
+            if not compare_digest(self.headers.get('Authorization', '').encode(), self.server.read_authorization.encode()):
+                self._reply(401, {'error': 'unauthorized'})
+                return
+            try:
+                result = (self.server.frames.publish(body) if self.path.endswith('/frame')
+                          else self.server.frames.configure_real(body))
+                self._reply(200, result)
+            except (ValueError, KeyError, TypeError, OSError) as error:
+                self._reply(422, {'error': str(error)})
             return
         if self.path == "/api/v1/robots/table/camera":
             if not compare_digest(self.headers.get("Authorization", "").encode(), self.server.read_authorization.encode()):
