@@ -11,9 +11,10 @@ Python 3.11+ 核心，基础层使用标准库，机器人学习使用 LeRobot�
 | `integrations` | LeRobot 原生数据集创建与读取入口 |
 | `simulation` | MuJoCo URDF 加载、状态读取、位置目标和显式物理步进 |
 | `llm` | OpenAI SDK 封装、模型配置、文本生成与 token 用量 |
+| `agent` | SQLite 会话历史、SKILL.md 加载、流式对话和命令行入口 |
 | `contracts.py` | 共享观测、动作类型，关节位置单位为弧度 |
 
-复用本机已有 Conda `base` 环境，不创建独立环境。依赖固定为 `lerobot==0.4.4`、`mujoco==3.15.0`、`openai==2.24.0`，版本记录在 `pyproject.toml`。在本目录执行：
+复用本机已有 Conda `base` 环境，不创建独立环境。运行依赖包含 `lerobot==0.4.4`、`mujoco==3.15.0`、`openai==2.24.0`、`PyYAML>=6.0.2,<7`，记录在 `pyproject.toml`。在本目录执行：
 
 ```powershell
 conda activate base
@@ -79,3 +80,51 @@ with OpenAILLM(LLMConfig.from_env()) as llm:
 仅调用 `generate` 时发送请求；结果包含文本、响应 ID、实际模型与 token 用量。默认请求超时 60 秒、SDK 最多重试 2 次、输出上限 2048 token、`store=False`。API 异常直接交给调用方处理，未完成响应和空文本会显式报错。LLM 不直接控制机械臂。代码未进行真实 API 调用验证。
 
 接口依据 [OpenAI Python SDK 官方文档](https://developers.openai.com/api/reference/python)。
+
+## 简单 Agent
+
+激活 `base`，在 `core` 目录设置当前会话的环境变量后启动：
+
+```powershell
+conda activate base
+$env:PYTHONPATH = Join-Path (Get-Location) 'src'
+$env:OPENAI_API_KEY = '你的密钥'
+$env:OPENAI_MODEL = '你有访问权限的模型名称'
+python -m xiaoxia_core.agent
+```
+
+默认会话保存在 `core/data/agent.sqlite3`（已忽略提交），默认技能目录为 `core/skills`。可通过 `--database 路径`、`--skills 路径`、`--session 会话ID` 指定位置或恢复会话。命令行直接显示流式文本；`Ctrl+C` 中断当前轮，输入阶段按 `Ctrl+C` 或 `/quit` 退出。
+
+| 命令 | 功能 |
+| --- | --- |
+| `/new` | 创建并切换会话 |
+| `/sessions`、`/resume ID` | 列出、恢复会话 |
+| `/history`、`/clear` | 查看、清空当前会话消息 |
+| `/skills` | 刷新并列出技能 |
+| `/skill robotics-guide` | 启用技能，空格分隔可选多个 |
+| `/skill off` | 关闭当前技能 |
+
+技能目录格式为 `<技能目录>/<名称>/SKILL.md`，YAML frontmatter 必须提供 `name`、`description`，正文是技能指令。名称使用小写字母数字及连字符。技能由调用方显式选择，不自动执行其中的脚本；当前会话切换不改变 CLI 已选技能，重启后需重新选择。
+
+`SimpleAgent.stream(session_id, text, skill_names=...)` 返回 `started`、`skill_loaded`、`delta`、`completed` 事件。`completed.result` 包含最终文本与用量，适合作为后续桌面 IPC 的事件源；本次未接入 `table`。
+
+```python
+from contextlib import closing
+from pathlib import Path
+from xiaoxia_core.agent import SessionStore, SimpleAgent, SkillRegistry
+from xiaoxia_core.llm import LLMConfig, OpenAILLM
+
+sessions = SessionStore(Path('data/agent.sqlite3'))
+session_id = sessions.create()
+with OpenAILLM(LLMConfig.from_env()) as llm:
+    agent = SimpleAgent(llm, sessions, SkillRegistry(Path('skills')))
+    with closing(agent.stream(session_id, '如何准备机械臂采集数据？',
+                              skill_names=['robotics-guide'])) as events:
+        for event in events:
+            if event.type == 'delta':
+                print(event.delta, end='', flush=True)
+```
+
+每轮发送最近 20 轮完整历史（可配置，按轮数而非 token 裁剪）。仅在完整响应成功后原子保存 user/assistant 两条消息；流异常、未完成、主动关闭或生成期间会话版本冲突都不会写入本轮。异常由调用方捕获，提前结束消费时需像示例一样关闭迭代器。中途显示的文本是预览，`completed` 才表示已保存。
+
+这是文本对话 Agent，不含工具调用循环、自动选择技能、长上下文摘要、异步并发或硬件执行。流式接口依据 [OpenAI 流式响应文档](https://developers.openai.com/api/docs/guides/streaming-responses)。未发送实际 API 请求，尚未验收联网交互。
