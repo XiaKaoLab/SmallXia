@@ -137,3 +137,7 @@ with OpenAILLM(LLMConfig.from_env()) as llm:
 ## 强化学习 API
 
 [强化学习 HTTP API](docs/reinforcement-api.md) 复用模型服务 8766 端口和原生 LeRobot SAC，提供会话、转换数据、人工接管/成功反馈、ROI、学习器、执行者、单次预测、奖励分类器及后台任务停止。当前目标仅为 table，使用关节增量与 HTTP/SQLite 适配；不是官方实机末端空间/gRPC 流水线。服务启动不会初始化策略或自动训练。
+
+## 仿真与真机采集 API
+
+[采集 HTTP API](docs/collection-api.md) 提供 MuJoCo 物理状态/图像采集、只读真机编码器/图像采集和原生 LeRobot Dataset v3 保存。通过命令回执管理逐帧记录、episode 和 finalize；成功完成且含动作标签的会话可接入已有 ACT 训练接口。真机默认只读，不自动连接、不使能力矩。

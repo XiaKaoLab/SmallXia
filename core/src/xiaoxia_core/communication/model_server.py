@@ -20,6 +20,7 @@ from .camera_frames import CameraFrames
 from .model_pose_guard import ModelPoseGuard
 from ..imitation.api_service import ImitationAPI
 from ..reinforcement.service import ReinforcementAPI
+from ..collection.capture_api import CollectionAPI
 
 
 class ModelTransport(RobotTransport):
@@ -62,9 +63,13 @@ class ModelHTTPServer(ThreadingHTTPServer):
             limits, self.frames, lambda: self.routes.handle('GET', '/api/v1/robots/table/state', self.read_authorization)[1]['joint_positions'])
         self.reinforcement = ReinforcementAPI(Path(__file__).resolve().parents[3] / 'data/reinforcement_api',
             limits, self.frames, self.routes, self.read_authorization)
+        core = Path(__file__).resolve().parents[3]
+        self.collection = CollectionAPI(core / 'data/collection_api', core, frames=self.frames)
+        self.imitation.collection_resolver = self.collection.resolve_dataset
         super().__init__(("127.0.0.1", 8766), ModelRequestHandler)
 
     def server_close(self):
+        self.collection.close()
         self.reinforcement.close()
         self.imitation.close()
         self.frames.close()
@@ -89,7 +94,7 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _learning(self, method, body=None):
-        for service in (self.server.imitation, self.server.reinforcement):
+        for service in (self.server.imitation, self.server.reinforcement, self.server.collection):
             if not self.path.startswith(service.prefix + '/'):
                 continue
             if not compare_digest(self.headers.get('Authorization', '').encode(), self.server.read_authorization.encode()):

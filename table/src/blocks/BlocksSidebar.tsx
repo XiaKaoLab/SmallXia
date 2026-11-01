@@ -1,4 +1,4 @@
-/** 功能：左侧五分类 Blockly 工作区与 Python 后台运行。
+/** 功能：左侧六分类 Blockly 工作区与 Python 后台运行。
  * Created on 2026-11-01; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
@@ -10,6 +10,7 @@ import { registerCameraBlock } from "./cameraBlock";
 import { cameraCatalog } from "./CameraCatalog";
 import { registerFrameBlocks } from "./frameBlocks";
 import { BlocksToolbox, BLOCK_LIMITS } from "./BlocksToolbox";
+import { DataBlocks } from "./dataBlocks";
 import { PolicyBlocks } from "./policyBlocks";
 import "blockly/blocks";
 import { Play } from "lucide-react";
@@ -63,6 +64,7 @@ export function BlocksSidebar() {
         registerCameraBlock();
         registerFrameBlocks();
         new PolicyBlocks().register();
+        new DataBlocks().register();
         pythonGenerator.addReservedWords("CameraFrameClient,virtual_frame,real_frame");
         workspace = Blockly.inject(element, {
           media: `${import.meta.env.BASE_URL}blockly-media/`,
@@ -155,7 +157,7 @@ export function BlocksSidebar() {
         <Play size={15} fill="currentColor" /><span>{running ? "运行中" : "运行"}</span>
       </button>
     </div></header>
-    <div ref={host} className="blocks-workspace" aria-label="机械臂、相机、逻辑、变量和策略积木工作区" />
+    <div ref={host} className="blocks-workspace" aria-label="机械臂、相机、逻辑、变量、策略和数据积木工作区" />
     <p className="blocks-status" role="status">{error || notice || "通过本机 API 控制显示模型"}</p>
   </aside>;
 }

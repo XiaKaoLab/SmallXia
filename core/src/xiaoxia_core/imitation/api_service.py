@@ -16,6 +16,7 @@ class ImitationAPI:
     def __init__(self, root: Path, limits, frames, model_state):
         self.datasets = APIDemonstrations(root / 'datasets', limits, frames, model_state)
         self.jobs = ImitationJobs(root / 'jobs')
+        self.collection_resolver = None
         self.limits = limits
         self._lock = RLock()
 
@@ -70,9 +71,16 @@ class ImitationAPI:
                         'dataset_directory': str(self.datasets.root / dataset_id)})
             if parts == ['trainings']:
                 dataset_id = identifier(body.get('dataset_id'))
-                state = self.dataset_status(dataset_id)
-                if state.get('export_status') != 'succeeded':
-                    raise ValueError('数据集必须先 finalize 并等待导出任务成功')
+                try:
+                    state = self.dataset_status(dataset_id)
+                    if state.get('export_status') != 'succeeded':
+                        raise ValueError('数据集必须先 finalize 并等待导出任务成功')
+                    dataset_path = self.jobs.root / state['export_job_id'] / 'dataset'
+                except FileNotFoundError:
+                    if self.collection_resolver is None:
+                        raise
+                    dataset_path, count = self.collection_resolver(dataset_id)
+                    state = {'total_frames': count}
                 device = body.get('device', 'cpu')
                 if device not in ('cpu', 'cuda'):
                     raise ValueError('device 仅支持 cpu 或 cuda')
@@ -81,7 +89,7 @@ class ImitationAPI:
                 if state['total_frames'] < configuration['chunk_size']:
                     raise ValueError('数据集帧数少于 chunk_size')
                 return 202, self.jobs.start('train', {'dataset_id': dataset_id, 'device': device,
-                    'dataset': str(self.jobs.root / state['export_job_id'] / 'dataset'), **configuration})
+                    'dataset': str(dataset_path), **configuration})
             if parts in (['predictions'], ['rollouts']):
                 checkpoint = self.checkpoint(body.get('training_job_id'))
                 device = body.get('device', 'cpu')

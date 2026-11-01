@@ -1,5 +1,5 @@
 """记录实际主从控制目标为 LeRobot v3 数据集，保留弧度和仿真来源。
-Created on 2026-11-01; Updated on 2026-11-01
+Created on 2026-11-01; Updated on 2026-11-02
 @author: https://github.com/Linmoqian
 """
 
@@ -15,26 +15,27 @@ from ..safety import JOINTS, JointLimits
 
 
 class DemonstrationWriter:
-    def __init__(self, root: Path, repo_id: str, fps: int, limits: JointLimits, first_observation: Observation, *, simulated: bool, robot_type: str = "so100_follower") -> None:
+    def __init__(self, root: Path, repo_id: str, fps: int, limits: JointLimits, first_observation: Observation, *, simulated: bool, robot_type: str = "so100_follower", use_videos: bool = False, record_actions: bool = True) -> None:
         from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
         if root.exists() or fps < 1:
             raise ValueError("数据集目录必须尚不存在，fps 必须为正数")
         self.limits = limits
+        self.record_actions = record_actions
         self.images: dict[str, tuple[int, ...]] = {}
         features = {key: {"dtype": "float32", "shape": (6,), "names": list(JOINTS)}
-                    for key in ("observation.state", "action")}
+                    for key in (("observation.state", "action") if record_actions else ("observation.state",))}
         for name, path in first_observation.image_paths.items():
             with Image.open(path) as image:
                 self.images[name] = np.asarray(image.convert("RGB")).shape
-            features[f"observation.images.{name}"] = {"dtype": "image", "shape": self.images[name], "names": ["height", "width", "channels"]}
+            features[f"observation.images.{name}"] = {"dtype": "video" if use_videos else "image", "shape": self.images[name], "names": ["height", "width", "channels"]}
         if not self.images:
             # ACT 无图像时需要 environment_state；这里只提供同一状态的副本，不引入未来目标。
             features["observation.environment_state"] = features["observation.state"].copy()
-        self.dataset = LeRobotDataset.create(repo_id=repo_id, root=root, fps=fps, features=features, robot_type=robot_type, use_videos=False)
+        self.dataset = LeRobotDataset.create(repo_id=repo_id, root=root, fps=fps, features=features, robot_type=robot_type, use_videos=use_videos, vcodec="h264")
         self.frames = 0
         self.metadata = {
-            "schema_version": 1, "joints": list(JOINTS), "unit": "radian", "simulated": simulated,
+            "record_actions": record_actions, "use_videos": use_videos, "schema_version": 1, "joints": list(JOINTS), "unit": "radian", "simulated": simulated,
             "observation_mode": "images" if self.images else "state_only",
             "environment_state": None if self.images else "duplicate_of_observation.state",
             "limits": {name: asdict(limit) for name, limit in limits.joints.items()},
@@ -43,16 +44,20 @@ class DemonstrationWriter:
         }
         (root / "imitation.json").write_text(json.dumps(self.metadata, indent=2), encoding="utf-8")
 
-    def append(self, observation: Observation, action: Action, task: str) -> None:
+    def append(self, observation: Observation, action: Action | None, task: str) -> None:
         self.limits.validate(observation.joint_positions)
-        self.limits.validate(action.joint_positions)
+        if self.record_actions:
+            if action is None:
+                raise ValueError("此数据集需要显式动作标签")
+            self.limits.validate(action.joint_positions)
         if set(observation.image_paths) != set(self.images):
             raise ValueError("相机帧与数据集特征不匹配")
         frame = {
             "observation.state": np.array([observation.joint_positions[name] for name in JOINTS], dtype=np.float32),
-            "action": np.array([action.joint_positions[name] for name in JOINTS], dtype=np.float32),
             "task": task,
         }
+        if self.record_actions:
+            frame["action"] = np.array([action.joint_positions[name] for name in JOINTS], dtype=np.float32)
         if not self.images:
             frame["observation.environment_state"] = frame["observation.state"].copy()
         for name, path in observation.image_paths.items():
