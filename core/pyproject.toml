@@ -1,0 +1,16 @@
+# Python 核心包配置
+# Created on 2026-11-01; Updated on 2026-11-01
+# @author: https://github.com/Linmoqian
+[project]
+name = "xiaoxia-core"
+version = "0.1.0"
+description = "小虾台采集、通信、训练与推理核心"
+requires-python = ">=3.11"
+dependencies = []
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xiaoxia_core"]
