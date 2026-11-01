@@ -23,7 +23,12 @@ class ImitationWorker:
 
     def progress(self, **values):
         self.state.update(values)
-        atomic_json(self.directory / 'status.json', self.state)
+        try:
+            atomic_json(self.directory / 'status.json', self.state)
+        except PermissionError:
+            # Windows 读句柄可能持续占用进度文件；保留内存状态，下次进度再发布。
+            # 最终结果仍由任务结束路径严格持久化，不能伪装任务完成。
+            pass
 
     def export(self):
         from ..contracts import Action, Observation
