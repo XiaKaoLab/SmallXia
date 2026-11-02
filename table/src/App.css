@@ -25,7 +25,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
 .virtual-camera-preview [hidden] { display: none !important; }
 
 /* 只读显示对齐的关节角度面板。 */
-.hardware-alignment { position: absolute; z-index: 7; top: 150px; left: 50%; transform: translateX(-50%); width: min(360px, calc(100% - 32px)); padding: 12px; border: 1px solid #ffffffb3; border-radius: 12px; background: #f5faf5e8; backdrop-filter: blur(16px); color: #455d54; font-size: 11px; }
+.hardware-alignment { position: absolute; z-index: 15; top: 12px; left: 50%; transform: translateX(-50%); width: min(360px, calc(100% - 32px)); padding: 12px; border: 1px solid #ffffffb3; border-radius: 12px; background: #f5faf5e8; backdrop-filter: blur(16px); color: #455d54; font-size: 11px; }
 .hardware-alignment[hidden] { display: none; }
 .hardware-alignment > div:first-child { display: flex; align-items: center; gap: 8px; }
 .hardware-alignment > div:first-child span { flex: 1; }
@@ -67,3 +67,17 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
 /* 校准成功提示，独立于自动关闭的面板。Updated on 2026-11-02 */
 .calibration-saved-notice { position: absolute; z-index: 12; top: 24px; left: 50%; transform: translateX(-50%); padding: 10px 18px; border: 1px solid #b9d9c8; border-radius: 10px; background: #e5f5ecf2; color: #35574b; box-shadow: 0 6px 24px #35574b18; font-size: 13px; pointer-events: none; }
 .calibration-saved-notice[hidden] { display: none; }
+
+/* 顶部映射胶囊，按需展开六轴角度。
+   Created on 2026-11-02; Updated on 2026-11-02
+   @author: https://github.com/Linmoqian */
+.hardware-alignment.is-mapping { width: max-content; max-width: calc(100% - 24px); padding: 6px 10px 6px 16px; border-radius: 999px; box-shadow: 0 4px 18px #29473712; }
+.hardware-alignment.is-mapping > div:first-child { gap: 10px; white-space: nowrap; }
+.hardware-alignment.is-mapping > div:first-child > span { flex: 0 0 auto; }
+.hardware-alignment.is-mapping button { border-radius: 999px; padding: 0 10px; }
+.hardware-alignment.is-mapping:not([data-expanded="true"]) .alignment-values,
+.hardware-alignment.is-mapping:not([data-expanded="true"]) > p { display: none; }
+.hardware-alignment.is-mapping[data-expanded="true"] { width: min(420px, calc(100% - 24px)); border-radius: 22px; padding: 8px 12px 12px; }
+.hardware-alignment .mapping-boundary { color: #856b44; font-size: 10px; }
+.hardware-alignment .mapping-boundary[hidden] { display: none; }
+@media (max-width: 900px) { .hardware-alignment.is-mapping > div:first-child { gap: 6px; } .hardware-alignment.is-mapping button { padding: 0 7px; } }

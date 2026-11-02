@@ -24,6 +24,8 @@ export class HardwareAlignmentDisplay {
   private readonly status = document.createElement("span");
   private readonly values = document.createElement("div");
   private readonly title = document.createElement("strong");
+  private readonly detailsButton = document.createElement("button");
+  private readonly boundary = document.createElement("span");
   private readonly stopButton = document.createElement("button");
   private readonly calibrationProgress = document.createElement("p");
   private readonly stepButton = document.createElement("button");
@@ -44,7 +46,15 @@ export class HardwareAlignmentDisplay {
     this.title.textContent = "机械臂 · 显示对齐";
     this.stopButton.textContent = "停止跟随";
     this.stopButton.onclick = () => this.stop();
-    heading.append(this.title, this.status, this.stopButton); this.stepButton.hidden = true;
+    this.detailsButton.textContent = "角度"; this.detailsButton.hidden = true;
+    this.detailsButton.setAttribute("aria-expanded", "false");
+    this.detailsButton.onclick = () => {
+      const expanded = this.panel.dataset.expanded !== "true";
+      this.panel.dataset.expanded = String(expanded);
+      this.detailsButton.setAttribute("aria-expanded", String(expanded));
+    };
+    this.boundary.className = "mapping-boundary"; this.boundary.hidden = true;
+    heading.append(this.title, this.status, this.boundary, this.detailsButton, this.stopButton); this.stepButton.hidden = true;
     this.calibrationProgress.hidden = true; this.calibrationProgress.setAttribute("aria-live", "polite");
     this.panel.append(heading, this.calibrationProgress, this.values, this.warning, this.stepButton);
     this.savedNotice.className = "calibration-saved-notice"; this.savedNotice.hidden = true;
@@ -56,6 +66,9 @@ export class HardwareAlignmentDisplay {
   private async follow(session: string, port: string, mode = "alignment"): Promise<void> {
     this.stop();
     clearTimeout(this.noticeTimer); this.savedNotice.hidden = true;
+    this.panel.classList.toggle("is-mapping", mode === "mapping");
+    this.panel.dataset.expanded = "false"; this.detailsButton.setAttribute("aria-expanded", "false");
+    this.detailsButton.hidden = mode !== "mapping"; this.boundary.hidden = true;
     const generation = ++this.generation;
     this.title.textContent = mode === "mapping" ? "真机 → 仿真" : "机械臂 · 显示对齐";
     this.stopButton.textContent = mode === "mapping" ? "停止映射" : "停止跟随";
@@ -76,9 +89,13 @@ export class HardwareAlignmentDisplay {
           this.noticeTimer = setTimeout(() => { this.savedNotice.hidden = true; }, 4000);
           return;
         }
-        this.status.textContent = `${state.port} · ${state.status === "following" ? "只读跟随" : state.status === "failed" ? "连接失败" : state.status === "stopped" ? "已停止" : "连接中"}`;
+        this.status.textContent = `${state.port} · ${state.status === "following" ? "跟随中" : state.status === "failed" ? "连接失败" : state.status === "stopped" ? "已停止" : "连接中"}`;
         const calibrating = state.status === "checking_range";
         this.panel.classList.toggle("is-calibrating", calibrating);
+        this.panel.classList.toggle("is-mapping", mode === "mapping" && !calibrating);
+        this.detailsButton.hidden = mode !== "mapping" || calibrating;
+        this.boundary.textContent = state.error ? "异常" : "运动边界";
+        this.boundary.hidden = mode !== "mapping" || calibrating || (!state.model_limited && !state.error);
         this.stepButton.hidden = !calibrating; this.calibrationProgress.hidden = !calibrating;
         this.title.textContent = calibrating ? "机械臂 · 校准向导" : mode === "mapping" ? "真机 → 仿真" : "机械臂 · 校准跟随";
         if (calibrating) {
