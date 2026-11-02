@@ -84,7 +84,7 @@ export class HardwareAlignmentDisplay {
           this.positions = null;
           this.calibrationProgress.textContent = "请转动各个关节";
           this.status.textContent = `${state.port} · ${state.status === "waiting_center" ? "等待开始" : "六轴采集中"}`;
-          this.stepButton.textContent = state.status === "waiting_center" ? "开始采集全部关节" : "确认全部范围并保存";
+          this.stepButton.textContent = state.status === "waiting_center" ? "开始采集" : "保存校准";
           this.stepButton.disabled = this.stepPending;
           this.stepButton.onclick = async () => {
             if (this.stepPending || generation !== this.generation) return;
@@ -108,8 +108,7 @@ export class HardwareAlignmentDisplay {
             const middle = document.createElement("i"); middle.style.left = `${range.mid / 4095 * 100}%`;
             track.append(markers, middle, slider);
             const angle = document.createElement("output"); angle.textContent = `${((range.current - range.mid) * 360 / 4095).toFixed(1)}°`;
-            const limits = document.createElement("small"); limits.textContent = `最小 ${range.min} · 中值 ${range.mid.toFixed(1)} · 最大 ${range.max} 刻度${name === "wrist_roll" ? "（保存全周 0～4095）" : ""}`;
-            row.append(title, track, angle, limits); return row;
+            row.append(title, track, angle); return row;
           }) : []));
         }
         if (!calibrating) this.values.classList.remove("calibration-joints");
