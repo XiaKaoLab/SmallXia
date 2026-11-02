@@ -95,3 +95,5 @@ python -m xiaoxia_core.imitation rollout --profile configs/so100.local.yaml --ch
 - 当前 Conda base 安装版 lerobot/robots/so_follower/so_follower.py 与 lerobot/motors/motors_bus.py。
 
 2026-11-02 COM17 实机检查：读取并复用现有 EEPROM 校准，已导出官方格式文件；校准寄存器写入次数 0，无实机运动指令。读取单位 encoder_ticks，输出 rad；停止后 disconnected=true。夹爪当前位置仍超出设备已存范围，界面保留异常提示，不据此宣称历史校准精确。逐轴向导、腕部全周特例和取消回滚仅通过假总线验证，未在实机重新走端点。证据见 official-calibration-check.json。
+
+校准积木 MODE 可选 reuse（默认）或 recalibrate（强制重新采集）。桌面桥 alignment_recalibrate 传 port 启动重新校准；仍先等待面板“记录中位并检查行程”，不会直接改写零点。面板显示当前关节操作提示和六轴完成进度。

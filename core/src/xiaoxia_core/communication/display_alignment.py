@@ -19,7 +19,7 @@ class DisplayAlignment:
     root = Path(__file__).resolve().parents[3] / 'data/display_alignment'
 
     @classmethod
-    def start(cls, port, *, mapping=False):
+    def start(cls, port, *, mapping=False, recalibrate=False):
         if not isinstance(port, str) or not re.fullmatch(r'COM[1-9][0-9]*', port):
             raise ValueError('请选择实际 COM 口')
         cls.root.mkdir(parents=True, exist_ok=True)
@@ -50,7 +50,7 @@ class DisplayAlignment:
             sleep(.05)
         directory = cls.root / uuid4().hex
         directory.mkdir()
-        atomic_json(directory / 'request.json', {'port': port, 'mode': 'mapping' if mapping else 'alignment'})
+        atomic_json(directory / 'request.json', {'port': port, 'mode': 'mapping' if mapping else 'alignment', 'recalibrate': bool(recalibrate)})
         atomic_json(directory / 'state.json', {'status': 'connecting', 'port': port})
         (directory / 'lease').touch()
         with (directory / 'worker.log').open('ab') as log:
@@ -148,7 +148,7 @@ class DisplayAlignment:
             def publish(**values):
                 state.update(values, timestamp=time())
                 atomic_json(directory / 'state.json', state)
-            raw_calibration, calibration_path, calibration_source = GuidedArmCalibration(bus, directory, publish).ensure()
+            raw_calibration, calibration_path, calibration_source = GuidedArmCalibration(bus, directory, publish).ensure(force=request.get('recalibrate', False))
             calibration = bus.read_calibration()
             from ..safety import JointLimits
             limits = JointLimits.from_urdf(Path(__file__).resolve().parents[4] / 'table/public/robots/so101/so101_new_calib.urdf')

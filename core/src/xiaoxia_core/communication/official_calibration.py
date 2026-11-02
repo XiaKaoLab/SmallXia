@@ -92,10 +92,12 @@ class GuidedArmCalibration:
         finally:
             path.unlink(missing_ok=True)
 
-    def ensure(self):
+    def ensure(self, *, force=False):
         self.require_manual_mode()
         original = {name: asdict(value) for name, value in self.bus.read_calibration().items()}
         try:
+            if force:
+                raise ValueError("已选择重新校准，不复用原行程数据")
             path, source = OfficialCalibrationStore.reuse(original, self.bus.port)
             return original, path, source
         except ValueError as error:
@@ -117,6 +119,7 @@ class GuidedArmCalibration:
             else:
                 raise InterruptedError('已取消校准')
             raw = {}
+            labels = ('肩部旋转', '肩部抬升', '肘部弯曲', '腕部弯曲', '腕部旋转', '夹爪')
             for index, name in enumerate(JOINTS):
                 low = high = None
                 while self.active():
@@ -129,7 +132,7 @@ class GuidedArmCalibration:
                     full_turn = name == 'wrist_roll'
                     self.publish(status='checking_range', calibration_stage='range', joint_index=index,
                         active_joint=name, current_tick=value, range_min=low, range_max=high,
-                        instruction=('腕部旋转按官方全周范围 0～4095，检查后确认。' if full_turn else '手动移动当前关节至两个机械端点，确认最小、最大值后继续。'),
+                        instruction=(f'第 {index + 1}/6 轴：{labels[index]}。腕部旋转按官方全周范围 0～4095；手动检查转动正常后确认，不必寻找硬限位。' if full_turn else f'第 {index + 1}/6 轴：{labels[index]}。仅手动移动这个关节，分别到达两个机械端点；夹爪需完全闭合、完全张开。读数已覆盖两端后，点击确认。' if name == 'gripper' else f'第 {index + 1}/6 轴：{labels[index]}。仅手动移动这个关节，分别到达两个机械端点，程序持续记录最小和最大位置；覆盖两端后点击确认进入下一关节。'),
                         completed_ranges=raw)
                     if self.command('range', index):
                         if not full_turn and high - low < 100:

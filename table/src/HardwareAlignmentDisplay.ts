@@ -12,6 +12,7 @@ interface AlignmentState {
   model_limited?: boolean; limit_reason?: string; instruction?: string;
   calibration_stage?: string; joint_index?: number; active_joint?: string;
   current_tick?: number; range_min?: number; range_max?: number; calibration_source?: string;
+  completed_ranges?: Record<string, { range_min: number; range_max: number }>;
 }
 export class HardwareAlignmentDisplay {
   positions: Record<string, number> | null = null;
@@ -23,6 +24,7 @@ export class HardwareAlignmentDisplay {
   private readonly values = document.createElement("div");
   private readonly title = document.createElement("strong");
   private readonly stopButton = document.createElement("button");
+  private readonly calibrationProgress = document.createElement("p");
   private readonly stepButton = document.createElement("button");
   private stepPending = false;
   private readonly warning = document.createElement("p");
@@ -39,7 +41,8 @@ export class HardwareAlignmentDisplay {
     this.stopButton.textContent = "停止跟随";
     this.stopButton.onclick = () => this.stop();
     heading.append(this.title, this.status, this.stopButton); this.stepButton.hidden = true;
-    this.panel.append(heading, this.values, this.warning, this.stepButton);
+    this.calibrationProgress.hidden = true; this.calibrationProgress.setAttribute("aria-live", "polite");
+    this.panel.append(heading, this.calibrationProgress, this.values, this.warning, this.stepButton);
     host.append(this.panel); window.addEventListener("table:alignment-start", this.start);
   }
 
@@ -49,7 +52,7 @@ export class HardwareAlignmentDisplay {
     this.title.textContent = mode === "mapping" ? "真机 → 仿真" : "机械臂 · 显示对齐";
     this.stopButton.textContent = mode === "mapping" ? "停止映射" : "停止跟随";
     this.session = session; this.panel.hidden = false; this.status.textContent = `${port} · 连接中`;
-    this.values.replaceChildren(); this.stepButton.hidden = true; this.stepPending = false;
+    this.values.replaceChildren(); this.stepButton.hidden = true; this.calibrationProgress.hidden = true; this.stepPending = false;
     this.warning.textContent = "正在读取并核对官方校准；缺失时进入逐轴检查。";
     const requestId = crypto.randomUUID(); this.requestId = requestId;
     let mapped = false;
@@ -58,9 +61,13 @@ export class HardwareAlignmentDisplay {
         if (generation !== this.generation) return;
         this.status.textContent = `${state.port} · ${state.status === "following" ? "只读跟随" : state.status === "failed" ? "连接失败" : state.status === "stopped" ? "已停止" : "连接中"}`;
         const calibrating = state.status === "waiting_center" || state.status === "checking_range";
-        this.stepButton.hidden = !calibrating;
+        this.stepButton.hidden = !calibrating; this.calibrationProgress.hidden = !calibrating;
+        this.title.textContent = calibrating ? "机械臂 · 校准向导" : mode === "mapping" ? "真机 → 仿真" : "机械臂 · 校准跟随";
         if (calibrating) {
           this.positions = null;
+          this.calibrationProgress.textContent = state.status === "waiting_center"
+            ? "步骤 1：摆放中位 → 步骤 2：逐轴检查 → 步骤 3：保存校准"
+            : JOINTS.map(([name, label], index) => `${state.completed_ranges?.[name] ? "✓" : index === state.joint_index ? "▶" : "○"} M${index + 1} ${label}`).join(" · ");
           this.status.textContent = `${state.port} · ${state.status === "waiting_center" ? "等待中位" : `检查 M${(state.joint_index ?? 0) + 1}`}`;
           this.stepButton.textContent = state.status === "waiting_center" ? "记录中位并检查行程" : state.joint_index === 5 ? "确认夹爪范围并保存" : "确认范围 · 下一关节";
           this.stepButton.disabled = this.stepPending;

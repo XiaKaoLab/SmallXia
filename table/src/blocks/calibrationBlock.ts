@@ -15,7 +15,7 @@ export function registerCalibrationBlock(): void {
           const options = armTargetCatalog.options(this.getValue()).filter(([, value]) => value !== "simulation");
           return options.length ? options : [["未发现串口", "unavailable"]];
         }), "TARGET");
-      this.appendDummyInput().appendField("已有校准自动复用");
+      this.appendDummyInput().appendField(new Blockly.FieldDropdown([["已有校准自动复用", "reuse"], ["重新校准", "recalibrate"]]), "MODE");
       this.appendDummyInput().appendField("缺失时逐轴检查最小和最大位置");
       this.setColour("#638b80"); this.setPreviousStatement(true); this.setNextStatement(true);
       this.setTooltip("读取并核对设备官方校准。有效时直接复用；缺失时在面板引导记录中位和逐轴极限，完成后保存。手动移动关节，不自动驱动电机。");
@@ -24,6 +24,6 @@ export function registerCalibrationBlock(): void {
   pythonGenerator.forBlock[CALIBRATION_BLOCK] = block => {
     const target = String(block.getFieldValue("TARGET"));
     if (!/^serial:COM[1-9][0-9]*$/.test(target)) throw new Error("校准机械臂请选择实际 COM 口");
-    return `# 功能：检查并复用官方机械臂校准。\n# Created on 2026-11-02; Updated on 2026-11-02\n# @author: https://github.com/Linmoqian\nimport json\nfrom xiaoxia_core.communication.display_alignment import DisplayAlignment\nprint(json.dumps({"display_alignment": DisplayAlignment.start(${JSON.stringify(target.slice(7))})}, ensure_ascii=False))\n`;
+    return `# 功能：检查并复用官方机械臂校准。\n# Created on 2026-11-02; Updated on 2026-11-02\n# @author: https://github.com/Linmoqian\nimport json\nfrom xiaoxia_core.communication.display_alignment import DisplayAlignment\nprint(json.dumps({"display_alignment": DisplayAlignment.start(${JSON.stringify(target.slice(7))}, recalibrate=${block.getFieldValue("MODE") === "recalibrate" ? "True" : "False"})}, ensure_ascii=False))\n`;
   };
 }

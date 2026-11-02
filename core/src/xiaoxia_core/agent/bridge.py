@@ -133,9 +133,11 @@ def main() -> None:
         request = json.loads(sys.stdin.readline())
         if not isinstance(request, dict):
             raise ValueError("桌面请求必须为对象")
-        if request.get('action') in ('alignment_map', 'alignment_preview', 'alignment_stop', 'arm_calibration_action'):
+        if request.get('action') in ('alignment_map', 'alignment_preview', 'alignment_stop', 'arm_calibration_action', 'alignment_recalibrate'):
             from ..communication.display_alignment import DisplayAlignment
-            if request['action'] == 'arm_calibration_action':
+            if request['action'] == 'alignment_recalibrate':
+                DesktopBridge.emit({'type': 'data', 'data': DisplayAlignment.start(request.get('port'), recalibrate=True)})
+            elif request['action'] == 'arm_calibration_action':
                 DesktopBridge.emit({'type': 'data', 'data': DisplayAlignment.calibration_action(request.get('session_id'), request.get('stage'), request.get('index'))})
             elif request['action'] == 'alignment_preview':
                 DisplayAlignment.stream(request.get('session_id'), DesktopBridge.emit)
