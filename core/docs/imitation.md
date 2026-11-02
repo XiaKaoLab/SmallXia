@@ -82,7 +82,7 @@ python -m xiaoxia_core.imitation rollout --profile configs/so100.local.yaml --ch
 
 没有有效数据时进入手动向导：安全支撑并保持六轴力矩关闭、位置模式；将各关节放到行程中部，点击“记录中位并检查行程”。此时调用当前安装版 LeRobot 的 set_half_turn_homings，然后同时显示 M1～M6 的最小、当前、最大编码器值和中值，手动活动全部关节到两端，再一次确认保存。非全周关节变化少于 100 刻度不能确认。腕部旋转按官方全周特例设为 0～4095，其余关节使用观测极限。最后写入偏移和范围、读回核对并保存官方格式文件。中途停止或租约到期会尝试恢复校准前快照；恢复失败明确报错。突然断电或进程被强杀无法保证自动恢复，原始快照保存在会话的 calibration-before.json。整个过程不自动驱动、使能力矩或切换模式。
 
-单位显式区分：Present_Position 使用 normalize=False，输入是已应用 Homing_Offset 的编码器计数，不重复减偏移。五轴按本机 LeRobot DEGREES 公式 `(tick - (range_min + range_max) / 2) * 2π / 4095` 转成 URDF 弧度；当前 so101_new_calib 模型也采用行程中点零位，不做 ±180° 折返，不在每次连接重新归零。夹爪遵守官方闭合 0、张开 100 的比例，再转换到模型 0～upper 的角度。这是用于显示的线性近似，不是精确夹爪几何标定。实机 SO-100 与显示 SO-101 的方向、几何一致性仍需六轴同时人工核对，geometry_verified 和 verified_for_motion 保持 false。
+单位显式区分：Present_Position 使用 normalize=False，输入是已应用 Homing_Offset 的编码器计数，不重复减偏移。五轴按本机 LeRobot DEGREES 公式 `(tick - (range_min + range_max) / 2) * 2π / 4095` 转成 URDF 弧度；当前 so101_new_calib 模型也采用行程中点零位，不做 ±180° 折返，不在每次连接重新归零。夹爪按 `(tick - range_min) * 2π / 4095` 转换，闭合端为零，不再按 0～100 比例缩放到模型行程。实机 SO-100 与显示 SO-101 的方向、几何一致性仍需六轴同时人工核对，geometry_verified 和 verified_for_motion 保持 false。
 
 运行回执 display_alignment 启动持久 alignment_preview 流；alignment_stop 停止并释放串口。新桥动作 arm_calibration_action 接受 session_id、stage（center/range）和 index（均为 -1），只接受当前步骤，防止双击跳过关节。界面断流后租约最多 10 秒到期。新运行会先停止同串口旧会话。
 
@@ -111,3 +111,5 @@ python -m xiaoxia_core.imitation rollout --profile configs/so100.local.yaml --ch
 腕部显示旋转修正：桌面桥 alignment_wrist_offset 传 session_id 和 degrees，将偏移保存到 data/display_frames/<COM>-so100.json，绑定当前六轴校准指纹。新映射自动加载，校准改变后旧偏移不沿用。只修正 wrist_roll，不修改编码器计数、EEPROM 或夹爪开合。SO-100 腕轴 +Y 指向基座，从夹爪前端朝基座看，逆时针 90° 对应关节偏移 -90°；角度按全周等价值表示，模型原有限位和碰撞约束仍保留。
 
 2026-11-02 用户继续校正夹爪方向：在先前 -90° 偏移上追加 180°，当前 COM17 对应校准的显示偏移为 +90°，已重新加载映射。该值仅修改显示对齐，未写电机参数。
+
+2026-11-02：夹爪映射取消比例缩放，使用编码器实际转角，保留 SO-100 模型的闭合零位。校准范围外读数不在换算时截断；模型原有限位和碰撞约束仍在发送阶段生效。腕部 +90° 显示修正不变。

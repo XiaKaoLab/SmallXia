@@ -187,9 +187,9 @@ class DisplayAlignment:
             wrist_offset = DisplayFrame.load(request["port"], raw_calibration)
             state["wrist_roll_offset_deg"] = wrist_offset
             state.update(angle_basis='lerobot_degrees_to_urdf_v1', input_unit='encoder_ticks', output_unit='rad',
-                gripper_unit='percent_to_urdf_rad', geometry_verified=False,
+                gripper_unit='encoder_ticks_to_rad', gripper_zero='calibrated_closed_position', geometry_verified=False,
                 calibration_source=calibration_source, calibration_path=calibration_path,
-                instruction='已复用匹配的官方校准；五轴按行程中点转弧度，夹爪按开合比例转换。')
+                instruction='已复用匹配的校准，六轴按编码器转角映射。')
             atomic_json(directory / 'alignment.json', {**request, 'angle_basis': state['angle_basis'],
                 'calibration_path': calibration_path, 'calibration_source': calibration_source,
                 'device_calibration': raw_calibration, 'geometry_verified': False, 'verified_for_motion': False})

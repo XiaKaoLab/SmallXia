@@ -103,7 +103,7 @@ class OfficialCalibrationStore:
 
 
 class OfficialUrdfMap:
-    """新校准模型：五轴按官方 DEGREES 转弧度；夹爪开合比例映射到模型 0..upper。"""
+    """新校准模型：六轴按编码器刻度换算弧度；五轴以中值为零，夹爪以闭合端为零。"""
     def __init__(self, calibration, limits):
         self.calibration = OfficialCalibrationStore.validate(calibration)
         self.limits = limits
@@ -115,8 +115,8 @@ class OfficialUrdfMap:
         for name in JOINTS:
             row = self.calibration[name]
             if name == 'gripper':
-                fraction = (ticks[name] - row['range_min']) / (row['range_max'] - row['range_min'])
-                result[name] = min(1, max(0, fraction)) * self.limits.joints[name].upper
+                # URDF 夹爪闭合为零；保留实际编码器转角，不按模型行程缩放。
+                result[name] = (ticks[name] - row['range_min']) * 2 * pi / 4095
             else:
                 result[name] = (ticks[name] - (row['range_min'] + row['range_max']) / 2) * 2 * pi / 4095
         return result
