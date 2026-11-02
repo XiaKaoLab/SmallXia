@@ -1,4 +1,4 @@
-/** 功能：复用已保存的起点和方向，将实机关节反馈映射到 table 仿真模型。
+/** 功能：复用官方行程校准与模型坐标转换，将实机关节反馈映射到 table 仿真模型。
  * Created on 2026-11-02; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
@@ -16,9 +16,9 @@ export function registerArmMappingBlock(): void {
           const ports = armTargetCatalog.options(this.getValue()).filter(([, value]) => value !== "simulation");
           return ports.length ? ports : [["未发现串口", "unavailable"]];
         }), "TARGET");
-      this.appendDummyInput().appendField("使用已保存的固定零点和六轴方向");
+      this.appendDummyInput().appendField("复用官方校准 · 缺失则引导检查");
       this.setPreviousStatement(true); this.setNextStatement(true); this.setColour("#638b80");
-      this.setTooltip("先单独运行校准机械臂完成显示对齐，再禁用或移除校准积木。运行本积木只读实机编码器，按固定零点计算关节角度并发送到仿真模型；不改写电机、不使能力矩。面板可停止映射。");
+      this.setTooltip("自动复用匹配的官方校准；缺失时引导逐轴检查最小和最大位置。运行本积木只读实机编码器，按官方单位转换计算关节角度并发送到仿真模型；已有有效校准时不改写参数、不使能力矩。面板可停止映射。");
     },
   };
   pythonGenerator.forBlock[ARM_MAPPING_BLOCK] = block => {

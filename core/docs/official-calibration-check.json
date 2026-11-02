@@ -1,0 +1,26 @@
+{
+  "session": "3113aa92475c4770bfe1af9c9885d295",
+  "status": "stopped",
+  "disconnected": true,
+  "calibration_source": "device_eeprom",
+  "calibration_path": "C:\\Users\\30470\\.cache\\huggingface\\lerobot\\calibration\\robots\\so_follower\\xiaoxia_COM17_cc6356e7d58b.json",
+  "calibration_write_count": 0,
+  "input_unit": "encoder_ticks",
+  "output_unit": "rad",
+  "joint_positions": {
+    "shoulder_pan": -0.08055365778435368,
+    "shoulder_lift": -1.9041350344834838,
+    "elbow_flex": 1.6946955242441644,
+    "wrist_flex": -1.7514666735398041,
+    "wrist_roll": -0.10203463319351465,
+    "gripper": 0.0
+  },
+  "outside_device_calibration": [
+    "gripper"
+  ],
+  "error": null,
+  "checked_on": "2026-11-02",
+  "physical_motion_commands": 0,
+  "geometry_verified": false,
+  "guided_calibration_verification": "fake_bus_only: six axes, wrist full-turn, save/readback, cancel rollback"
+}

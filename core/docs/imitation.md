@@ -76,27 +76,22 @@ python -m xiaoxia_core.imitation rollout --profile configs/so100.local.yaml --ch
 参考：[用户指定 SO-100 中文文档](https://hugging-face.cn/docs/lerobot/so100)、[官方 SO-101 文档](https://huggingface.co/docs/lerobot/so101)、[官方模仿学习流程](https://huggingface.co/docs/lerobot/il_robots)。
 
 
-## 积木显示对齐
+## 官方校准与真机映射
 
-“机械臂”分类中的“校准机械臂”积木选择 COM 口，并填写六轴在 URDF 坐标中的已知参考角度（度）和正反方向。先手动将安全支撑、力矩关闭的实机摆到已知姿态，再运行。默认 0° 只是输入初值，不代表当前实机零点。程序保存固定零点 `zero_tick = reference_tick - direction × reference_rad × 4095 / (2π)`，跟随按 `angle_rad = direction × (tick - zero_tick) × 2π / 4095` 计算；不再读取当前仿真姿态，不做 ±180° 差值折返。零点和方向的物理准确性仍需人工逐轴核对；它不是 LeRobot 电机行程校准，不产生可用于实机运动的已验证映射。
+“机械臂”分类的“校准机械臂”和“映射真机到仿真”均先读取六轴 EEPROM 校准快照。优先查找官方校准目录中与六轴 ID、方向、Homing_Offset、range_min、range_max 完全匹配的 JSON；已有文件不匹配时绝不将它覆盖到设备。如果 EEPROM 中已有结构有效、非出厂全量程的行程数据，直接导出为官方格式 JSON 并复用，不重复采集。该匹配是设备配置指纹，不是电机唯一序列号认证，也不证明历史端点采集的精度。
 
-显示角度由参考角度加上有向编码器增量得到，跨零按最近一圈解释；不支持通过一次采样推断多圈旋转。模型显示继续受关节限位和碰撞约束，可能停在边界，角度面板保留测量值。设备范围异常单独提示，不改写或掩盖。
+没有有效数据时进入手动向导：安全支撑并保持六轴力矩关闭、位置模式；将各关节放到行程中部，点击“记录中位并检查行程”。此时调用当前安装版 LeRobot 的 set_half_turn_homings，然后按 M1 到 M6 逐轴显示最小、当前、最大编码器值，手动走到两端并确认。非全周关节变化少于 100 刻度不能确认。腕部旋转按官方全周特例设为 0～4095，其余关节使用观测极限。最后写入偏移和范围、读回核对并保存官方格式文件。中途停止或租约到期会尝试恢复校准前快照；恢复失败明确报错。突然断电或进程被强杀无法保证自动恢复，原始快照保存在会话的 calibration-before.json。整个过程不自动驱动、使能力矩或切换模式。
 
-运行结果中的 `display_alignment` 回执启动持久 `alignment_preview` 桌面流；“停止跟随”调用 `alignment_stop`。前端退出或断流后租约最多 10 秒到期，工作进程释放串口；重新对齐会先停止该串口的旧会话。后台训练不停止，跟随时临时隐藏并行训练场景，停止后恢复。参考关系写入 `core/data/display_alignment/<id>/alignment.json`，标记 `verified_for_motion=false`，不会覆盖硬件配置。
+单位显式区分：Present_Position 使用 normalize=False，输入是已应用 Homing_Offset 的编码器计数，不重复减偏移。五轴按本机 LeRobot DEGREES 公式 `(tick - (range_min + range_max) / 2) * 2π / 4095` 转成 URDF 弧度；当前 so101_new_calib 模型也采用行程中点零位，不做 ±180° 折返，不在每次连接重新归零。夹爪遵守官方闭合 0、张开 100 的比例，再转换到模型 0～upper 的角度。这是用于显示的线性近似，不是精确夹爪几何标定。实机 SO-100 与显示 SO-101 的方向、几何一致性仍需逐轴人工核对，geometry_verified 和 verified_for_motion 保持 false。
 
-2026-11-02 COM17 检查：积木已启动只读流，界面显示六轴角度与夹爪范围异常，停止按钮使会话进入 stopped，原工作区恢复。调试命令桥出现回执超时，未重发启动命令；随后通过实际 UI 和会话文件确认执行结果。没有驱动实机，未验证人工摆放是否匹配或各轴运动方向。TypeScript 与 Python 语法检查通过，未完整构建。
+运行回执 display_alignment 启动持久 alignment_preview 流；alignment_stop 停止并释放串口。新桥动作 arm_calibration_action 接受 session_id、stage（center/range）和 index（-1/0..5），只接受当前步骤，防止双击跳过关节。界面断流后租约最多 10 秒到期。新运行会先停止同串口旧会话。
 
+映射积木直接检查并复用官方数据，不要求先运行另一个校准积木；两个积木同时启用仍提示分开运行，避免串口争用。每帧固定发送至 table 模型路由，验证目标为非物理 display_target。关节范围和碰撞路径继续限制模型姿态；面板区分测量值与实际采用值，保留实机超出设备校准范围的提示。播放录制期间不启动映射。历史录制回放仍属于相对仿真回放，此处不改变它的语义。
 
-## 编程区真机映射
+依据：
+- https://huggingface.co/docs/lerobot/so100#calibrate
+- https://huggingface.co/docs/lerobot/main/cheat-sheet#calibration
+- https://github.com/TheRobotStudio/SO-ARM100/blob/main/Simulation/SO101/README.md
+- 当前 Conda base 安装版 lerobot/robots/so_follower/so_follower.py 与 lerobot/motors/motors_bus.py。
 
-“机械臂”分类新增“映射真机到仿真”（table_map_hardware_arm）积木，TARGET 选择发现的串口。先单独运行“校准机械臂”，人工核对仿真与实机起点、六轴方向，完成后禁用或移除该校准积木，再运行映射积木。映射使用同串口最近一次固定零点校准（`angle_basis=fixed_urdf_zero_v1`），不在每次启动时重新把当前读数当零点；同时运行校准和映射积木会明确提示分开操作。
-
-后端 `DisplayAlignment.start_mapping(port)` 返回 mode=mapping 的会话，加载保存的参考角度、编码器起点和方向。连接时只读核对六轴设备校准快照，变化时要求重新对齐，不自动修正 EEPROM。读取仍要求力矩关闭，任意写寄存器和力矩方法均被只读总线覆盖为报错。
-
-每次读取后把映射角度限制到 URDF 范围，固定发送到 `http://127.0.0.1:8766/api/v1/robots/table/motions`；目标必须声明为仿真 display_target，不接受动态 robot_id/URL。模型继续使用既有碰撞路径限制，流中区分 joint_positions（映射测量值）和 applied_joint_positions（模型应用值）。面板标题“真机 → 仿真”，显示六轴角度，受限时用箭头显示实际采用值，保留设备校准范围异常提示。停止后模型保留最后应用姿态，真实串口释放；播放录制期间不启动真机映射。
-
-开发桥动作 `alignment_map` 传 port；`alignment_preview`、`alignment_stop` 传 session_id。流为持久连接，不为每帧启动 Python 或 LLM；界面断开后租约到期退出。软件映射约定不构成实机控制用的绝对角度标定，人工起点和方向确认仍是几何对应的前提。
-
-2026-11-02 通过当前 WebView 的映射积木联调 COM17：反馈时间戳连续更新，停止后的 table API 角度与最后应用值一致，串口已释放，原工作区完整恢复。仅调用实机读指令，未发送实机运动指令；夹爪设备范围异常仍保留。证据见 arm-mapping-check.json。TypeScript、Python 语法检查通过，未执行完整构建。
-
-旧的相对显示对齐记录不能自动转换成已确认物理零点，因此真机映射会要求重新填写参考角度并校准。设备校准快照变化时仍要求重新校准；读取异常单圈范围会停止。历史录制回放仍明确属于相对仿真回放，本次不改变其语义。
+2026-11-02 COM17 实机检查：读取并复用现有 EEPROM 校准，已导出官方格式文件；校准寄存器写入次数 0，无实机运动指令。读取单位 encoder_ticks，输出 rad；停止后 disconnected=true。夹爪当前位置仍超出设备已存范围，界面保留异常提示，不据此宣称历史校准精确。逐轴向导、腕部全周特例和取消回滚仅通过假总线验证，未在实机重新走端点。证据见 official-calibration-check.json。

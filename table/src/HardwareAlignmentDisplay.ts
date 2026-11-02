@@ -1,4 +1,4 @@
-/** 功能：显示实机六轴只读角度，管理显示对齐流与停止操作。
+/** 功能：显示实机六轴角度，管理官方校准逐轴向导、跟随流与停止操作。
  * Created on 2026-11-02; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
@@ -9,7 +9,9 @@ import { JOINTS } from "./blocks/positionBlock";
 interface AlignmentState {
   status: string; port: string; error?: string; joint_positions?: Record<string, number>;
   outside_device_calibration?: string[]; applied_joint_positions?: Record<string, number>;
-  model_limited?: boolean; limit_reason?: string;
+  model_limited?: boolean; limit_reason?: string; instruction?: string;
+  calibration_stage?: string; joint_index?: number; active_joint?: string;
+  current_tick?: number; range_min?: number; range_max?: number; calibration_source?: string;
 }
 export class HardwareAlignmentDisplay {
   positions: Record<string, number> | null = null;
@@ -21,6 +23,8 @@ export class HardwareAlignmentDisplay {
   private readonly values = document.createElement("div");
   private readonly title = document.createElement("strong");
   private readonly stopButton = document.createElement("button");
+  private readonly stepButton = document.createElement("button");
+  private stepPending = false;
   private readonly warning = document.createElement("p");
   private readonly start = (event: Event) => {
     const session = (event as CustomEvent<{ id: string; port: string; mode?: string }>).detail;
@@ -34,7 +38,8 @@ export class HardwareAlignmentDisplay {
     this.title.textContent = "机械臂 · 显示对齐";
     this.stopButton.textContent = "停止跟随";
     this.stopButton.onclick = () => this.stop();
-    heading.append(this.title, this.status, this.stopButton); this.panel.append(heading, this.values, this.warning);
+    heading.append(this.title, this.status, this.stopButton); this.stepButton.hidden = true;
+    this.panel.append(heading, this.values, this.warning, this.stepButton);
     host.append(this.panel); window.addEventListener("table:alignment-start", this.start);
   }
 
@@ -44,13 +49,33 @@ export class HardwareAlignmentDisplay {
     this.title.textContent = mode === "mapping" ? "真机 → 仿真" : "机械臂 · 显示对齐";
     this.stopButton.textContent = mode === "mapping" ? "停止映射" : "停止跟随";
     this.session = session; this.panel.hidden = false; this.status.textContent = `${port} · 连接中`;
-    this.values.replaceChildren(); this.warning.textContent = mode === "mapping" ? "正在读取实机并加载已保存的显示对齐。" : "请保持实机在积木填写的已知角度，等待记录固定零点。";
+    this.values.replaceChildren(); this.stepButton.hidden = true; this.stepPending = false;
+    this.warning.textContent = "正在读取并核对官方校准；缺失时进入逐轴检查。";
     const requestId = crypto.randomUUID(); this.requestId = requestId;
     let mapped = false;
     try {
       await agentClient.alignmentPreview<AlignmentState>(requestId, session, state => {
         if (generation !== this.generation) return;
         this.status.textContent = `${state.port} · ${state.status === "following" ? "只读跟随" : state.status === "failed" ? "连接失败" : state.status === "stopped" ? "已停止" : "连接中"}`;
+        const calibrating = state.status === "waiting_center" || state.status === "checking_range";
+        this.stepButton.hidden = !calibrating;
+        if (calibrating) {
+          this.positions = null;
+          this.status.textContent = `${state.port} · ${state.status === "waiting_center" ? "等待中位" : `检查 M${(state.joint_index ?? 0) + 1}`}`;
+          this.stepButton.textContent = state.status === "waiting_center" ? "记录中位并检查行程" : state.joint_index === 5 ? "确认夹爪范围并保存" : "确认范围 · 下一关节";
+          this.stepButton.disabled = this.stepPending;
+          this.stepButton.onclick = async () => {
+            if (this.stepPending || generation !== this.generation) return;
+            this.stepPending = true; this.stepButton.disabled = true;
+            try {
+              await agentClient.request({ action: "arm_calibration_action", session_id: session,
+                stage: state.calibration_stage, index: state.joint_index });
+            } catch (error) { if (generation === this.generation) this.warning.textContent = String(error); }
+            finally { if (generation === this.generation) { this.stepPending = false; this.stepButton.disabled = false; } }
+          };
+          this.values.textContent = state.active_joint
+            ? `${JOINTS.find(([name]) => name === state.active_joint)?.[1] ?? state.active_joint} · 最小 ${state.range_min} / 当前 ${state.current_tick} / 最大 ${state.range_max} 刻度` : "";
+        }
         if (state.joint_positions && JOINTS.every(([name]) => Number.isFinite(state.joint_positions![name]))) {
           this.positions = state.applied_joint_positions ?? state.joint_positions;
           if (mode === "mapping" && !mapped) {
@@ -64,9 +89,9 @@ export class HardwareAlignmentDisplay {
           }));
         }
         const limit = state.model_limited ? `模型已停在边界：${state.limit_reason || "姿态约束"}。角度箭头表示实际显示值。` : "";
-        this.warning.textContent = limit + (state.error ?? (state.outside_device_calibration?.length
+        this.warning.textContent = limit + (state.error ?? (calibrating ? state.instruction : undefined) ?? (state.outside_device_calibration?.length
           ? `设备校准范围异常：${state.outside_device_calibration.join("、")}。仅做显示对齐，不能用于实机控制。`
-          : "按已填写参考角度计算固定零点；物理零点和方向尚需人工核对。模型受限位和碰撞约束，不用于实机运动。"));
+          : "已复用官方校准，编码器计数已转换为模型角度；夹爪为开合比例转换。SO-100 与 SO-101 几何一致性尚需核对。"));
       });
     } catch (error) {
       if (generation === this.generation) this.warning.textContent = String(error);
