@@ -56,7 +56,7 @@ class ModelHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
 
     def __init__(self, token: str, limits: JointLimits) -> None:
-        urdf = Path(__file__).resolve().parents[4] / "table/public/robots/so101/so101_new_calib.urdf"
+        urdf = Path(__file__).resolve().parents[4] / "table/public/robots/so100/so100_mid_calib.urdf"
         self.blocks = BlocksControlAPI()
         self.frames = CameraFrames()
         self.camera = VirtualCameraStore({link.attrib["name"] for link in ElementTree.parse(urdf).getroot().findall("link")})
@@ -201,7 +201,7 @@ def main() -> None:
     if not token:
         raise SystemExit("请设置 XIAOXIA_MOTION_TOKEN")
     root = Path(__file__).resolve().parents[4]
-    limits = JointLimits.from_urdf(root / "table/public/robots/so101/so101_new_calib.urdf")
+    limits = JointLimits.from_urdf(root / "table/public/robots/so100/so100_mid_calib.urdf")
     with ModelHTTPServer(token, limits) as server:
         print("table 模型运动 API: http://127.0.0.1:8766；不连接实机", flush=True)
         try:

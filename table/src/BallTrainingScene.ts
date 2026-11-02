@@ -3,6 +3,7 @@
  * @author: https://github.com/Linmoqian
  */
 import * as THREE from "three";
+import { RobotAssetLoader } from "./RobotAssetLoader";
 import { WristCameraMount } from "./WristCameraMount";
 import type { URDFRobot } from "urdf-loader";
 import { TrainingPreviewClient, type TrainingPreview, type TrainingSnapshot } from "./TrainingPreviewClient";
@@ -18,6 +19,10 @@ export class BallTrainingScene {
   private instances: Instance[] = [];
   private brackets: WristCameraMount[] = [];
   private source?: URDFRobot;
+  private template?: URDFRobot;
+  private loadingTemplate = false;
+  private disposed = false;
+  get cameraRobot(): URDFRobot | undefined { return this.template; }
   private version = "";
   private jobId = "";
   private changed = false;
@@ -85,6 +90,7 @@ export class BallTrainingScene {
     for (let index = 0; index < count; index++) {
       const offset = new THREE.Vector3((index % columns - (columns - 1) / 2) * .62, (Math.floor(index / columns) - (rows - 1) / 2) * .62, 0);
       const arm = index === 0 ? robot : robot.clone() as URDFRobot;
+      if (index === 0 && robot === this.template) this.group.add(arm);
       arm.position.copy(offset);
       if (index > 0) {
         arm.name = `training_arm_${index + 1}`;
@@ -108,6 +114,18 @@ export class BallTrainingScene {
 
   update(robot: URDFRobot, dt: number): void {
     if (!this.active || this.frozen) return;
+    // 已有抓球策略使用 SO-101，不将其动作套到 SO-100 的几何上。
+    if (!this.template) {
+      if (!this.loadingTemplate) {
+        this.loadingTemplate = true;
+        void new RobotAssetLoader().load(`${import.meta.env.BASE_URL}robots/so101/so101_new_calib.urdf`).then(template => {
+          if (this.disposed) { this.releaseTemplate(template); return; }
+          this.template = template; this.changed = true;
+        }).catch(error => console.error("训练模型加载失败", error));
+      }
+      return;
+    }
+    robot = this.template;
     const fresh = this.changed || this.instances.length !== this.snapshots.length || this.source !== robot;
     if (fresh) this.layout(robot);
     const alpha = fresh ? 1 : 1 - Math.exp(-dt / .09);
@@ -125,9 +143,20 @@ export class BallTrainingScene {
     });
   }
 
+  private releaseTemplate(robot: URDFRobot): void {
+    robot.traverse(object => {
+      const mesh = object as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.geometry.dispose();
+      (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach(material => material.dispose());
+    });
+  }
+
   dispose(): void {
+    this.disposed = true;
     this.client.dispose(); window.removeEventListener("table:inference-playback", this.playback); window.removeEventListener("table:ball-training", this.close);
     this.clear(); this.group.removeFromParent();
+    if (this.template) this.releaseTemplate(this.template);
     this.sphere.dispose(); this.material.dispose(); this.floorGeometry.dispose(); this.floorMaterial.dispose();
   }
 }

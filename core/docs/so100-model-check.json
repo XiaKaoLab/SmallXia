@@ -1,0 +1,23 @@
+{
+  "checked_on": "2026-11-02",
+  "model": "SO100",
+  "urdf": "table/public/robots/so100/so100_mid_calib.urdf",
+  "verified_cached_meshes": 13,
+  "verified_source_urdf": true,
+  "neutral_collision_check": "passed",
+  "physics_steps": 0,
+  "typescript": "passed",
+  "capsule": {
+    "top": 12,
+    "width": 355.53125,
+    "height": 46,
+    "radius": "999px"
+  },
+  "mapping_status": "following",
+  "calibration_source": "latest_saved",
+  "model_limited": true,
+  "limit_reason": "姿态自碰撞：base_link / upper_arm_link，到达碰撞边界",
+  "geometry_alignment_verified": false,
+  "physical_motion_commands": 0,
+  "existing_so101_policies": "original model retained; training not rerun"
+}

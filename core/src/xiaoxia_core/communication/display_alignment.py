@@ -160,7 +160,7 @@ class DisplayAlignment:
                 return
             calibration = bus.read_calibration()
             from ..safety import JointLimits
-            limits = JointLimits.from_urdf(Path(__file__).resolve().parents[4] / 'table/public/robots/so101/so101_new_calib.urdf')
+            limits = JointLimits.from_urdf(Path(__file__).resolve().parents[4] / 'table/public/robots/so100/so100_mid_calib.urdf')
             route = None
             if request['mode'] == 'mapping':
                 from .motion_routes import MotionRouteClient

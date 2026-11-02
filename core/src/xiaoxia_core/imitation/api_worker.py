@@ -36,7 +36,7 @@ class ImitationWorker:
         from .dataset import DemonstrationWriter
         source = Path(self.request['dataset_directory'])
         manifest = json.loads((source / 'manifest.json').read_text(encoding='utf-8'))
-        urdf = Path(__file__).resolve().parents[4] / 'table/public/robots/so101/so101_new_calib.urdf'
+        urdf = Path(__file__).resolve().parents[4] / 'table/public/robots/so100/so100_mid_calib.urdf'
         limits = JointLimits.from_urdf(urdf)
         writer = None
         written = 0
@@ -50,7 +50,7 @@ class ImitationWorker:
                                                   {name: str(source / path) for name, path in row['images'].items()})
                         if writer is None:
                             writer = DemonstrationWriter(self.directory / 'dataset', f"local/{manifest['id']}",
-                                manifest['fps'], limits, observation, simulated=True, robot_type='so101_table_model')
+                                manifest['fps'], limits, observation, simulated=True, robot_type='so100_table_model')
                             writer.metadata.update(state_source=manifest['state_source'],
                                 camera_sources=manifest['cameras'], camera_joint_synchronized=False,
                                 action_semantics='explicit_demonstrator_target_not_dispatched_by_record_api')

@@ -99,7 +99,7 @@ export class RobotViewer {
       }));
     };
     manager.onError = (url) => console.error("机械臂资源加载失败", url);
-    loader.load(`${import.meta.env.BASE_URL}robots/so101/so101_new_calib.urdf`, (robot) => {
+    loader.load(`${import.meta.env.BASE_URL}robots/so100/so100_mid_calib.urdf`, (robot) => {
       this.robot = robot;
       this.scene.add(robot);
       void Promise.all(meshes).then(() => {
@@ -155,6 +155,7 @@ export class RobotViewer {
   private updateJoints(dt: number): void {
     if (!this.robot || !this.modelReady) return;
     this.training.setHidden(this.alignment.positions !== null);
+    this.robot.visible = true;
     if (this.alignment.positions && this.poseGuard) {
       if (!this.alignmentVisible) { this.fitTraining(1); this.alignmentVisible = true; }
       const desired = Object.fromEntries(Object.entries(this.alignment.positions).map(([name, angle]) => {
@@ -171,7 +172,10 @@ export class RobotViewer {
     this.alignmentVisible = false;
     if (this.training.active) {
       this.training.update(this.robot, dt);
-      this.cameraRig.configure(this.robot, this.training.cameraVisible ? WRIST_CAMERA_PRESET : this.modelCamera);
+      this.robot.visible = false;
+      const trainingRobot = this.training.cameraRobot;
+      if (!trainingRobot) return;
+      this.cameraRig.configure(trainingRobot, this.training.cameraVisible ? WRIST_CAMERA_PRESET : this.modelCamera);
       this.cameraRig.setInferenceFrame(this.training.cameraFrame, this.training.cameraFrame !== null, this.training.inferenceCamera ? "推理输入" : "训练输入");
       return;
     }

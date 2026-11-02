@@ -45,7 +45,7 @@ export class VirtualCameraRig {
       this.mount.removeFromParent(); this.helper.visible = false; this.signature = "";
       this.shown = false; this.preview.setVisible(false); this.bracket.setVisible(robot, false); return;
     }
-    const signature = JSON.stringify(config);
+    const signature = `${robot.uuid}:${JSON.stringify(config)}`;
     if (signature === this.signature) return;
     const parent = robot.links[config.parent_link];
     if (!parent || !Array.isArray(config.position) || !Array.isArray(config.rotation)

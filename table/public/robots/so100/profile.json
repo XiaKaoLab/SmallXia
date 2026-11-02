@@ -1,0 +1,133 @@
+{
+  "robot_id": "so100",
+  "name": "SO-ARM100",
+  "repository": "https://github.com/TheRobotStudio/SO-ARM100",
+  "revision": "a758567c3978dfeefe282ede0500085a48fe8f78",
+  "license": "Apache-2.0",
+  "model_path": "Simulation/SO100/so100.urdf",
+  "urdf": {
+    "path": "so100.urdf",
+    "bytes": 9110,
+    "sha256": "f7050417ebbb79358f113ddd4bca2b457b2c6d5048193331db5a04a0066439ed"
+  },
+  "materials": {
+    "3d_printed": [
+      1.0,
+      0.82,
+      0.12,
+      1.0
+    ],
+    "sts3215": [
+      0.1,
+      0.1,
+      0.1,
+      1.0
+    ]
+  },
+  "textures": [],
+  "joints": [
+    {
+      "name": "shoulder_pan",
+      "type": "revolute",
+      "lower": -2.0,
+      "upper": 2.0
+    },
+    {
+      "name": "shoulder_lift",
+      "type": "revolute",
+      "lower": 0.0,
+      "upper": 3.5
+    },
+    {
+      "name": "elbow_flex",
+      "type": "revolute",
+      "lower": -3.14158,
+      "upper": 0.0
+    },
+    {
+      "name": "wrist_flex",
+      "type": "revolute",
+      "lower": -2.5,
+      "upper": 1.2
+    },
+    {
+      "name": "wrist_roll",
+      "type": "revolute",
+      "lower": -3.14158,
+      "upper": 3.14158
+    },
+    {
+      "name": "gripper",
+      "type": "revolute",
+      "lower": -0.2,
+      "upper": 2.0
+    }
+  ],
+  "assets": [
+    {
+      "path": "assets/Base.stl",
+      "bytes": 443484,
+      "sha256": "bb8afb0303c0125f265a797625cfaf646ac214d5d2dc9c986348c415755e2a74"
+    },
+    {
+      "path": "assets/Base_Motor.stl",
+      "bytes": 154284,
+      "sha256": "aac4485d448eca418d2a93df3f78f449bd59b21ec1af2a579171819fd44ea576"
+    },
+    {
+      "path": "assets/Fixed_Jaw.stl",
+      "bytes": 264584,
+      "sha256": "5528867073033eaa4c27a8087180954f3f0635bd69d517d5cace92f01dd266b2"
+    },
+    {
+      "path": "assets/Fixed_Jaw_Motor.stl",
+      "bytes": 151884,
+      "sha256": "0321bfb902d5a119c4f2a934ab4be7e9ea8c93a02e1685f066f99c24a5ca3ecf"
+    },
+    {
+      "path": "assets/Lower_Arm.stl",
+      "bytes": 347184,
+      "sha256": "a04511bc65cbb702b2d6023764de947888b06a09fbf272803f39c22724329a3e"
+    },
+    {
+      "path": "assets/Lower_Arm_Motor.stl",
+      "bytes": 151884,
+      "sha256": "07368fa4c50dea70e8157accee71072120c0cb374f672c85aba1d081702bc476"
+    },
+    {
+      "path": "assets/Moving_Jaw.stl",
+      "bytes": 177184,
+      "sha256": "6d9c923024c75e6f0a8d8300317c4d8a17dd49880260cbc60b7fe5e0c6dadfa8"
+    },
+    {
+      "path": "assets/Rotation_Pitch.stl",
+      "bytes": 347584,
+      "sha256": "4a1476f57d28d2c065bc0ede6a674cb3ebacf1193372916ef1e0ff32eeb92cf0"
+    },
+    {
+      "path": "assets/Rotation_Pitch_Motor.stl",
+      "bytes": 154284,
+      "sha256": "f4fbcf18d8f2e91d12a767c1679430140dce0c81ea1478cc153bfce3a162db61"
+    },
+    {
+      "path": "assets/Upper_Arm.stl",
+      "bytes": 215184,
+      "sha256": "d97ad37c90400fe39bb2d5ace8b4290f3d1262e13f1d4f166494421752d5f3b7"
+    },
+    {
+      "path": "assets/Upper_Arm_Motor.stl",
+      "bytes": 152284,
+      "sha256": "bafdb2cb9e9a884e62b5fbf15b1f706a65771da82764dbe703df128d9f34d723"
+    },
+    {
+      "path": "assets/Wrist_Pitch_Roll.stl",
+      "bytes": 341684,
+      "sha256": "58e83ce1c8b24e1fa3a79672ea965ea4143986c81a21386dcd6da1cbcfdc94bb"
+    },
+    {
+      "path": "assets/Wrist_Pitch_Roll_Motor.stl",
+      "bytes": 133684,
+      "sha256": "89ac3fb1d2536fa4f7c40e7449be4b934d7d776f9cd0453c842767f980ff6c18"
+    }
+  ]
+}

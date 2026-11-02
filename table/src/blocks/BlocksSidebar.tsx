@@ -64,7 +64,7 @@ export function BlocksSidebar() {
     let controlBridge: BlocksControlBridge | undefined;
     async function initialize() {
       try {
-        const response = await fetch(`${import.meta.env.BASE_URL}robots/so101/so101_new_calib.urdf`, { signal: abort.signal });
+        const response = await fetch(`${import.meta.env.BASE_URL}robots/so100/so100_mid_calib.urdf`, { signal: abort.signal });
         if (!response.ok) throw new Error("机械臂限位加载失败");
         const limits = parseModelLimits(await response.text());
         if (abort.signal.aborted) return;

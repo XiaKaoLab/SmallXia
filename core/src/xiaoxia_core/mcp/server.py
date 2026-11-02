@@ -20,7 +20,7 @@ from .rl_tools import RLTools
 class TableModelTools:
     def __init__(self) -> None:
         root = Path(__file__).resolve().parents[4]
-        self.limits = JointLimits.from_urdf(root / "table/public/robots/so101/so101_new_calib.urdf")
+        self.limits = JointLimits.from_urdf(root / "table/public/robots/so100/so100_mid_calib.urdf")
 
     def table_get_state(self) -> dict:
         """读取 table 的六轴显示目标，单位 rad；不是实机或实际渲染反馈。"""
@@ -32,7 +32,7 @@ class TableModelTools:
         return result
 
     def table_get_limits(self) -> dict:
-        """返回 table SO101 模型六轴弧度限位；发送目标前读取，禁止套用 SO100 零位。"""
+        """返回 table SO100 模型六轴弧度限位；发送目标前读取，采用模型行程中点零位。"""
         return {name: {"lower": limit.lower, "upper": limit.upper, "unit": "rad"}
                 for name, limit in self.limits.joints.items()}
 
