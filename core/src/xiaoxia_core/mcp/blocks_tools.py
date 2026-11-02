@@ -1,5 +1,5 @@
 """MCP 积木工具通过受限命令桥操作当前 WebView，不执行任意脚本。
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 import json
@@ -71,8 +71,23 @@ class BlocksTools:
         return self.execute('import', {'snapshot': snapshot})
 
     def blocks_run(self) -> dict:
-        """运行当前积木程序。可能发送模型动作、启动采集/训练；仅在用户明确要求运行时调用。失败不自动重试。"""
+        """提交当前积木程序，返回 program.id 后用 blocks_program_status 查询实际完成。可能包含真机运动，运行前核对目标与用户意图。"""
         return self.execute('run')
+
+    def blocks_programs(self) -> dict:
+        """查询后台积木程序，窗口刷新后仍可查看。"""
+        from ..blocks.workflow import BlockWorkflow
+        return BlockWorkflow.http('programs/jobs')
+
+    def blocks_program_status(self, program_id: str) -> dict:
+        """查询指定程序的真实状态和输出；提交成功不代表程序已完成。"""
+        from ..blocks.workflow import BlockWorkflow
+        return BlockWorkflow.http('programs/jobs/' + identifier(program_id))
+
+    def blocks_program_stop(self, program_id: str) -> dict:
+        """停止指定程序，并清理其启动的采集/训练和真机控制。"""
+        from ..blocks.workflow import BlockWorkflow
+        return BlockWorkflow.http('programs/jobs/' + identifier(program_id) + '/stop', {})
 
     def blocks_command_status(self, command_id: str) -> dict:
         """超时后查询已有命令的回执，不重新执行。"""
