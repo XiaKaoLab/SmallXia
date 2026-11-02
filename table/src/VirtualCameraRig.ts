@@ -3,6 +3,7 @@
  * @author: https://github.com/Linmoqian
  */
 import * as THREE from "three";
+import { wristCameraForModel } from "./CameraPreset";
 import { WristCameraMount } from "./WristCameraMount";
 import { VirtualCameraPreview } from "./VirtualCameraPreview";
 import type { URDFRobot } from "urdf-loader";
@@ -45,6 +46,7 @@ export class VirtualCameraRig {
       this.mount.removeFromParent(); this.helper.visible = false; this.signature = "";
       this.shown = false; this.preview.setVisible(false); this.bracket.setVisible(robot, false); return;
     }
+    config = wristCameraForModel(robot.name, config);
     const signature = `${robot.uuid}:${JSON.stringify(config)}`;
     if (signature === this.signature) return;
     const parent = robot.links[config.parent_link];
@@ -71,6 +73,9 @@ export class VirtualCameraRig {
 
   renderPreview(): void {
     if (!this.shown) return;
+    // 使用本帧夹爪世界变换，外壳、光轴和预览共享同一相机姿态。
+    this.mount.updateWorldMatrix(true, true);
+    this.camera.updateWorldMatrix(true, false);
     // 相机自身外壳和辅助视锥不进入镜头画面，保留其他机械臂遮挡。
     this.body.visible = false; this.lens.visible = false; this.helper.visible = false;
     this.camera.far = 3;

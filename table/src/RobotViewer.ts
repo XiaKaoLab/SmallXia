@@ -10,7 +10,7 @@ import URDFLoader from "urdf-loader";
 import type { URDFRobot } from "urdf-loader";
 import { ModelPoseGuard } from "./ModelPoseGuard";
 import { jointPreview } from "./JointPreview";
-import { WRIST_CAMERA_PRESET } from "./CameraPreset";
+import { SO101_WRIST_CAMERA_PRESET } from "./CameraPreset";
 import { VirtualCameraRig, type VirtualCameraConfig } from "./VirtualCameraRig";
 import { ModelMotionClient } from "./ModelMotionClient";
 import { BallTrainingScene } from "./BallTrainingScene";
@@ -175,7 +175,7 @@ export class RobotViewer {
       this.robot.visible = false;
       const trainingRobot = this.training.cameraRobot;
       if (!trainingRobot) return;
-      this.cameraRig.configure(trainingRobot, this.training.cameraVisible ? WRIST_CAMERA_PRESET : this.modelCamera);
+      this.cameraRig.configure(trainingRobot, this.training.cameraVisible ? SO101_WRIST_CAMERA_PRESET : this.modelCamera);
       this.cameraRig.setInferenceFrame(this.training.cameraFrame, this.training.cameraFrame !== null, this.training.inferenceCamera ? "推理输入" : "训练输入");
       return;
     }

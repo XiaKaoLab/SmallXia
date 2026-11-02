@@ -1,0 +1,28 @@
+{
+  "checked_on": "2026-11-02",
+  "model": "SO100",
+  "parent_link": "gripper_link",
+  "local_rotation_deg": [
+    -65,
+    0,
+    0
+  ],
+  "follow_test_parent_rotation_deg": 90,
+  "direction_error": 5.810951576080641e-17,
+  "position_error": 4.336808689942018e-19,
+  "local_optical_direction": [
+    0,
+    -0.90630778703665,
+    -0.4226182617406993
+  ],
+  "preview": [
+    {
+      "source": "virtual_scene",
+      "frameStatus": "ready",
+      "visible": true
+    }
+  ],
+  "camera_api_updated": true,
+  "physical_motion_commands": 0,
+  "physical_extrinsics_verified": false
+}
