@@ -141,3 +141,8 @@ with OpenAILLM(LLMConfig.from_env()) as llm:
 ## 仿真与真机采集 API
 
 [采集 HTTP API](docs/collection-api.md) 提供 MuJoCo 物理状态/图像采集、只读真机编码器/图像采集和原生 LeRobot Dataset v3 保存。通过命令回执管理逐帧记录、episode 和 finalize；成功完成且含动作标签的会话可接入已有 ACT 训练接口。真机默认只读，不自动连接、不使能力矩。
+
+
+### LLM 本地配置
+
+在工作区根目录 `.env` 中填写 `OPENAI_API_KEY`、`OPENAI_MODEL`；兼容服务可另填 `OPENAI_BASE_URL`，留空使用SDK默认地址。字段模板为根目录 `.env.example`。桌面Agent启动、LLM配置读取和LLM客户端创建时自动加载，不依赖当前目录；优先级为进程环境 > core/.env > 根目录.env。`.env`已由Git忽略，真实密钥不提交，前端不接收密钥。修改后新请求/新建客户端读取配置，已有进程环境中的同名变量仍优先。

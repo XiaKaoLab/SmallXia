@@ -1,11 +1,12 @@
 """从环境变量读取 LLM 配置，不在源码中保存密钥。
-Created on 2026-11-01; Updated on 2026-11-01
+Created on 2026-11-01; Updated on 2026-11-02
 @author: https://github.com/Linmoqian
 """
 
 import os
 from dataclasses import dataclass
 from math import isfinite
+from ..environment import EnvironmentSettings
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,7 @@ class LLMConfig:
 
     @classmethod
     def from_env(cls) -> "LLMConfig":
+        EnvironmentSettings.load()
         return cls(
             model=os.environ.get("OPENAI_MODEL", "").strip(),
             base_url=os.environ.get("OPENAI_BASE_URL", "").strip() or None,

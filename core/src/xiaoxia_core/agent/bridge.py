@@ -11,6 +11,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from ..llm import LLMConfig, OpenAILLM
+from ..environment import EnvironmentSettings
 from .runtime import SimpleAgent
 from .sessions import SessionStore
 from .skills import SkillRegistry
@@ -18,6 +19,7 @@ from .skills import SkillRegistry
 
 class DesktopBridge:
     def __init__(self, directory: Path) -> None:
+        EnvironmentSettings.load()
         self.sessions = SessionStore(directory / "data" / "agent.sqlite3")
         self.skills = SkillRegistry(directory / "skills")
 
