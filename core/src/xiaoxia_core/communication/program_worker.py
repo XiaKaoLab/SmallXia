@@ -18,7 +18,7 @@ class ProgramWorker(ImitationWorker):
         Thread(target=self.watch_parent, daemon=True).start()
         def checkpoint(frame, event, arg):
             filename = frame.f_code.co_filename
-            interruptible = filename == '<blocks>' or ('xiaoxia_core' in filename and 'blocks' in filename
+            interruptible = filename == '<blocks>' or ('xiaoxia_core' in filename and ('blocks' in filename or filename.endswith('hardware_client.py'))
                 and frame.f_code.co_name not in ('http', 'track', 'track_created', 'cleanup'))
             if interruptible and (self.directory / 'stop').exists():
                 raise InterruptedError('程序已停止')
