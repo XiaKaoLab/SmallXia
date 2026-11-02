@@ -1,0 +1,55 @@
+{
+  "repository": "https://github.com/TheRobotStudio/SO-ARM100",
+  "upstream_path": "Optional/Wrist_Cam_Mount_32x32_UVC_Module/stl/Wrist_Cam_Mount_32x32_UVC_Module_SO100.stl",
+  "archive": "C:\\Users\\30470\\Downloads\\SO-ARM100-main.zip",
+  "archive_comment": "fda892cba81032c46c40976a48c9ceadbf40a9ca",
+  "sha256": "6a371846553b3a772f9bccc546da1d3e0164e9d00d14aa45d26ab34b58c9cf43",
+  "source": "local GitHub download archive; matching official filename and installation guide",
+  "license": "../LICENSE",
+  "runtime_scale": 0.001,
+  "commit": "fda892cba81032c46c40976a48c9ceadbf40a9ca",
+  "runtime_rotation_matrix": [
+    [
+      -1,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      -1
+    ],
+    [
+      0,
+      -1,
+      0
+    ]
+  ],
+  "runtime_translation_m": [
+    0,
+    -0.001,
+    0
+  ],
+  "alignment": "Preserve STL CAD origin; apply axis/sign transform and -1 mm Y offset to replace Fixed_Jaw.stl. Shared body extents and vertices checked; no optical calibration implied.",
+  "camera_mount_reference": {
+    "plate_normal_cad": [
+      0.0,
+      -0.42261826174069944,
+      0.9063077870366499
+    ],
+    "plate_plane_distance_mm": -33.261,
+    "plate_center_tangent_mm": 63.779,
+    "optical_standoff_mm": 8,
+    "optical_position_gripper_m": [
+      -0.0025,
+      -0.005059929107227254,
+      -0.06847916425924229
+    ],
+    "rotation_xyz_deg": [
+      -115,
+      0,
+      0
+    ],
+    "note": "Display placement based on STL plate; lens standoff is illustrative, not measured extrinsics."
+  }
+}

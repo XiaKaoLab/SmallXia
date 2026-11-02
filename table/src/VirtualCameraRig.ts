@@ -46,7 +46,7 @@ export class VirtualCameraRig {
       this.mount.removeFromParent(); this.helper.visible = false; this.signature = "";
       this.shown = false; this.preview.setVisible(false); this.bracket.setVisible(robot, false); return;
     }
-    config = wristCameraForModel(robot.name, config);
+    config = wristCameraForModel(robot.robotName ?? robot.name, config);
     const signature = `${robot.uuid}:${JSON.stringify(config)}`;
     if (signature === this.signature) return;
     const parent = robot.links[config.parent_link];

@@ -1,0 +1,20 @@
+{
+  "checked_on": "2026-11-02",
+  "model": "SO100",
+  "stl": "table/public/robots/so100/camera/wrist_camera_mount_so100.stl",
+  "browser_loaded": [
+    {
+      "url": "http://localhost:1420/robots/so100/camera/wrist_camera_mount_so100.stl",
+      "bytes": 244084
+    }
+  ],
+  "preview_status": [
+    "ready"
+  ],
+  "source_commit": "fda892cba81032c46c40976a48c9ceadbf40a9ca",
+  "source_assembly_documentation": "https://github.com/TheRobotStudio/SO-ARM100/blob/main/Optional/Wrist_Cam_Mount_32x32_UVC_Module/README.md",
+  "replaces": "Fixed_Jaw.stl visual only",
+  "typescript": "passed",
+  "physical_motion_commands": 0,
+  "physical_extrinsics_verified": false
+}

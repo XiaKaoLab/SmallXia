@@ -9,3 +9,5 @@ so100_mid_calib.urdf 由 core/scripts/prepare_so100.py 生成：五轴 origin �
 默认查看器、运动路由、碰撞检查、积木限位、MCP 限位和仿真采集均使用该 SO-100 文件。已有 SO-101 抓球模型仍保留原来的物理环境及独立前端模型，未重训或迁移其权重。SO-101 专用相机支架不会套用到 SO-100 的打印件。
 
 虚拟相机预设使用 SO-100 夹爪局部坐标：相对 SO-101 预设绕局部 X 调整 -90°，俯角从 25° 改为 -65°，使光轴朝夹爪前端 -Y。光心位置保持不变，外壳、光轴和画面共用 gripper_link 变换。该预设是显示装配近似，不是实测相机外参。SO-101 策略预览继续使用原预设。
+
+已补充官方 SO100 一体式相机支架 Optional/Wrist_Cam_Mount_32x32_UVC_Module/stl/Wrist_Cam_Mount_32x32_UVC_Module_SO100.stl，来自本机 GitHub zip，归档注释固定提交 fda892cba81032c46c40976a48c9ceadbf40a9ca。SHA-256、CAD 坐标变换和安装板光心推导记录在 camera/provenance.json。相机显示时替换 Fixed_Jaw.stl，保留电机和活动夹爪；关闭相机后恢复原件。不改动碰撞网格。相机预设已改为新支架上的位置及 -115° 局部 X 朝向，替代前述 -65° 临时显示朝向。
