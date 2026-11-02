@@ -9,7 +9,7 @@ export class ModelMotionClient {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private stopped = false;
 
-  constructor(private readonly apply: (positions: Record<string, number>, camera: VirtualCameraConfig | null) => void) {
+  constructor(private readonly apply: (positions: Record<string, number>, camera: VirtualCameraConfig | null, playback?: { id: string; status: string }) => void) {
     void this.poll();
   }
 
@@ -25,7 +25,7 @@ export class ModelMotionClient {
       if (state.unit !== "rad" || state.physical !== false || state.source !== "display_target") {
         throw new Error("模型运动协议不匹配");
       }
-      if (!this.stopped) this.apply(state.joint_positions, state.camera ?? null);
+      if (!this.stopped) this.apply(state.joint_positions, state.camera ?? null, state.playback ?? undefined);
     } catch {
       delay = 1000;
     }

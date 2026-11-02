@@ -33,8 +33,16 @@ export class RobotViewer {
   private readonly alignment: HardwareAlignmentDisplay;
   private readonly cameraCalibration: CameraCalibrationDisplay;
   private alignmentVisible = false;
+  private playbackId = "";
+  private playbackPaused = false;
   private readonly stopPreview: () => void;
-  private readonly motion = new ModelMotionClient((positions, camera) => {
+  private readonly motion = new ModelMotionClient((positions, camera, playback) => {
+    this.playbackPaused = playback?.status === "paused";
+    if (playback && ["running", "paused"].includes(playback.status) && (playback.id !== this.playbackId || this.training.active)) {
+      if (playback.id !== this.playbackId) jointPreview.confirm(positions, jointPreview.revision);
+      this.playbackId = playback.id;
+      window.dispatchEvent(new CustomEvent("table:ball-training", { detail: null }));
+    }
     this.modelCamera = camera;
     if (this.training.active || this.alignment?.positions) return;
     this.setJointTargets(jointPreview.reconcile(positions));
@@ -169,6 +177,7 @@ export class RobotViewer {
     }
     this.cameraRig.configure(this.robot, this.modelCamera);
     this.cameraRig.setInferenceFrame(null, false);
+    if (this.playbackPaused) return;
     if (!this.poseGuard || !Object.keys(this.targets).length) return;
     if (Object.entries(this.targets).every(([name, target]) => Math.abs(this.robot!.joints[name].jointValue[0] - target) < 1e-8)) return;
     const next = Object.fromEntries(Object.entries(this.targets).map(([name, target]) => {

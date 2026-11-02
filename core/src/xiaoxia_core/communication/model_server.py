@@ -5,6 +5,8 @@ Created on 2026-11-01; Updated on 2026-11-02
 
 import json
 import os
+from time import time_ns
+from uuid import uuid4
 from hmac import compare_digest
 from xml.etree import ElementTree
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -66,9 +68,28 @@ class ModelHTTPServer(ThreadingHTTPServer):
         self.reinforcement = ReinforcementAPI(Path(__file__).resolve().parents[3] / 'data/reinforcement_api',
             limits, self.frames, self.routes, self.read_authorization)
         core = Path(__file__).resolve().parents[3]
-        self.collection = CollectionAPI(core / 'data/collection_api', core, frames=self.frames)
+        from ..collection.playback import RecordingPlaybackAPI
+        self.playback = RecordingPlaybackAPI(core / 'data/recordings', core / 'data/playbacks', limits,
+            self.playback_reference, self.playback_apply)
+        self.collection = CollectionAPI(core / 'data/collection_api', core, frames=self.frames, playback=self.playback)
         self.imitation.collection_resolver = self.collection.resolve_dataset
         super().__init__(("127.0.0.1", 8766), ModelRequestHandler)
+
+    def playback_reference(self):
+        if any(job['status'] in ('queued', 'running') for job in self.reinforcement.jobs.list()):
+            raise ValueError('请先停止或等待强化学习训练/推理结束，再播放录制')
+        status, state = self.routes.handle('GET', '/api/v1/robots/table/state', self.read_authorization)
+        if status != 200:
+            raise ValueError('无法读取 table 仿真模型')
+        return state['joint_positions']
+
+    def playback_apply(self, positions):
+        status, receipt = self.routes.handle('POST', '/api/v1/robots/table/motions', self.read_authorization,
+            {'request_id': str(uuid4()), 'expires_at_ms': time_ns() // 1000000 + 1000,
+             'unit': 'rad', 'joint_positions': positions})
+        if status not in (200, 202):
+            raise ValueError(receipt.get('error', '仿真播放失败'))
+        return receipt
 
     def server_close(self):
         self.collection.close()
@@ -123,7 +144,7 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
             self._reply(404, {"error": "route_not_found"})
             return
         status, body = self.server.routes.handle("GET", self.path, self.server.read_authorization)
-        self._reply(status, {**body, "source": "display_target", "physical": False, "camera": self.server.camera.snapshot()})
+        self._reply(status, {**body, "source": "display_target", "physical": False, "camera": self.server.camera.snapshot(), "playback": self.server.playback.snapshot()})
 
     def do_POST(self) -> None:
         try:

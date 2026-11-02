@@ -1,0 +1,100 @@
+{
+  "status": "succeeded",
+  "physical": false,
+  "recordings": [
+    {
+      "id": "hardware-motion-20261102-194605-26c50485",
+      "frames": 99,
+      "port": "COM17",
+      "duration_s": 10.07638790004421,
+      "motion": true,
+      "playback_target": "table",
+      "mapping": "relative_display_only"
+    },
+    {
+      "id": "hardware-20261102-194327-3b302893",
+      "frames": 98,
+      "port": "COM17",
+      "duration_s": 10.00046090001706,
+      "motion": false,
+      "playback_target": "table",
+      "mapping": "relative_display_only"
+    }
+  ],
+  "playback_id": "6cbbd2388f8e4ba380fc70c7fec50c27",
+  "pause_verified": true,
+  "motion_targets_changed": true,
+  "completed": {
+    "id": "6cbbd2388f8e4ba380fc70c7fec50c27",
+    "recording_id": "hardware-motion-20261102-194605-26c50485",
+    "status": "completed",
+    "physical": false,
+    "target": "table",
+    "mapping": "relative_display_only",
+    "speed": 1,
+    "frame_index": 98,
+    "frames": 99,
+    "progress": 1.0,
+    "duration_s": 10.0761839,
+    "reference": {
+      "shoulder_pan": 0.0,
+      "shoulder_lift": 0.0,
+      "elbow_flex": 0.0,
+      "wrist_flex": 0.0,
+      "wrist_roll": 0.0,
+      "gripper": 0.0
+    },
+    "directions": {
+      "shoulder_pan": 1,
+      "shoulder_lift": 1,
+      "elbow_flex": 1,
+      "wrist_flex": 1,
+      "wrist_roll": 1,
+      "gripper": 1
+    },
+    "joint_positions": {
+      "shoulder_pan": 0.32835205268288925,
+      "shoulder_lift": -0.0015343553863686413,
+      "elbow_flex": 0.0,
+      "wrist_flex": -0.007671776931843207,
+      "wrist_roll": 0.35290173886478726,
+      "gripper": -0.09513003395485577
+    },
+    "limited": false,
+    "created_at_ns": 1793620718700952700,
+    "requested_joint_positions": {
+      "shoulder_pan": 0.32835205268288925,
+      "shoulder_lift": -0.0015343553863686413,
+      "elbow_flex": 0.0,
+      "wrist_flex": -0.007671776931843207,
+      "wrist_roll": 0.35290173886478726,
+      "gripper": -0.09513003395485577
+    },
+    "outside_device_calibration": [
+      "gripper"
+    ]
+  },
+  "stop_verified": true,
+  "checked_on": "2026-11-02",
+  "raw_recording_only": true,
+  "physical_actuation": false,
+  "frontend_catalog_verified": [
+    "播放录制（仿真）",
+    "暂停播放",
+    "继续播放",
+    "停止播放",
+    "播放状态",
+    "录制列表"
+  ],
+  "checks": [
+    "actual HTTP playback",
+    "applied model targets change",
+    "pause frame and pose freeze",
+    "resume to final frame",
+    "stop prevents advancing",
+    "TypeScript noEmit",
+    "Python AST syntax",
+    "git diff check"
+  ],
+  "native_build": false
+}

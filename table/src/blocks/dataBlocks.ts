@@ -11,6 +11,14 @@ export const DATA_SIM = "table_data_simulation";
 export const DATA_HARDWARE = "table_data_hardware";
 export const DATA_TARGET = "table_data_joint_targets";
 export const DATA_RECORD = "table_data_record";
+export const DATA_PLAY = "table_data_playback";
+export const PLAYBACK_OPERATIONS: Record<string, [string, string]> = {
+  table_data_playback_pause: ["暂停播放", "pause_playback"],
+  table_data_playback_resume: ["继续播放", "resume_playback"],
+  table_data_playback_stop: ["停止播放", "stop_playback"],
+  table_data_playback_status: ["播放状态", "playback"],
+  table_data_recordings: ["录制列表", "recordings"],
+};
 export const DATA_CAPTURE = "table_data_capture";
 export const DATA_COMMAND = "table_data_command";
 export const DATA_OPERATIONS: Record<string, [string, string]> = {
@@ -18,7 +26,7 @@ export const DATA_OPERATIONS: Record<string, [string, string]> = {
   table_data_finish: ["结束采集", "finish"], table_data_stop: ["停止采集", "stop"],
   table_data_status: ["采集状态", "session"],
 };
-export const DATA_TYPES = [DATA_SIM, DATA_HARDWARE, DATA_TARGET, DATA_RECORD, DATA_CAPTURE, DATA_COMMAND, ...Object.keys(DATA_OPERATIONS)];
+export const DATA_TYPES = [DATA_SIM, DATA_HARDWARE, DATA_TARGET, DATA_RECORD, DATA_PLAY, DATA_CAPTURE, DATA_COMMAND, ...Object.keys(DATA_OPERATIONS), ...Object.keys(PLAYBACK_OPERATIONS)];
 const client = "__import__('xiaoxia_core.collection.capture_client', fromlist=['CollectionClient']).CollectionClient()";
 const idValue = (value: string) => `(lambda value: (value.get('id') or value.get('session_id')) if isinstance(value, dict) else value)(${value})`;
 
@@ -39,6 +47,13 @@ export class DataBlocks {
               this.appendDummyInput().appendField("相机").appendField(new Blockly.FieldDropdown(() => [["不采集图像", "none"], ...cameraCatalog.options().filter(([, id]) => id.startsWith("opencv_"))]), "CAMERA");
               this.appendDummyInput().appendField("确认只读采集").appendField(new Blockly.FieldCheckbox("FALSE"), "CONFIRMED");
             }
+          } else if (type === DATA_PLAY) {
+            this.appendDummyInput().appendField("播放录制（仿真）")
+              .appendField(new Blockly.FieldTextInput("latest_motion"), "RECORDING_ID");
+            this.appendDummyInput().appendField("速度").appendField(new Blockly.FieldNumber(1, .1, 4, .1), "SPEED").appendField("倍");
+          } else if (type in PLAYBACK_OPERATIONS) {
+            this.appendDummyInput().appendField(PLAYBACK_OPERATIONS[type][0]);
+            if (type !== "table_data_recordings") this.appendValueInput("PLAYBACK").appendField("播放回执");
           } else if (type === DATA_TARGET) {
             this.appendDummyInput().appendField("机械臂设定角度");
           } else {
@@ -48,12 +63,19 @@ export class DataBlocks {
             if ([DATA_CAPTURE, DATA_RECORD].includes(type)) this.appendValueInput("ACTION").appendField("动作标签");
             if (type === DATA_COMMAND) this.appendValueInput("COMMAND").appendField("命令回执");
           }
-          this.setTooltip(type === DATA_RECORD ? "按会话帧率连续录制，到时自动保存并结束。动作标签会话需显式连接六轴目标；真机入口只读、不执行动作。结束采集可提前保存，停止采集会丢弃完成标记。" : type === DATA_HARDWARE ? "只读编码器采集，不使能力矩；需要本机已确认且校准匹配的设备配置。" : "调用采集 API；启动和记录均异步，使用采集状态/命令状态查询完成结果。");
+          this.setTooltip(type === DATA_PLAY ? "按录制时间间隔播放到仿真模型，不连接实机。latest_motion 选择最近运动录制；原始编码器按当前仿真姿态作相对显示映射，并受限位和碰撞约束。" : type === DATA_RECORD ? "按会话帧率连续录制，到时自动保存并结束。动作标签会话需显式连接六轴目标；真机入口只读、不执行动作。结束采集可提前保存，停止采集会丢弃完成标记。" : type === DATA_HARDWARE ? "只读编码器采集，不使能力矩；需要本机已确认且校准匹配的设备配置。" : "调用采集 API；启动和记录均异步，使用采集状态/命令状态查询完成结果。");
         },
       };
       pythonGenerator.forBlock[type] = (block, generator) => {
         let expression: string;
-        if (type === DATA_TARGET) {
+        if (type === DATA_PLAY) {
+          const speed = Number(block.getFieldValue("SPEED"));
+          if (!Number.isFinite(speed) || speed < .1 || speed > 4) throw new Error("播放速度须在 0.1–4 倍之间");
+          expression = `${client}.play(${JSON.stringify(block.getFieldValue("RECORDING_ID"))}, speed=${speed})`;
+        } else if (type in PLAYBACK_OPERATIONS) {
+          const playback = idValue(generator.valueToCode(block, "PLAYBACK", Order.NONE) || "''");
+          expression = type === "table_data_recordings" ? `${client}.recordings()` : `${client}.${PLAYBACK_OPERATIONS[type][1]}(${playback})`;
+        } else if (type === DATA_TARGET) {
           const arm = block.workspace.getBlocksByType(BLOCK_TYPE, false)[0];
           if (!arm) throw new Error("机械臂设定角度需要工作区中的机械臂位置积木");
           expression = `{${JOINTS.map(([name]) => `${JSON.stringify(name)}: ${Number(arm.getFieldValue(name))}`).join(", ")}}`;
@@ -73,6 +95,7 @@ export class DataBlocks {
             expression = `${client}.command(${session}, (lambda value: value['command_id'] if isinstance(value, dict) else value)(${command}))`;
           } else expression = `${client}.${DATA_OPERATIONS[type][1]}(${session})`;
         }
+        if (type === DATA_PLAY) expression = `(lambda receipt: (print(__import__('json').dumps({'data_playback': receipt}, ensure_ascii=False)), receipt)[1])(${expression})`;
         if (type === DATA_RECORD) expression = `(lambda receipt: (print(__import__('json').dumps({'data_recording': receipt}, ensure_ascii=False)), receipt)[1])(${expression})`;
         return [expression, Order.FUNCTION_CALL];
       };

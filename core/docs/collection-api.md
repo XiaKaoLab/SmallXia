@@ -86,3 +86,29 @@ sid = session["id"]
 Python 使用 `CollectionClient.record(session_id,duration_s=10,action=None)`。积木“数据 → 录制一段”可连接采集会话、设置时长和可选动作标签；创建会话积木增加“记录动作标签”开关。录制回执可保存到变量，再用既有“采集命令状态”查询。“结束采集”提前保存，“停止采集”强停。
 
 2026-11-02 实际 HTTP 检查通过：2 FPS、1.5 秒仿真图像录制生成 3 帧 LeRobot v3.0 数据和 1 个 MP4，视频实际可解码 3 帧；重复请求复用命令。另一段目标 50 帧的录制提前结束并正常保存 3 帧。检查只运行仿真，不连接真实设备，真机录制仍需要匹配的配置与校准。启动下一会话需等待前一采集进程退出，达到后台任务上限时接口会明确拒绝，不能据此重复提交已接受的请求。
+
+
+## 原始录制的仿真播放 API
+
+使用相同 Bearer 令牌，前缀仍为 `/api/v1/collection`。目标固定为 table 显示模型，不接受串口、设备使能或实机运动参数。
+
+| 方法 | 路由 | 行为 |
+| --- | --- | --- |
+| GET | `/recordings` | 列出 core/data/recordings 下成功保存的原始编码器录制 |
+| POST | `/playbacks` | 创建播放，返回 202 和播放 id |
+| GET | `/playbacks/{id}` | 状态、帧号、进度、期望角度、实际应用角度和限幅情况 |
+| POST | `/playbacks/{id}/pause` | 暂停；返回确认后的状态 |
+| POST | `/playbacks/{id}/resume` | 从当前帧继续 |
+| POST | `/playbacks/{id}/stop` | 停止；不再推进帧 |
+
+开始请求示例：`{"recording_id":"latest_motion","speed":1}`。latest_motion 选择最近一次包含关节运动的原始录制，也可填录制目录 ID。速度范围 0.1–4；暂停、继续、停止请求体为 `{}`。一次只播放一段，正在训练或推理时不启动播放。重复开始不会产生两个并行播放，活动播放存在时明确报错；控制已结束任务不会重新开始。
+
+当前支持 `xiaoxia_raw_encoder_v1`，不是直接加载 LeRobot v3 Parquet 数据集。开始时检查录制成功状态、帧数、六轴完整性、编码器范围、时间戳单调性和已保存的文件哈希。按采样时间间隔播放，默认 1 倍；后台用 Condition 暂停时钟，暂停期间不派发模型目标。前端通过已有模型状态轮询冻结插值，避免停在后台后画面仍追赶。播放会清除旧训练预览的显示占用，不会终止训练进程。
+
+原始编码器尚无已验收的绝对角度映射。第一帧对齐到当前仿真姿态，随后根据有向编码器增量做相对显示：`delta_rad = direction * delta_tick * 2π / 4095`，相邻帧按最近一圈解释；无法由稀疏采样确定多圈运动。可传完整六轴 reference（弧度）和 directions（各轴 ±1），默认方向均为 +1，必须人工核实方向才能评价几何对应关系。此映射不写入实机校准，也不作为动作执行依据。
+
+模型请求先夹到 URDF 角度范围，再经过已有碰撞路径限制；状态同时返回 requested_joint_positions、joint_positions（实际应用）和 limited。播放数据保存于 core/data/playbacks，服务重启后未结束的播放标为 interrupted，不自动恢复。
+
+Python 客户端提供 recordings()、play(recording_id='latest_motion',speed=1,reference=None,directions=None)、playback(id)、pause_playback(id)、resume_playback(id)、stop_playback(id)。数据分类提供“录制列表”“播放录制（仿真）”“暂停播放”“继续播放”“停止播放”“播放状态”，播放回执可存入变量连接后续控制积木。
+
+2026-11-02 实际 HTTP 验证：刚才的 99 帧真机原始运动录制，在零姿态参考下完整播放到 table 模型，确认模型目标变化；暂停 0.4 秒帧号和应用姿态均不变，继续后完成全部 99 帧；另一次播放的停止操作确认不再推进。检查未连接串口或向实机发送目标。TypeScript 与 Python 语法检查通过，未完整构建。

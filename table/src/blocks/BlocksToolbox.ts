@@ -5,7 +5,7 @@
 import { CAMERA_CALIBRATION_BLOCK } from "./cameraCalibrationBlock";
 import { CALIBRATION_BLOCK } from "./calibrationBlock";
 import type * as Blockly from "blockly/core";
-import { DATA_TYPES, DATA_SIM, DATA_HARDWARE, DATA_TARGET, DATA_RECORD, DATA_CAPTURE, DATA_COMMAND, DATA_OPERATIONS } from "./dataBlocks";
+import { DATA_TYPES, DATA_PLAY, PLAYBACK_OPERATIONS, DATA_SIM, DATA_HARDWARE, DATA_TARGET, DATA_RECORD, DATA_CAPTURE, DATA_COMMAND, DATA_OPERATIONS } from "./dataBlocks";
 import { BLOCK_TYPE } from "./positionBlock";
 import { CAMERA_BLOCK_TYPE } from "./cameraBlock";
 import { FRAME_CAPTURE, FRAME_VARIABLE } from "./frameBlocks";
@@ -34,7 +34,7 @@ export class BlocksToolbox {
       { kind: "category", name: "数据", colour: "#61898d", contents: [block(DATA_SIM), block(DATA_HARDWARE), { kind: "block", type: DATA_RECORD, inputs: { SESSION: { shadow: { type: "text", fields: { TEXT: "" } } } } },
         ...Object.keys(DATA_OPERATIONS).map(type => ({ kind: "block", type, inputs: { SESSION: { shadow: { type: "text", fields: { TEXT: "" } } } } })),
         { kind: "block", type: DATA_CAPTURE, inputs: { SESSION: { shadow: { type: "text", fields: { TEXT: "" } } }, ACTION: { shadow: { type: DATA_TARGET } } } },
-        block(DATA_TARGET), block(DATA_COMMAND)] },
+        block(DATA_TARGET), block(DATA_COMMAND), block(DATA_PLAY), ...Object.keys(PLAYBACK_OPERATIONS).map(block)] },
     ] };
   }
 }

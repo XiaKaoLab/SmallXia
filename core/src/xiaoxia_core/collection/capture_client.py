@@ -49,3 +49,23 @@ class CollectionClient:
 
     def command(self, session_id, command_id):
         return self.request(f'sessions/{session_id}/commands/{command_id}')
+
+    def recordings(self):
+        return self.request('recordings')
+
+    def play(self, recording_id='latest_motion', speed=1, reference=None, directions=None):
+        return self.request('playbacks', {'recording_id': recording_id, 'speed': speed,
+            **({'reference': reference} if reference is not None else {}),
+            **({'directions': directions} if directions is not None else {})})
+
+    def playback(self, playback_id):
+        return self.request(f'playbacks/{playback_id}')
+
+    def pause_playback(self, playback_id):
+        return self.request(f'playbacks/{playback_id}/pause', {})
+
+    def resume_playback(self, playback_id):
+        return self.request(f'playbacks/{playback_id}/resume', {})
+
+    def stop_playback(self, playback_id):
+        return self.request(f'playbacks/{playback_id}/stop', {})

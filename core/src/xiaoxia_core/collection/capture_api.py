@@ -18,8 +18,9 @@ from .recording import RecordingPlan
 class CollectionAPI:
     prefix = '/api/v1/collection'
 
-    def __init__(self, root, core, *, frames=None):
+    def __init__(self, root, core, *, frames=None, playback=None):
         self.root, self.core, self.frames = root, core, frames
+        self.playback = playback
         (root / 'sessions').mkdir(parents=True, exist_ok=True)
         self.jobs = ImitationJobs(root / 'jobs', worker_module='xiaoxia_core.collection.capture_worker')
         self._lock = RLock()
@@ -117,6 +118,8 @@ class CollectionAPI:
         body = body or {}
         parts = path.removeprefix(self.prefix).strip('/').split('/')
         try:
+            if parts[0] in ('recordings', 'playbacks') and self.playback is not None:
+                return self.playback.handle(method, path, body)
             if method == 'GET':
                 if parts == ['sessions']:
                     return 200, {'sessions': [self.status(p.parent.name) for p in (self.root / 'sessions').glob('*/session.json')]}
@@ -181,4 +184,6 @@ class CollectionAPI:
             return 503, {'error': str(error)}
 
     def close(self):
+        if self.playback is not None:
+            self.playback.close()
         self.jobs.close()
