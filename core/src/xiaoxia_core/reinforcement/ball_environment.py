@@ -85,6 +85,8 @@ class BallPickupEnvironment(MujocoSimulation):
         data.qpos[address:address + 3] = [*xy, self.floor_z + self.radius + .002]
         data.qpos[address + 3:address + 7] = [1, 0, 0, 0]
         mujoco.mj_forward(model, data)
+        from .pickup_initialization import PickupInitialization
+        self.initial_joint_positions = PickupInitialization.apply(self)
         self.phases = PickupPhases()
         self.steps = self.held = 0
         self.held_seconds = 0.0
