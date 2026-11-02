@@ -10,16 +10,27 @@ from ..imitation.api_jobs import atomic_json
 
 
 class TrainingPreviewPublisher:
-    def __init__(self, directory):
+    def __init__(self, directory, *, kind=None):
+        self.kind = kind
+        self.camera_frame = None
         self.directory = directory
         self.last_publish = 0
+
+    def set_camera_frame(self, image, simulation_time):
+        import base64
+        from io import BytesIO
+        from PIL import Image
+        buffer = BytesIO()
+        Image.fromarray(image.transpose(1, 2, 0)).save(buffer, format='PNG')
+        self.camera_frame = {'data_url': 'data:image/png;base64,' + base64.b64encode(buffer.getvalue()).decode('ascii'),
+            'camera': 'wrist', 'source': 'policy_input', 'simulation_time': simulation_time}
 
     def publish(self, environments, *, force=False):
         if not force and monotonic() - self.last_publish < .08:
             return
         try:
             atomic_json(self.directory / 'preview.json', {'job_id': self.directory.name,
-                'timestamp_ns': time_ns(), 'physical': False,
+                'timestamp_ns': time_ns(), 'physical': False, 'kind': self.kind, 'camera_frame': self.camera_frame,
                 'snapshots': [{**env.snapshot(), 'env_index': index} for index, env in enumerate(environments)]})
         except PermissionError:
             return  # 预览可丢帧，不能因为 Windows 读取句柄占用而终止训练。

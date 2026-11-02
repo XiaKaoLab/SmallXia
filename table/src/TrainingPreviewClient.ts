@@ -8,7 +8,7 @@ export interface TrainingSnapshot {
   env_index: number; joint_positions: Record<string, number>; ball_position: number[]; ball_radius: number;
   episode_index?: number; floor_z?: number;
 }
-export interface TrainingPreview { job_id: string; timestamp_ns: number; snapshots: TrainingSnapshot[]; physical: false }
+export interface TrainingPreview { kind?: string; camera_frame?: { data_url: string; source: string }; job_id: string; timestamp_ns: number; snapshots: TrainingSnapshot[]; physical: false }
 
 export class TrainingPreviewClient {
   private stopped = false;

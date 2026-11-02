@@ -65,6 +65,8 @@ export class VirtualCameraRig {
     this.signature = signature;
   }
 
+  setInferenceFrame(source: string | null, active: boolean): void { this.preview.setInputFrame(source, active); }
+
   update(): void { if (this.helper.visible) { this.mount.updateWorldMatrix(true, true); this.helper.update(); } }
 
   renderPreview(): void {

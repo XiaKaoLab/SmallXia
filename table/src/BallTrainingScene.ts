@@ -19,6 +19,8 @@ export class BallTrainingScene {
   private version = "";
   private jobId = "";
   private changed = false;
+  private previewKind = "";
+  private inputFrame: string | null = null;
   private readonly client = new TrainingPreviewClient(frame => this.receiveFrame(frame));
   private readonly close = (event: Event) => {
     if ((event as CustomEvent).detail === null) { this.snapshots = []; this.clear(); }
@@ -36,12 +38,17 @@ export class BallTrainingScene {
     this.version = version;
     this.changed ||= this.jobId !== frame.job_id;
     this.jobId = frame.job_id;
+    this.previewKind = frame.kind ?? "";
+    const image = frame.camera_frame?.data_url;
+    this.inputFrame = image?.startsWith("data:image/png;base64,") && image.length < 200000 ? image : null;
     this.snapshots = frame.snapshots.filter(item => item.ball_position?.length === 3
       && item.ball_position.every(Number.isFinite) && Number.isFinite(item.ball_radius)
       && Object.values(item.joint_positions).every(Number.isFinite));
   }
 
   get active(): boolean { return this.snapshots.length > 0; }
+  get inferenceCamera(): boolean { return this.previewKind === "ball_onnx_rollout"; }
+  get cameraFrame(): string | null { return this.inputFrame; }
   get count(): number { return this.instances.length; }
 
   private clear(): void {

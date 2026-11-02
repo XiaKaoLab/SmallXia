@@ -8,7 +8,8 @@ import URDFLoader from "urdf-loader";
 import type { URDFRobot } from "urdf-loader";
 import { ModelPoseGuard } from "./ModelPoseGuard";
 import { jointPreview } from "./JointPreview";
-import { VirtualCameraRig } from "./VirtualCameraRig";
+import { WRIST_CAMERA_PRESET } from "./CameraPreset";
+import { VirtualCameraRig, type VirtualCameraConfig } from "./VirtualCameraRig";
 import { ModelMotionClient } from "./ModelMotionClient";
 import { BallTrainingScene } from "./BallTrainingScene";
 
@@ -24,10 +25,12 @@ export class RobotViewer {
   private robot: URDFRobot | undefined;
   private poseGuard: ModelPoseGuard | undefined;
   private targets: Record<string, number> = {};
+  private modelCamera: VirtualCameraConfig | null = null;
   private readonly clock = new THREE.Clock();
   private readonly cameraRig: VirtualCameraRig;
   private readonly stopPreview: () => void;
   private readonly motion = new ModelMotionClient((positions, camera) => {
+    this.modelCamera = camera;
     if (this.training.active) return;
     this.setJointTargets(jointPreview.reconcile(positions));
     if (this.robot) this.cameraRig.configure(this.robot, camera);
@@ -135,7 +138,14 @@ export class RobotViewer {
 
   private updateJoints(dt: number): void {
     if (!this.robot || !this.modelReady) return;
-    if (this.training.active) { this.training.update(this.robot, dt); return; }
+    if (this.training.active) {
+      this.training.update(this.robot, dt);
+      this.cameraRig.configure(this.robot, this.training.inferenceCamera ? WRIST_CAMERA_PRESET : this.modelCamera);
+      this.cameraRig.setInferenceFrame(this.training.cameraFrame, this.training.inferenceCamera);
+      return;
+    }
+    this.cameraRig.configure(this.robot, this.modelCamera);
+    this.cameraRig.setInferenceFrame(null, false);
     if (!this.poseGuard || !Object.keys(this.targets).length) return;
     if (Object.entries(this.targets).every(([name, target]) => Math.abs(this.robot!.joints[name].jointValue[0] - target) < 1e-8)) return;
     const next = Object.fromEntries(Object.entries(this.targets).map(([name, target]) => {

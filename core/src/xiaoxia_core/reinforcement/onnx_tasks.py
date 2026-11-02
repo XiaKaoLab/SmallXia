@@ -29,7 +29,7 @@ class BallOnnxTasks:
         from .ball_observation import BallObservation
         observer = BallObservation(env, self.request['seed'] + 100000, noisy=self.request.get('suite') == 'noisy') if policy.manifest.get('cameras') else None
         from .preview import TrainingPreviewPublisher
-        preview = TrainingPreviewPublisher(self.worker.directory)
+        preview = TrainingPreviewPublisher(self.worker.directory, kind='ball_onnx_rollout')
         preview.publish([env], force=True)
         from .inference_playback import InferencePlayback
         playback = InferencePlayback(self.request.get('playback_speed', .5))
@@ -49,6 +49,8 @@ class BallOnnxTasks:
                     started = monotonic()
                     simulation_time = float(env._data.time)
                     observation = observer.read() if observer else None
+                    if observation:
+                        preview.set_camera_frame(observation[BallObservation.camera_key], simulation_time)
                     action = policy.predict(np.asarray([observation['observation.state'] if observation else state]),
                         np.asarray([observation[BallObservation.camera_key]], dtype=np.float32) / 255 if observation else None)[0]
                     state, _, terminated, truncated, success = env.advance(action)

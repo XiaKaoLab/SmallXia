@@ -20,3 +20,6 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
 .virtual-camera-preview { position: absolute; right: 16px; bottom: 16px; width: min(320px, calc(100% - 32px)); overflow: hidden; background: #ffffffd9; border: 1px solid #fff; border-radius: 12px; box-shadow: 0 8px 30px #23344418; pointer-events: none; }
 .virtual-camera-preview-title { padding: 9px 12px; font-size: 11px; color: #526b7a; }
 .virtual-camera-preview canvas { width: 100% !important; height: auto !important; aspect-ratio: 4 / 3; }
+
+.virtual-camera-preview img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: contain; }
+.virtual-camera-preview [hidden] { display: none !important; }

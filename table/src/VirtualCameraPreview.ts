@@ -8,6 +8,9 @@ import { agentClient } from "./chat/AgentClient";
 export class VirtualCameraPreview {
   private uploading = false;
   private lastUpload = 0;
+  private inputMode = false;
+  private inputImage?: HTMLImageElement;
+  private inputSource = "";
   private renderer: THREE.WebGLRenderer | undefined;
   private panel: HTMLElement | undefined;
 
@@ -31,9 +34,31 @@ export class VirtualCameraPreview {
     this.panel = panel;
   }
 
+  setInputFrame(source: string | null, active: boolean): void {
+    this.inputMode = active;
+    if (!this.panel || !this.renderer) return;
+    this.renderer.domElement.hidden = active;
+    if (active && !this.inputImage) {
+      this.inputImage = document.createElement("img");
+      this.inputImage.alt = "ONNX策略使用的腕部相机画面";
+      this.inputImage.width = 320; this.inputImage.height = 240;
+      this.inputImage.style.objectFit = "contain";
+      this.panel.appendChild(this.inputImage);
+    }
+    if (this.inputImage) {
+      this.inputImage.hidden = !active || !source;
+      if (active && source && this.inputSource !== source) {
+        this.inputImage.src = source; this.inputSource = source;
+      }
+    }
+    const title = this.panel.querySelector(".virtual-camera-preview-title");
+    if (title) title.textContent = active ? "腕部相机 · 推理输入" : "腕部相机 · 虚拟画面";
+    this.panel.dataset.source = active ? "policy_input" : "virtual_scene";
+  }
+
   render(scene: THREE.Scene, camera: THREE.PerspectiveCamera): void {
     const renderer = this.renderer;
-    if (!renderer) return;
+    if (!renderer || this.inputMode) return;
     renderer.render(scene, camera);
     // 开发桥保管认证令牌；最多 2 FPS，上一帧未上传时丢弃，避免积压。
     if (!agentClient.desktop || this.uploading || performance.now() - this.lastUpload < 500) return;
@@ -52,5 +77,6 @@ export class VirtualCameraPreview {
     this.panel?.remove();
     this.renderer = undefined;
     this.panel = undefined;
+    this.inputImage = undefined; this.inputSource = ""; this.inputMode = false;
   }
 }
