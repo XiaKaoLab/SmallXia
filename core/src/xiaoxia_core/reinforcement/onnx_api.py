@@ -85,7 +85,7 @@ class BallOnnxAPI:
             raise ValueError('模型使用旧抓球环境，请在新版物理与奖励环境重新训练')
         if any(job['kind'] in ('ball_pickup', 'ball_onnx_rollout') and job['status'] in ('queued', 'running') for job in self.jobs.list()):
             raise ValueError('已有抓球训练或 ONNX 推理运行中，请先停止或等待结束')
-        speed = body.get('playback_speed', .5)
+        speed = body.get('playback_speed', 1.0)
         if type(speed) not in (int, float) or not isfinite(speed) or (speed != 0 and not .1 <= speed <= 4):
             raise ValueError('playback_speed 需要0（批量快速评估）或0.1–4倍速')
         suite = body.get('suite', 'clean')

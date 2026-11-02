@@ -6,7 +6,7 @@ from time import monotonic, sleep
 
 
 class InferencePlayback:
-    def __init__(self, speed=.5):
+    def __init__(self, speed=1.0):
         self.speed = speed
 
     def wait_step(self, started, simulated_seconds):
@@ -18,4 +18,4 @@ class InferencePlayback:
 
     def pause_episode(self):
         if self.speed:
-            sleep(.6)
+            sleep(.3)

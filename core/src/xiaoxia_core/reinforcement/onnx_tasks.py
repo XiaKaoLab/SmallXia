@@ -32,7 +32,7 @@ class BallOnnxTasks:
         preview = TrainingPreviewPublisher(self.worker.directory, kind='ball_onnx_rollout')
         preview.publish([env], force=True)
         from .inference_playback import InferencePlayback
-        playback = InferencePlayback(self.request.get('playback_speed', .5))
+        playback = InferencePlayback(self.request.get('playback_speed', 1.0))
         rounds = self.request['rounds']
         positions = [(float(x), float(y)) for x in np.linspace(.16, .23, 7)
                      for y in np.linspace(-.05, .05, 5)] if self.request.get('suite') == 'grid' else None
@@ -76,7 +76,8 @@ class BallOnnxTasks:
                             snapshot=env.snapshot(), physical=False)
                         last_publish = monotonic()
                     if done:
-                        playback.pause_episode()
+                        if episode + 1 < rounds:
+                            playback.pause_episode()
                         break
             preview.publish([env], force=True)
             return {'runtime': 'onnxruntime', 'completed_episodes': rounds, 'score': float(np.mean(scores)),
