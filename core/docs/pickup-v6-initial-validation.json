@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-02",
+  "environment_version": "so101_pickup_v6_stable_sac",
+  "job_id": "ad39f22d56f84017a2db078a5f8ce21b",
+  "stage": "behavior_clone_initial_validation",
+  "pretraining_updates": 1000,
+  "curriculum_level": 0,
+  "seed": 20261102,
+  "successes": 20,
+  "rounds": 20,
+  "noisy": false,
+  "controller": "learned_actor_with_phase_gate",
+  "hold_seconds_range": [
+    1.1400000000000006,
+    1.1800000000000006
+  ],
+  "peak_arm_floor_force_max": 0.0,
+  "scope": "central_20_percent_spawn_span_only",
+  "full_workspace_qualified": false,
+  "final_235_suite_passed": false
+}

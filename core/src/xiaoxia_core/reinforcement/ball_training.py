@@ -107,6 +107,8 @@ class BallPickupTraining:
                 done=np.asarray([r[4] for r in demos]))
             self.worker.progress(phase='pretraining')
             evaluator = BallPolicyEvaluation(urdf, self.request['device'])
+            evaluation_history = self.worker.directory / 'evaluations'
+            evaluation_history.mkdir(exist_ok=True)
             evaluation = None
             validated = False
             plateau = False
@@ -129,6 +131,7 @@ class BallPickupTraining:
                 if stop_on_success and (step + 1) % 1000 == 0:
                     self.worker.progress(phase='evaluating', pretraining_step=step + 1)
                     evaluation = evaluator.run(learner.policy, preview=preview, level=curriculum.level)
+                    atomic_json(evaluation_history / f'pretrain-{step + 1:08d}.json', evaluation)
                     atomic_json(self.worker.directory / 'evaluation.json', evaluation)
                     self.worker.progress(evaluation_successes=evaluation['successes'], evaluation_rounds=20)
                     metric = (curriculum.level, evaluation['successes'], evaluation['score'])
@@ -138,7 +141,8 @@ class BallPickupTraining:
                         torch.save(best_state, self.worker.directory / 'best-policy.pt')
 
                     # 示教预训练只提供初始化；不能跳过在线 SAC 和最终全工作区验收。
-                    if self.request.get('corrective_demonstrations', False):
+                    if (self.request.get('corrective_demonstrations', False)
+                            and evaluation['successes'] < evaluation['rounds']):
                         self.worker.progress(phase='correcting')
                         for _ in range(8):
                             environments[0].reset_episode()
@@ -167,8 +171,6 @@ class BallPickupTraining:
                 # 保留刚完成预热的Critic，避免回滚至预训练时期的随机Q网络。
                 best_state = {key: value.detach().cpu().clone() for key, value in learner.policy.state_dict().items()}
                 torch.save(best_state, self.worker.directory / 'best-policy.pt')
-            evaluation_history = self.worker.directory / 'evaluations'
-            evaluation_history.mkdir(exist_ok=True)
             curriculum.configure(environments)
             for env in environments:
                 env.reset_episode()
