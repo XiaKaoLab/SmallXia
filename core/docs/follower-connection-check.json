@@ -1,0 +1,92 @@
+{
+  "checked_on": "2026-11-02",
+  "port": "COM17",
+  "role": "follower",
+  "read_only": true,
+  "status": "connected_readonly",
+  "models": {
+    "shoulder_pan": 777,
+    "shoulder_lift": 777,
+    "elbow_flex": 777,
+    "wrist_flex": 777,
+    "wrist_roll": 777,
+    "gripper": 777
+  },
+  "position_ticks": {
+    "shoulder_pan": 2085,
+    "shoulder_lift": 789,
+    "elbow_flex": 3092,
+    "wrist_flex": 821,
+    "wrist_roll": 2064,
+    "gripper": 945
+  },
+  "torque_enabled": {
+    "shoulder_pan": 0,
+    "shoulder_lift": 0,
+    "elbow_flex": 0,
+    "wrist_flex": 0,
+    "wrist_roll": 0,
+    "gripper": 0
+  },
+  "operating_mode": {
+    "shoulder_pan": 0,
+    "shoulder_lift": 0,
+    "elbow_flex": 0,
+    "wrist_flex": 0,
+    "wrist_roll": 0,
+    "gripper": 0
+  },
+  "device_calibration": {
+    "shoulder_pan": {
+      "id": 1,
+      "drive_mode": 0,
+      "homing_offset": 1943,
+      "range_min": 771,
+      "range_max": 3504
+    },
+    "shoulder_lift": {
+      "id": 2,
+      "drive_mode": 0,
+      "homing_offset": 1200,
+      "range_min": 745,
+      "range_max": 3315
+    },
+    "elbow_flex": {
+      "id": 3,
+      "drive_mode": 0,
+      "homing_offset": 1810,
+      "range_min": 864,
+      "range_max": 3093
+    },
+    "wrist_flex": {
+      "id": 4,
+      "drive_mode": 0,
+      "homing_offset": -1881,
+      "range_min": 779,
+      "range_max": 3138
+    },
+    "wrist_roll": {
+      "id": 5,
+      "drive_mode": 0,
+      "homing_offset": -2047,
+      "range_min": 0,
+      "range_max": 4095
+    },
+    "gripper": {
+      "id": 6,
+      "drive_mode": 0,
+      "homing_offset": 1337,
+      "range_min": 1090,
+      "range_max": 2660
+    }
+  },
+  "outside_device_calibration": [
+    "gripper"
+  ],
+  "disconnected": true,
+  "motion_validated": false,
+  "blocking_issues": [
+    "gripper Present_Position 945 is below EEPROM range_min 1090",
+    "No verified URDF zero/direction mapping or matching local hardware profile established by this check"
+  ]
+}
