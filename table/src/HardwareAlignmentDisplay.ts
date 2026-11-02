@@ -60,6 +60,7 @@ export class HardwareAlignmentDisplay {
     this.stopButton.textContent = mode === "mapping" ? "停止映射" : "停止跟随";
     this.session = session; this.panel.hidden = false; this.status.textContent = `${port} · 连接中`;
     this.values.replaceChildren(); this.stepButton.hidden = true; this.calibrationProgress.hidden = true; this.stepPending = false;
+    this.warning.hidden = false;
     this.warning.textContent = "正在读取并核对官方校准；缺失时同时采集六轴范围。";
     const requestId = crypto.randomUUID(); this.requestId = requestId;
     let mapped = false;
@@ -93,7 +94,7 @@ export class HardwareAlignmentDisplay {
             try {
               await agentClient.request({ action: "arm_calibration_action", session_id: session,
                 stage: state.calibration_stage, index: state.joint_index });
-            } catch (error) { if (generation === this.generation) this.warning.textContent = String(error); }
+            } catch (error) { if (generation === this.generation) { this.warning.hidden = false; this.warning.textContent = String(error); } }
             finally { if (generation === this.generation) { this.stepPending = false; this.stepButton.disabled = false; } }
           };
           this.values.classList.toggle("calibration-joints", !!state.joint_ranges);
@@ -127,12 +128,13 @@ export class HardwareAlignmentDisplay {
           }));
         }
         const limit = state.model_limited ? `模型已停在边界：${state.limit_reason || "姿态约束"}。角度箭头表示实际显示值。` : "";
-        this.warning.textContent = limit + (state.error ?? (calibrating ? state.instruction : undefined) ?? (state.outside_device_calibration?.length
+        this.warning.textContent = limit + (state.error ?? (calibrating ? (state.instruction?.startsWith("同时采集全部六轴。") ? "" : state.instruction) : undefined) ?? (state.outside_device_calibration?.length
           ? `设备校准范围异常：${state.outside_device_calibration.join("、")}。仅做显示对齐，不能用于实机控制。`
           : "已复用官方校准，编码器计数已转换为模型角度；夹爪为开合比例转换。SO-100 与 SO-101 几何一致性尚需核对。"));
+        this.warning.hidden = !this.warning.textContent;
       });
     } catch (error) {
-      if (generation === this.generation) this.warning.textContent = String(error);
+      if (generation === this.generation) { this.warning.hidden = false; this.warning.textContent = String(error); }
     } finally {
       if (generation === this.generation) { this.positions = null; this.session = ""; this.requestId = ""; }
     }
