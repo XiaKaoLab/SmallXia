@@ -9,8 +9,9 @@ from xiaoxia_core.reinforcement.client import ReinforcementClient
 
 
 class PickupTrainingCampaign:
-    def __init__(self, demonstration_job_id=None):
+    def __init__(self, demonstration_job_id=None, warm_start_job_id=None):
         self.demonstration_job_id = demonstration_job_id
+        self.warm_start_job_id = warm_start_job_id
         self.client = ReinforcementClient()
         self.path = Path(__file__).resolve().parents[1] / 'data/runtime/pickup-campaign.json'
         self.report = {'status': 'running', 'acceptance': '100_clean+100_noisy+35_grid_all_success', 'batches': []}
@@ -30,14 +31,14 @@ class PickupTrainingCampaign:
             sleep(3)
 
     def run(self):
-        previous = None
+        previous = self.warm_start_job_id
         batch = 0
         try:
             while True:
                 batch += 1
                 training = self.client.train_ball(num_envs=8, rounds=min(1000 * batch, 10000), device='cuda',
                     seed=42 + batch - 1, warm_start_job_id=previous, demonstration_episodes=min(64 * batch, 256),
-                    pretraining_updates=min(5000 * batch, 20000), stop_on_success=True, corrective_demonstrations=True,
+                    pretraining_updates=200 if batch == 1 and self.warm_start_job_id else min(5000 * batch, 20000), stop_on_success=True, corrective_demonstrations=True,
                     demonstration_job_id=self.demonstration_job_id if batch == 1 else None)
                 self.report['batch'] = batch
                 self.report['training_job_id'] = training['id']
@@ -76,5 +77,6 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--demonstration-job-id')
+    parser.add_argument('--warm-start-job-id')
     args = parser.parse_args()
-    PickupTrainingCampaign(args.demonstration_job_id).run()
+    PickupTrainingCampaign(args.demonstration_job_id, args.warm_start_job_id).run()

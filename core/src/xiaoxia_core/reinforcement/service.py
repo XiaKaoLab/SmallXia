@@ -195,7 +195,7 @@ class ReinforcementAPI:
                         if config.get('environment_version') != BallPickupEnvironment.version:
                             raise ValueError('旧权重使用不同的抓球物理与观测定义，请在新环境重新训练')
                         weights = json.loads((source / 'weights.json').read_text(encoding='utf-8'))
-                        checkpoint = source / weights['file']
+                        checkpoint = source / 'best-policy.pt' if (source / 'best-policy.pt').is_file() else source / weights['file']
                         if not checkpoint.resolve().is_relative_to(source.resolve()) or not checkpoint.is_file():
                             raise ValueError('接续训练权重不可用')
                         warm = {'warm_start_checkpoint': str(checkpoint), 'warm_start_job_id': source.name}

@@ -115,6 +115,12 @@ class BallPickupTraining:
             zero_success_evaluations = 0
             correction_labels = []
             pretraining_completed = 0
+            if self.request.get('warm_start_checkpoint'):
+                evaluation = evaluator.run(learner.policy, preview=preview, level=curriculum.level)
+                atomic_json(evaluation_history / 'warm-start.json', evaluation)
+                best_metric = (curriculum.level, evaluation['successes'], evaluation['score'])
+                best_state = {key: value.detach().cpu().clone() for key, value in learner.policy.state_dict().items()}
+                self.worker.progress(warm_start_successes=evaluation['successes'], evaluation_rounds=20)
             for step in range(pretraining):
                 pretraining_completed = step + 1
                 selected = PickupCurriculum.sample(demos, 64, rng)
@@ -128,7 +134,7 @@ class BallPickupTraining:
                         pretraining_updates=pretraining, loss_bc=bc_loss)
                 if (step + 1) % 1000 == 0:
                     learner.publish(self.worker.directory, step + 1)
-                if stop_on_success and (step + 1) % 1000 == 0:
+                if stop_on_success and ((step + 1) % 1000 == 0 or step + 1 == pretraining):
                     self.worker.progress(phase='evaluating', pretraining_step=step + 1)
                     evaluation = evaluator.run(learner.policy, preview=preview, level=curriculum.level)
                     atomic_json(evaluation_history / f'pretrain-{step + 1:08d}.json', evaluation)
@@ -159,6 +165,8 @@ class BallPickupTraining:
                 learner.policy.load_state_dict(best_state)
                 for optimizer in learner.optimizers.values():
                     optimizer.state.clear()
+            # 不把预训练期间失败混合执行的旧标签带入恢复后的最佳策略。
+            correction_labels = []
             self.worker.progress(phase='warming_critic', critic_warmup_updates=0)
             for warmup in range(1000):
                 selected = PickupCurriculum.sample(demos, 64, rng)
