@@ -107,3 +107,5 @@ python -m xiaoxia_core.imitation rollout --profile configs/so100.local.yaml --ch
 映射默认使用同一 COM 口最近成功保存且与设备六轴参数匹配的校准。新校准在读回成功后写入官方校准目录 .xiaoxia/<COM>.json 默认索引；旧会话兼容读取 status=saved 的记录，失败或取消记录不会成为默认项。没有成功保存记录时，匹配文件按修改时间倒序选取，不再按文件名字母顺序。普通映射不会更新校准保存时间。
 
 2026-11-02：默认显示与 table 路由改用 SO-100 中点零位模型，原始 URDF、网格来源与转换方法见 table/public/robots/so100/SOURCE.md。真实角度仍可能超出上游近似限位，模型碰撞限制不等同于实机碰撞。现有 SO-101 抓球策略及其独立预览保留原模型，未迁移或重训。检查记录见 so100-model-check.json。
+
+腕部显示旋转修正：桌面桥 alignment_wrist_offset 传 session_id 和 degrees，将偏移保存到 data/display_frames/<COM>-so100.json，绑定当前六轴校准指纹。新映射自动加载，校准改变后旧偏移不沿用。只修正 wrist_roll，不修改编码器计数、EEPROM 或夹爪开合。SO-100 腕轴 +Y 指向基座，从夹爪前端朝基座看，逆时针 90° 对应关节偏移 -90°；角度按全周等价值表示，模型原有限位和碰撞约束仍保留。

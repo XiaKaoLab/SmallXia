@@ -1,0 +1,13 @@
+{
+  "checked_on": "2026-11-02",
+  "port": "COM17",
+  "model": "SO100",
+  "operator_requested_view": "from gripper tip toward base: counterclockwise 90 degrees",
+  "wrist_roll_offset_deg": -90.0,
+  "status": "following",
+  "requested_wrist_rad": 1.6091552114541123,
+  "applied_wrist_rad": 1.6091552114541123,
+  "physical_motion_commands": 0,
+  "other_axes_unchanged_by_correction": true,
+  "physical_pose_alignment_verified": false
+}

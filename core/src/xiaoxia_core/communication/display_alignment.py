@@ -85,6 +85,13 @@ class DisplayAlignment:
         return {'accepted': True}
 
     @classmethod
+    def set_wrist_offset(cls, session_id, degrees):
+        from .display_frame import DisplayFrame
+        directory = cls.root / identifier(session_id)
+        saved = json.loads((directory / 'alignment.json').read_text(encoding='utf-8'))
+        return DisplayFrame.save(saved['port'], saved['device_calibration'], degrees)
+
+    @classmethod
     def stream(cls, session_id, emit):
         directory = cls.root / identifier(session_id)
         if not directory.is_dir():
@@ -123,6 +130,7 @@ class DisplayAlignment:
     @classmethod
     def run(cls, session_id):
         from .official_calibration import GuidedArmCalibration, OfficialUrdfMap
+        from .display_frame import DisplayFrame
         from lerobot.motors import Motor, MotorNormMode
         from lerobot.motors.feetech import FeetechMotorsBus
 
@@ -176,6 +184,8 @@ class DisplayAlignment:
                 state.update(mode='mapping', model_target='table', source_physical=True)
 
             joint_map = OfficialUrdfMap(raw_calibration, limits)
+            wrist_offset = DisplayFrame.load(request["port"], raw_calibration)
+            state["wrist_roll_offset_deg"] = wrist_offset
             state.update(angle_basis='lerobot_degrees_to_urdf_v1', input_unit='encoder_ticks', output_unit='rad',
                 gripper_unit='percent_to_urdf_rad', geometry_verified=False,
                 calibration_source=calibration_source, calibration_path=calibration_path,
@@ -187,7 +197,7 @@ class DisplayAlignment:
                 ticks = bus.sync_read('Present_Position', normalize=False)
                 if any(bus.sync_read('Torque_Enable', normalize=False).values()):
                     raise ValueError('检测到力矩已开启，结束只读显示对齐')
-                angles = joint_map.angles(ticks)
+                angles = DisplayFrame.apply(joint_map.angles(ticks), wrist_offset)
                 state.update(status='following', timestamp=time(), joint_positions=angles, ticks=ticks,
                     outside_device_calibration=[name for name in JOINTS if not calibration[name].range_min <= ticks[name] <= calibration[name].range_max])
                 if route is not None:
