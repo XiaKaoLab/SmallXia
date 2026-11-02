@@ -74,3 +74,14 @@ python -m xiaoxia_core.imitation rollout --profile configs/so100.local.yaml --ch
 结论：软件的采集→训练→加载→仿真推理已跑通；尚未完成实体从臂示教、实测硬限位标定、真实抓取或两台实机联动。
 
 参考：[用户指定 SO-100 中文文档](https://hugging-face.cn/docs/lerobot/so100)、[官方 SO-101 文档](https://huggingface.co/docs/lerobot/so101)、[官方模仿学习流程](https://huggingface.co/docs/lerobot/il_robots)。
+
+
+## 积木显示对齐
+
+“机械臂”分类新增“校准机械臂”积木，选择 COM 口和六轴正反方向。先手动将已安全支撑、力矩关闭的实机摆成仿真当前姿态，再运行；程序记录当时的仿真角度和首帧编码器读数，随后只读跟随，显示六轴角度（度）。初始方向为正向，实际正反方向需逐轴手动确认，不一致时修改方向并重新对齐。它是相对显示对齐，不是 LeRobot 电机行程校准，不产生可用于实机运动的已验证映射。
+
+显示角度由参考角度加上有向编码器增量得到，跨零按最近一圈解释；不支持通过一次采样推断多圈旋转。模型显示继续受关节限位和碰撞约束，可能停在边界，角度面板保留测量值。设备范围异常单独提示，不改写或掩盖。
+
+运行结果中的 `display_alignment` 回执启动持久 `alignment_preview` 桌面流；“停止跟随”调用 `alignment_stop`。前端退出或断流后租约最多 10 秒到期，工作进程释放串口；重新对齐会先停止该串口的旧会话。后台训练不停止，跟随时临时隐藏并行训练场景，停止后恢复。参考关系写入 `core/data/display_alignment/<id>/alignment.json`，标记 `verified_for_motion=false`，不会覆盖硬件配置。
+
+2026-11-02 COM17 检查：积木已启动只读流，界面显示六轴角度与夹爪范围异常，停止按钮使会话进入 stopped，原工作区恢复。调试命令桥出现回执超时，未重发启动命令；随后通过实际 UI 和会话文件确认执行结果。没有驱动实机，未验证人工摆放是否匹配或各轴运动方向。TypeScript 与 Python 语法检查通过，未完整构建。

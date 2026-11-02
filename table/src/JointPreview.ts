@@ -4,6 +4,7 @@
  */
 class JointPreview {
   revision = 0;
+  displayed: Record<string, number> = {};
   private overrides: Record<string, number> = {};
   private listeners = new Set<(name: string, angle: number) => number>();
 

@@ -22,6 +22,7 @@ export class BallTrainingScene {
   private jobId = "";
   private changed = false;
   private frozen = false;
+  private hidden = false;
   private readonly playback = (event: Event) => {
     const detail = (event as CustomEvent<{ jobId: string; paused: boolean }>).detail;
     if (detail.jobId === this.jobId) this.frozen = detail.paused;
@@ -54,6 +55,13 @@ export class BallTrainingScene {
     this.snapshots = frame.snapshots.filter(item => item.ball_position?.length === 3
       && item.ball_position.every(Number.isFinite) && Number.isFinite(item.ball_radius)
       && Object.values(item.joint_positions).every(Number.isFinite));
+  }
+
+  setHidden(hidden: boolean): void {
+    if (this.hidden === hidden) return;
+    this.hidden = hidden; this.group.visible = !hidden;
+    if (hidden) this.source?.position.set(0, 0, 0);
+    else this.changed = true;
   }
 
   get active(): boolean { return this.snapshots.length > 0; }

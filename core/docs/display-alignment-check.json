@@ -1,0 +1,31 @@
+{
+  "checked_on": "2026-11-02",
+  "session_id": "5ed840154e9c47fca8e684dbbacda948",
+  "port": "COM17",
+  "started_via": "table_calibrate_arm block",
+  "read_only": true,
+  "ui_visible": true,
+  "ui_angle_count": 6,
+  "final_state": "stopped",
+  "ticks": {
+    "shoulder_pan": 2085,
+    "shoulder_lift": 789,
+    "elbow_flex": 3092,
+    "wrist_flex": 821,
+    "wrist_roll": 2064,
+    "gripper": 945
+  },
+  "outside_device_calibration": [
+    "gripper"
+  ],
+  "workspace_restored": true,
+  "physical_pose_alignment_verified": false,
+  "motor_direction_verified": false,
+  "command_bridge": "receipt timed out; did not replay; observed live UI and worker state, stopped via UI",
+  "checks": [
+    "TypeScript noEmit",
+    "Python AST syntax",
+    "git diff check"
+  ],
+  "native_build": false
+}

@@ -2,6 +2,7 @@
  * Created on 2026-11-01; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
+import { CALIBRATION_BLOCK } from "../blocks/calibrationBlock";
 import * as Blockly from "blockly/core";
 import { pythonGenerator } from "blockly/python";
 import { CAMERA_BLOCK_TYPE } from "../blocks/cameraBlock";
@@ -63,11 +64,11 @@ class WorkspaceManager {
     }
   }
   types() {
-    const labels: Record<string, string> = { [BLOCK_TYPE]: "设置机械臂位置", [CAMERA_BLOCK_TYPE]: "装配相机",
+    const labels: Record<string, string> = { [CALIBRATION_BLOCK]: "校准机械臂（显示对齐）", [BLOCK_TYPE]: "设置机械臂位置", [CAMERA_BLOCK_TYPE]: "装配相机",
       [FRAME_CAPTURE]: "获取画面", [FRAME_VARIABLE]: "画面变量", [POLICY_RL_BALL]: "强化学习 · 拿取小球",
       [ONNX_EXPORT]: "导出抓球模型 ONNX", [ONNX_RUN]: "ONNX 推理 · 拿取小球" };
     return TOOLBOX_TYPES.map(type => ({ type, label: labels[type] || type, maxInstances: BLOCK_LIMITS[type] ?? 100,
-      fields: type === BLOCK_TYPE ? [{ name: "TARGET", label: "机械臂", options: armTargetCatalog.options().map(([, id]) => id) },
+      fields: type === CALIBRATION_BLOCK ? [{ name: "TARGET", label: "机械臂", options: armTargetCatalog.options().filter(([, value]) => value !== "simulation").map(([, id]) => id) }, ...JOINTS.map(([name, label]) => ({ name, label: `${label}方向`, options: ["1", "-1"] }))] : type === BLOCK_TYPE ? [{ name: "TARGET", label: "机械臂", options: armTargetCatalog.options().map(([, id]) => id) },
         ...JOINTS.map(([name, label]) => ({ name, label, unit: "rad", ...this.limits[name] }))]
         : type === POLICY_RL_BALL ? [{ name: "NUM_ENVS", label: "同时训练数量", lower: 1, upper: 16 },
           { name: "ROUNDS", label: "每环境训练轮数", lower: 1, upper: 10000 }, { name: "DEVICE", label: "设备", options: ["cpu", "cuda"] }]

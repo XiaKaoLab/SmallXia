@@ -53,6 +53,12 @@ class DesktopBridge:
         elif action == "clear":
             self.sessions.clear(request["session_id"])
             self.emit({"type": "data", "data": {"cleared": True}})
+        elif action == 'alignment_preview':
+            from ..communication.display_alignment import DisplayAlignment
+            DisplayAlignment.stream(request.get('session_id'), self.emit)
+        elif action == 'alignment_stop':
+            from ..communication.display_alignment import DisplayAlignment
+            self.emit({'type': 'data', 'data': DisplayAlignment.stop(request.get('session_id'))})
         elif action == 'reinforcement_preview':
             from ..reinforcement.preview import TrainingPreviewStream
             TrainingPreviewStream(Path(__file__).resolve().parents[3] / 'data/reinforcement_api/jobs').run(self.emit)

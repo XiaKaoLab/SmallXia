@@ -23,3 +23,12 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
 
 .virtual-camera-preview img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: contain; }
 .virtual-camera-preview [hidden] { display: none !important; }
+
+/* 只读显示对齐的关节角度面板。 */
+.hardware-alignment { position: absolute; z-index: 7; top: 150px; left: 50%; transform: translateX(-50%); width: min(360px, calc(100% - 32px)); padding: 12px; border: 1px solid #ffffffb3; border-radius: 12px; background: #f5faf5e8; backdrop-filter: blur(16px); color: #455d54; font-size: 11px; }
+.hardware-alignment[hidden] { display: none; }
+.hardware-alignment > div:first-child { display: flex; align-items: center; gap: 8px; }
+.hardware-alignment > div:first-child span { flex: 1; }
+.hardware-alignment > div:nth-child(2) { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; font-variant-numeric: tabular-nums; }
+.hardware-alignment button { min-height: 32px; border: 1px solid #c8d7ce; background: #ffffffb0; border-radius: 6px; color: inherit; }
+.hardware-alignment p { margin: 10px 0 0; color: #856b44; line-height: 1.5; }

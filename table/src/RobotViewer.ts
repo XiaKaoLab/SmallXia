@@ -2,6 +2,7 @@
  * Created on 2026-11-01; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
+import { HardwareAlignmentDisplay } from "./HardwareAlignmentDisplay";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import URDFLoader from "urdf-loader";
@@ -28,15 +29,18 @@ export class RobotViewer {
   private modelCamera: VirtualCameraConfig | null = null;
   private readonly clock = new THREE.Clock();
   private readonly cameraRig: VirtualCameraRig;
+  private readonly alignment: HardwareAlignmentDisplay;
+  private alignmentVisible = false;
   private readonly stopPreview: () => void;
   private readonly motion = new ModelMotionClient((positions, camera) => {
     this.modelCamera = camera;
-    if (this.training.active) return;
+    if (this.training.active || this.alignment?.positions) return;
     this.setJointTargets(jointPreview.reconcile(positions));
     if (this.robot) this.cameraRig.configure(this.robot, camera);
   });
 
   constructor(private readonly host: HTMLElement) {
+    this.alignment = new HardwareAlignmentDisplay(host);
     this.cameraRig = new VirtualCameraRig(this.scene, host);
     this.stopPreview = jointPreview.subscribe((name, angle) => {
       const joint = this.robot?.joints[name];
@@ -64,6 +68,7 @@ export class RobotViewer {
     this.resize();
     this.renderer.setAnimationLoop(() => {
       this.updateJoints(Math.min(this.clock.getDelta(), 0.05));
+      if (this.robot) jointPreview.displayed = Object.fromEntries(Object.entries(this.robot.joints).map(([name, joint]) => [name, joint.jointValue[0]]));
       this.cameraRig.update();
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
@@ -138,6 +143,21 @@ export class RobotViewer {
 
   private updateJoints(dt: number): void {
     if (!this.robot || !this.modelReady) return;
+    this.training.setHidden(this.alignment.positions !== null);
+    if (this.alignment.positions && this.poseGuard) {
+      if (!this.alignmentVisible) { this.fitTraining(1); this.alignmentVisible = true; }
+      const desired = Object.fromEntries(Object.entries(this.alignment.positions).map(([name, angle]) => {
+        const joint = this.robot!.joints[name];
+        return [name, joint ? Math.max(joint.limit.lower, Math.min(joint.limit.upper, angle)) : angle];
+      }));
+      const pose = this.poseGuard.limit(desired);
+      this.robot.setJointValues(pose.pose);
+      this.robot.position.set(0, 0, 0);
+      this.cameraRig.configure(this.robot, this.modelCamera);
+      this.cameraRig.setInferenceFrame(null, false);
+      return;
+    }
+    this.alignmentVisible = false;
     if (this.training.active) {
       this.training.update(this.robot, dt);
       this.cameraRig.configure(this.robot, this.training.cameraVisible ? WRIST_CAMERA_PRESET : this.modelCamera);
@@ -179,6 +199,7 @@ export class RobotViewer {
   dispose(): void {
     this.disposed = true;
     this.motion.dispose();
+    this.alignment.dispose();
     this.training.dispose();
     this.stopPreview();
     this.poseGuard?.dispose();
