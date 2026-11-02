@@ -5,7 +5,7 @@ Created on 2026-11-02; Updated on 2026-11-02
 
 参考 [LeRobot Dataset v3 文档](https://hugging-face.cn/docs/lerobot/lerobot-dataset-v3)，复用 LeRobot 0.4.4 原生 LeRobotDataset 写入器管理 Parquet、视频、episode 边界和统计信息，不手工拼装 v3 索引。图像默认保存为 H.264 MP4，use_videos=false 可使用原生 image 特征。
 
-服务 http://127.0.0.1:8766，前缀 `/api/v1/collection`；所有路由要求现有 Bearer 令牌，POST 使用 JSON。复用 Conda base；创建会话只保存配置，显式 start 才启动采集源。
+服务 http://127.0.0.1:8766，前缀 `/api/v1/collection`；所有路由要求现有 Bearer 令牌，POST 使用 JSON。复用 Conda base；创建会话只保存配置，显式 start 或 record 才启动采集源。
 
 | 方法 | 路由 | 行为 |
 | --- | --- | --- |
@@ -13,6 +13,7 @@ Created on 2026-11-02; Updated on 2026-11-02
 | POST | `/hardware/sessions` | 创建只读真机采集会话，检查配置与校准映射文件 |
 | GET | `/sessions`、`/sessions/{id}` | 配置、阶段、帧数、回合数、后台任务 |
 | POST | `/sessions/{id}/start` | 启动工作进程，202；重复调用复用已有任务 |
+| POST | `/sessions/{id}/record` | 按时长连续录制，自动启动采集并在完成后保存，202 返回 command_id |
 | POST | `/sessions/{id}/frames` | 记录一帧，202 返回 command_id；需动作标签时传 action 六轴弧度目标 |
 | POST | `/sessions/{id}/episodes` | 保存当前回合，至少两帧；下一帧开始新回合 |
 | POST | `/sessions/{id}/finish` | 保存未结束回合、finalize、释放采集源 |
@@ -70,3 +71,18 @@ sid = session["id"]
 左侧“数据”分类提供创建仿真采集、创建真机只读采集、启动、记录一帧、机械臂设定角度、保存回合、结束/停止、采集状态与命令状态。返回对象可通过变量赋值/读取积木保存。“机械臂设定角度”读取工作区滑杆值，只是目标标签，不是实机反馈。真机积木需手工勾选只读确认并填写本地配置。
 
 本次检查完成两帧无图像 MuJoCo 到 v3.0，以及两帧 RGB 渲染到原生 Parquet/MP4 的采集、finalize 与回执。后一次临时文件清理完成。检查没有连接实机、使能力矩、训练或构建前端。真机验收仍需匹配的配置、校准与设备。
+
+
+## 连续录制 API
+
+`POST /api/v1/collection/sessions/{id}/record`，JSON 示例 `{"duration_s":10}`。无需事先 start：未启动的会话会自动连接。已开启 record_actions 的会话必须额外提供显式六轴 action；自动录制期间使用此固定目标/标签，不会从反馈伪造动作。真机入口只记录标签，不执行它。未开启 record_actions 时忽略 action，数据仍是观测数据。
+
+时长范围 1–3600 秒，目标帧数为 ceil(duration_s × fps)，至少两帧；时长表示固定帧率数据集长度。采集与写入按目标频率节流，实际墙钟耗时包含初始化、图像采集、编码和写盘，可能更长，不承诺真实相机硬实时帧率。原始源时间戳继续保存在 acquisition.jsonl。
+
+返回 `{session_id,command_id,status}`，202 仅表示接受。使用现有 GET 会话/命令接口查询 recording_frames、recording_target_frames、阶段和结果。相同会话重复提交相同录制参数复用原命令，不启动第二次录制；改变参数会拒绝。每段录制正常结束后关闭会话，需要新一段时创建新会话。
+
+录制期间 POST `/sessions/{id}/finish` 提交提前保存意图，返回当前录制命令；工作进程在至少取得两帧后结束，保存回合、finalize 并释放采集源。`stop` 仍为强制停止，部分输出不算完成数据。录制期间不允许混入手动单帧或保存回合命令。正常结果包含 dataset、frames、episodes、format，以及 recording_frames、recording_target_frames、requested_duration_s、recording_wall_seconds 和 ended_early。
+
+Python 使用 `CollectionClient.record(session_id,duration_s=10,action=None)`。积木“数据 → 录制一段”可连接采集会话、设置时长和可选动作标签；创建会话积木增加“记录动作标签”开关。录制回执可保存到变量，再用既有“采集命令状态”查询。“结束采集”提前保存，“停止采集”强停。
+
+2026-11-02 实际 HTTP 检查通过：2 FPS、1.5 秒仿真图像录制生成 3 帧 LeRobot v3.0 数据和 1 个 MP4，视频实际可解码 3 帧；重复请求复用命令。另一段目标 50 帧的录制提前结束并正常保存 3 帧。检查只运行仿真，不连接真实设备，真机录制仍需要匹配的配置与校准。启动下一会话需等待前一采集进程退出，达到后台任务上限时接口会明确拒绝，不能据此重复提交已接受的请求。

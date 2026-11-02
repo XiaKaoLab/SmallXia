@@ -39,12 +39,15 @@ class CaptureQueue:
         with self.connect() as connection:
             return {key: json.loads(value) for key, value in connection.execute('SELECT key,value FROM metadata')}
 
-    def enqueue(self, kind, body):
+    def enqueue(self, kind, body, *, metadata=None, command_key=None):
         with self.connect() as connection:
             connection.execute('BEGIN IMMEDIATE')
             if connection.execute("SELECT count(*) FROM commands WHERE status IN ('queued','running')").fetchone()[0] >= 100:
                 raise ValueError('待处理命令超过 100，请等待采集回执')
             cursor = connection.execute("INSERT INTO commands(kind,body,status) VALUES (?,?,'queued')", (kind, json.dumps(body)))
+            values = {**(metadata or {}), **({command_key: cursor.lastrowid} if command_key else {})}
+            for key, value in values.items():
+                connection.execute('INSERT OR REPLACE INTO metadata VALUES (?,?)', (key, json.dumps(value)))
             return {'command_id': cursor.lastrowid, 'status': 'queued', 'session_id': self.config['id']}
 
     def next(self):

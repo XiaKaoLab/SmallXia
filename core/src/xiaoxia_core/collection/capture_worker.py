@@ -13,6 +13,7 @@ from ..imitation.api_worker import ImitationWorker
 from ..imitation.dataset import DemonstrationWriter
 from ..imitation.api_jobs import atomic_json
 from .capture_queue import CaptureQueue
+from .recording import RecordingPlan
 from .capture_sources import SimulationCaptureSource, HardwareCaptureSource
 
 
@@ -31,6 +32,31 @@ class CaptureWorker(ImitationWorker):
         last_command = monotonic()
         images = self.directory / 'raw_images'
         images.mkdir()
+        def capture_frame(body):
+            nonlocal writer, total, last_frame
+            sleep(max(0, 1 / config['fps'] - (monotonic() - last_frame)))
+            observation = source.observation(images, total)
+            action = Action(body['action']) if config['record_actions'] else None
+            if writer is None:
+                writer = DemonstrationWriter(self.directory / 'dataset', f"local/{config['id']}", config['fps'],
+                    source.transport.limits, observation, simulated=config['source'] == 'simulation',
+                    robot_type='so100_mujoco' if config['source'] == 'simulation' else f'{source.workflow.config["robot"]}_follower',
+                    use_videos=config['use_videos'], record_actions=config['record_actions'])
+                writer.metadata.update(state_source='mujoco_physics' if config['source'] == 'simulation' else 'calibrated_encoder_feedback',
+                    action_semantics=('simulation_position_target' if config['source'] == 'simulation' else 'external_target_label_not_executed')
+                                     if config['record_actions'] else 'observation_only',
+                    camera_joint_synchronized=config['source'] == 'simulation', physical=config['source'] == 'hardware')
+                atomic_json(self.directory / 'dataset/imitation.json', writer.metadata)
+            source.advance(action)
+            writer.append(observation, action, config['task'])
+            with (self.directory / 'acquisition.jsonl').open('a', encoding='utf-8') as stream:
+                stream.write(json.dumps({'frame': total, 'source_timestamp_ns': observation.timestamp_ns,
+                    'received_at_ns': time_ns(), 'source': config['source'],
+                    'camera_metadata': getattr(source, 'camera_metadata', {}), 'action_executed': config['source'] == 'simulation' and action is not None}) + '\n')
+            total += 1
+            last_frame = monotonic()
+            return {'frames': total, 'episode_frames': writer.frames}
+
         try:
             source.connect()
             queue.set(phase='ready', frames=0, episodes=0, episode_frames=0)
@@ -45,29 +71,25 @@ class CaptureWorker(ImitationWorker):
                 key, kind, body = command
                 last_command = monotonic()
                 try:
+                    recording = kind == 'record'
+                    recording_info = {}
+                    if recording:
+                        plan = RecordingPlan(body['duration_s'], config['fps'])
+                        started = monotonic()
+                        for index in range(plan.target_frames):
+                            capture_frame(body)
+                            queue.set(phase='recording', frames=total, episodes=episodes, episode_frames=writer.frames,
+                                      recording_frames=index + 1)
+                            self.progress(phase='recording', frames=total, recording_frames=index + 1,
+                                          recording_target_frames=plan.target_frames, episodes=episodes)
+                            if index >= 1 and queue.state().get('recording_finish_requested'):
+                                break
+                        recording_info = {'recording_frames': index + 1, 'recording_target_frames': plan.target_frames,
+                            'requested_duration_s': plan.duration_s, 'recording_wall_seconds': monotonic() - started,
+                            'ended_early': index + 1 < plan.target_frames}
+                        kind = 'finish'
                     if kind == 'capture':
-                        sleep(max(0, 1 / config['fps'] - (monotonic() - last_frame)))
-                        observation = source.observation(images, total)
-                        action = Action(body['action']) if config['record_actions'] else None
-                        if writer is None:
-                            writer = DemonstrationWriter(self.directory / 'dataset', f"local/{config['id']}", config['fps'],
-                                source.transport.limits, observation, simulated=config['source'] == 'simulation',
-                                robot_type='so100_mujoco' if config['source'] == 'simulation' else f'{source.workflow.config["robot"]}_follower',
-                                use_videos=config['use_videos'], record_actions=config['record_actions'])
-                            writer.metadata.update(state_source='mujoco_physics' if config['source'] == 'simulation' else 'calibrated_encoder_feedback',
-                                action_semantics=('simulation_position_target' if config['source'] == 'simulation' else 'external_target_label_not_executed')
-                                                 if config['record_actions'] else 'observation_only',
-                                camera_joint_synchronized=config['source'] == 'simulation', physical=config['source'] == 'hardware')
-                            atomic_json(self.directory / 'dataset/imitation.json', writer.metadata)
-                        source.advance(action)
-                        writer.append(observation, action, config['task'])
-                        with (self.directory / 'acquisition.jsonl').open('a', encoding='utf-8') as stream:
-                            stream.write(json.dumps({'frame': total, 'source_timestamp_ns': observation.timestamp_ns,
-                                'received_at_ns': time_ns(), 'source': config['source'],
-                                'camera_metadata': getattr(source, 'camera_metadata', {}), 'action_executed': config['source'] == 'simulation' and action is not None}) + '\n')
-                        total += 1
-                        last_frame = monotonic()
-                        result = {'frames': total, 'episode_frames': writer.frames}
+                        result = capture_frame(body)
                     elif kind in ('save_episode', 'finish'):
                         if writer is None:
                             raise ValueError('尚未采集数据')
@@ -83,7 +105,7 @@ class CaptureWorker(ImitationWorker):
                             if not info['codebase_version'].startswith('v3.'):
                                 raise RuntimeError('导出数据集不是 LeRobot v3')
                             result = {'dataset': str(self.directory / 'dataset'), 'frames': total, 'episodes': episodes,
-                                      'format': info['codebase_version'], 'physical': config['source'] == 'hardware'}
+                                      'format': info['codebase_version'], 'physical': config['source'] == 'hardware', **recording_info}
                             source.close()
                             source_closed = True
                             queue.complete(key, 'succeeded', result)
@@ -100,7 +122,7 @@ class CaptureWorker(ImitationWorker):
                     queue.complete(key, 'failed', {'error': str(error)})
                     if kind == 'finish':
                         queue.set(finish_requested=False)
-                    if kind == 'capture':
+                    if kind == 'capture' or recording:
                         raise
                 except Exception as error:
                     queue.complete(key, 'failed', {'error': str(error)})

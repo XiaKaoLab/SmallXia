@@ -12,6 +12,7 @@ from uuid import uuid4
 from ..imitation.api_jobs import ImitationJobs, atomic_json, identifier
 from ..safety import JointLimits
 from .capture_queue import CaptureQueue
+from .recording import RecordingPlan
 
 
 class CollectionAPI:
@@ -78,6 +79,40 @@ class CollectionAPI:
             raise ValueError('只读观测数据没有动作标签，不能直接用于 ACT 训练')
         return Path(state['job']['result']['dataset']), state['frames']
 
+    def validate_action(self, queue, body):
+        if not queue.config['record_actions']:
+            return
+        action = body.get('action')
+        if not isinstance(action, dict) or any(type(v) not in (int, float) for v in action.values()):
+            raise ValueError('此会话需要显式六关节 action 弧度目标')
+        if queue.config['source'] == 'simulation':
+            limits = JointLimits.from_urdf(self.core / 'assets/so100/so100.urdf')
+        else:
+            from ..imitation.workflows import HardwareWorkflow
+            limits = HardwareWorkflow(self.core / 'configs' / queue.config['profile']).arm('follower').limits
+        limits.validate(action)
+
+    def record(self, queue, state, body):
+        plan = RecordingPlan(body.get('duration_s', 10), queue.config['fps'])
+        self.validate_action(queue, body)
+        payload = plan.payload(body.get('action') if queue.config['record_actions'] else None)
+        if state.get('recording_command_id'):
+            if state.get('recording_parameters') != payload:
+                raise ValueError('此会话已提交另一段录制，请查询已有回执或创建新会话')
+            return 200, {**queue.command(state['recording_command_id']), 'session_id': queue.config['id']}
+        if state.get('phase') in ('completed', 'cancelled', 'failed') or state.get('finish_requested'):
+            raise ValueError('已结束或正在结束的会话不能录制')
+        if state.get('job_id'):
+            if self.jobs.get(state['job_id'])['status'] not in ('queued', 'running'):
+                raise ValueError('采集进程已结束，请创建新会话')
+        else:
+            job = self.jobs.start('capture', {'session_directory': str(queue.directory)})
+            queue.set(job_id=job['id'])
+        command = queue.enqueue('record', payload, command_key='recording_command_id', metadata={
+            'recording_parameters': payload, 'recording_target_frames': plan.target_frames,
+            'recording_frames': 0, 'recording_finish_requested': False, 'finish_requested': True})
+        return 202, command
+
     def handle(self, method, path, body=None):
         body = body or {}
         parts = path.removeprefix(self.prefix).strip('/').split('/')
@@ -101,6 +136,8 @@ class CollectionAPI:
                 queue = self.queue(parts[1])
                 with self._lock:
                     state = queue.state()
+                    if parts[2] == 'record':
+                        return self.record(queue, state, body)
                     if parts[2] == 'start':
                         if state.get('job_id'):
                             return 200, self.status(parts[1])
@@ -112,6 +149,8 @@ class CollectionAPI:
                             return 200, self.status(parts[1])
                         if state.get('job_id'):
                             self.jobs.stop(state['job_id'])
+                        if state.get('recording_command_id'):
+                            queue.complete(state['recording_command_id'], 'failed', {'error': '录制已强制停止，部分数据未完成'})
                         if self.frames is not None and queue.config['source'] == 'hardware':
                             self.frames.close()
                         queue.set(phase='cancelled')
@@ -120,18 +159,15 @@ class CollectionAPI:
                     if parts[2] in kinds:
                         if not state.get('job_id') or self.jobs.get(state['job_id'])['status'] not in ('queued', 'running'):
                             raise ValueError('请先启动采集；已结束的会话不能追加')
+                        if state.get('recording_command_id'):
+                            if parts[2] != 'finish':
+                                raise ValueError('连续录制期间不能混入单帧或保存回合命令')
+                            queue.set(recording_finish_requested=True)
+                            return 202, {**queue.command(state['recording_command_id']), 'session_id': parts[1]}
                         if state.get('finish_requested'):
                             raise ValueError('已请求结束采集，请等待回执')
-                        if parts[2] == 'frames' and queue.config['record_actions']:
-                            action = body.get('action')
-                            if not isinstance(action, dict) or any(type(v) not in (int, float) for v in action.values()):
-                                raise ValueError('需要显式六关节 action 弧度目标')
-                            if queue.config['source'] == 'simulation':
-                                limits = JointLimits.from_urdf(self.core / 'assets/so100/so100.urdf')
-                            else:
-                                from ..imitation.workflows import HardwareWorkflow
-                                limits = HardwareWorkflow(self.core / 'configs' / queue.config['profile']).arm('follower').limits
-                            limits.validate(action)
+                        if parts[2] == 'frames':
+                            self.validate_action(queue, body)
                         command = queue.enqueue(kinds[parts[2]], body)
                         if parts[2] == 'finish':
                             queue.set(finish_requested=True)

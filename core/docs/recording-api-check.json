@@ -1,0 +1,51 @@
+{
+  "status": "succeeded",
+  "physical": false,
+  "sessions": [
+    "a581726738754d38becb833280123325",
+    "394374f26feb43aba6343126ff1100c9"
+  ],
+  "same_command_on_duplicate": true,
+  "timed_recording": {
+    "dataset": "\\\\?\\C:\\Users\\30470\\.codex\\worktrees\\xiaoxia-fresh-start\\小虾台\\core\\data\\collection_api\\jobs\\eaafaaf57984453caf61720ba389fd05\\dataset",
+    "frames": 3,
+    "episodes": 1,
+    "format": "v3.0",
+    "physical": false,
+    "recording_frames": 3,
+    "recording_target_frames": 3,
+    "requested_duration_s": 1.5,
+    "recording_wall_seconds": 16.902985399996396,
+    "ended_early": false,
+    "native_total_frames": 3,
+    "video_files": 1,
+    "decoded_video_frames": 3
+  },
+  "finish_reuses_recording_command": true,
+  "early_finish": {
+    "dataset": "\\\\?\\C:\\Users\\30470\\.codex\\worktrees\\xiaoxia-fresh-start\\小虾台\\core\\data\\collection_api\\jobs\\bc6338a8365b4342bb5102595aef343f\\dataset",
+    "frames": 3,
+    "episodes": 1,
+    "format": "v3.0",
+    "physical": false,
+    "recording_frames": 3,
+    "recording_target_frames": 50,
+    "requested_duration_s": 10.0,
+    "recording_wall_seconds": 16.80562389997067,
+    "ended_early": true
+  },
+  "checked_on": "2026-11-02",
+  "checks": [
+    "actual HTTP continuous recording",
+    "native dataset metadata",
+    "MP4 decoded frame count",
+    "duplicate recording receipt",
+    "early finish saves dataset",
+    "WebView block catalog",
+    "TypeScript noEmit",
+    "Python AST syntax",
+    "git diff check"
+  ],
+  "native_build": false,
+  "real_hardware_recording_verified": false
+}

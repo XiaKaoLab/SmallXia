@@ -29,6 +29,9 @@ class CollectionClient:
     def start(self, session_id):
         return self.request(f'sessions/{session_id}/start', {})
 
+    def record(self, session_id, duration_s=10, action=None):
+        return self.request(f'sessions/{session_id}/record', {'duration_s': duration_s, **({'action': action} if action is not None else {})})
+
     def capture(self, session_id, action=None):
         return self.request(f'sessions/{session_id}/frames', {} if action is None else {'action': action})
 

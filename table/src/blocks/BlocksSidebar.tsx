@@ -152,6 +152,7 @@ export function BlocksSidebar() {
       await liveRef.current?.pause();
       const result = await agentClient.request<{ output: string; exit_code: number }>({ action: "run_program", source });
       let ballTraining = false;
+      let dataRecording = false;
       for (const line of result.output.trim().split("\n")) {
         try {
           const receipt = JSON.parse(line);
@@ -159,12 +160,13 @@ export function BlocksSidebar() {
             ballTraining = true;
             window.dispatchEvent(new CustomEvent("table:ball-training-started", { detail: receipt.ball_training }));
           }
+          if (receipt.data_recording?.command_id) dataRecording = true;
           if (receipt.camera_calibration?.id) window.dispatchEvent(new CustomEvent("table:camera-calibration-start", { detail: receipt.camera_calibration }));
           if (receipt.display_alignment?.id) window.dispatchEvent(new CustomEvent("table:alignment-start", { detail: receipt.display_alignment }));
           if (receipt.limited && receipt.applied_joint_positions) jointPreview.confirm(receipt.applied_joint_positions, revision);
         } catch { /* 相机积木等非 JSON 文本不属于关节回执。 */ }
       }
-      setNotice(ballTraining ? "小球任务已启动" : result.output.trim() ? `已运行：${result.output.trim()}` : "Python 运行完成");
+      setNotice(ballTraining ? "小球任务已启动" : dataRecording ? "录制请求已提交，可查询采集状态或命令回执" : result.output.trim() ? `已运行：${result.output.trim()}` : "Python 运行完成");
       return result;
     } catch (failure) {
       setError(String(failure));
