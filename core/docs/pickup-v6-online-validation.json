@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-02",
+  "job_id": "2bc25af561294033a5a048a2d7ec6a5e",
+  "environment_version": "so101_pickup_v6_stable_sac",
+  "online_updates": 500,
+  "critic_warmup_updates": 1000,
+  "seed": 20270500,
+  "curriculum_level": 0,
+  "noisy": false,
+  "successes": 13,
+  "rounds": 20,
+  "success_rate": 0.65,
+  "scope": "central_20_percent_spawn_span_only",
+  "failure_stages": {
+    "approach": 1,
+    "recover": 6
+  },
+  "controller": "learned_actor_with_phase_gate",
+  "final_235_suite_passed": false,
+  "physical_hardware_tested": false
+}
