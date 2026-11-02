@@ -100,15 +100,15 @@ class GuidedArmCalibration:
                 raise ValueError("已选择重新校准，不复用原行程数据")
             path, source = OfficialCalibrationStore.reuse(original, self.bus.port)
             return original, path, source
-        except ValueError as error:
-            reason = str(error)
+        except ValueError:
+            pass
         changed = False
         committed = False
         try:
             while self.active():
                 self.require_manual_mode()
                 self.publish(status='waiting_center', calibration_stage='center', joint_index=-1,
-                             instruction=f'{reason}。手动将各关节放在行程中部，再点击“记录中位并检查行程”。')
+                             instruction='请转动各个关节')
                 if self.command('center', -1):
                     changed = True
                     self.bus.allow_calibration_writes = True
