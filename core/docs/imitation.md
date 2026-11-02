@@ -85,3 +85,16 @@ python -m xiaoxia_core.imitation rollout --profile configs/so100.local.yaml --ch
 运行结果中的 `display_alignment` 回执启动持久 `alignment_preview` 桌面流；“停止跟随”调用 `alignment_stop`。前端退出或断流后租约最多 10 秒到期，工作进程释放串口；重新对齐会先停止该串口的旧会话。后台训练不停止，跟随时临时隐藏并行训练场景，停止后恢复。参考关系写入 `core/data/display_alignment/<id>/alignment.json`，标记 `verified_for_motion=false`，不会覆盖硬件配置。
 
 2026-11-02 COM17 检查：积木已启动只读流，界面显示六轴角度与夹爪范围异常，停止按钮使会话进入 stopped，原工作区恢复。调试命令桥出现回执超时，未重发启动命令；随后通过实际 UI 和会话文件确认执行结果。没有驱动实机，未验证人工摆放是否匹配或各轴运动方向。TypeScript 与 Python 语法检查通过，未完整构建。
+
+
+## 编程区真机映射
+
+“机械臂”分类新增“映射真机到仿真”（table_map_hardware_arm）积木，TARGET 选择发现的串口。先单独运行“校准机械臂”，人工核对仿真与实机起点、六轴方向，完成后禁用或移除该校准积木，再运行映射积木。映射使用同串口最近一次显示对齐，不在每次启动时重新把当前读数当零点；同时运行校准和映射积木会明确提示分开操作。
+
+后端 `DisplayAlignment.start_mapping(port)` 返回 mode=mapping 的会话，加载保存的参考角度、编码器起点和方向。连接时只读核对六轴设备校准快照，变化时要求重新对齐，不自动修正 EEPROM。读取仍要求力矩关闭，任意写寄存器和力矩方法均被只读总线覆盖为报错。
+
+每次读取后把映射角度限制到 URDF 范围，固定发送到 `http://127.0.0.1:8766/api/v1/robots/table/motions`；目标必须声明为仿真 display_target，不接受动态 robot_id/URL。模型继续使用既有碰撞路径限制，流中区分 joint_positions（映射测量值）和 applied_joint_positions（模型应用值）。面板标题“真机 → 仿真”，显示六轴角度，受限时用箭头显示实际采用值，保留设备校准范围异常提示。停止后模型保留最后应用姿态，真实串口释放；播放录制期间不启动真机映射。
+
+开发桥动作 `alignment_map` 传 port；`alignment_preview`、`alignment_stop` 传 session_id。流为持久连接，不为每帧启动 Python 或 LLM；界面断开后租约到期退出。软件映射约定不构成实机控制用的绝对角度标定，人工起点和方向确认仍是几何对应的前提。
+
+2026-11-02 通过当前 WebView 的映射积木联调 COM17：反馈时间戳连续更新，停止后的 table API 角度与最后应用值一致，串口已释放，原工作区完整恢复。仅调用实机读指令，未发送实机运动指令；夹爪设备范围异常仍保留。证据见 arm-mapping-check.json。TypeScript、Python 语法检查通过，未执行完整构建。

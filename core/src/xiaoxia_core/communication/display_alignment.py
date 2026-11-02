@@ -19,7 +19,7 @@ class DisplayAlignment:
     root = Path(__file__).resolve().parents[3] / 'data/display_alignment'
 
     @classmethod
-    def start(cls, port, reference, directions):
+    def start(cls, port, reference, directions, *, source_alignment=None):
         from math import isfinite
         if not isinstance(port, str) or not re.fullmatch(r'COM[1-9][0-9]*', port):
             raise ValueError('请选择实际 COM 口')
@@ -57,13 +57,29 @@ class DisplayAlignment:
             sleep(.05)
         directory = cls.root / uuid4().hex
         directory.mkdir()
-        atomic_json(directory / 'request.json', {'port': port, 'reference': reference, 'directions': directions})
+        atomic_json(directory / 'request.json', {'port': port, 'reference': reference, 'directions': directions,
+            'mode': 'mapping' if source_alignment else 'alignment', 'source_alignment': source_alignment})
         atomic_json(directory / 'state.json', {'status': 'connecting', 'port': port})
         (directory / 'lease').touch()
         with (directory / 'worker.log').open('ab') as log:
             subprocess.Popen([sys.executable, '-u', '-m', __name__, directory.name], stdout=log, stderr=log,
                 env={**os.environ, 'USE_TF': '0'}, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
-        return {'id': directory.name, 'port': port, 'status': 'connecting', 'reference': reference, 'display_only': True}
+        return {'id': directory.name, 'port': port, 'status': 'connecting', 'reference': reference, 'display_only': True, 'mode': 'mapping' if source_alignment else 'alignment'}
+
+    @classmethod
+    def start_mapping(cls, port):
+        candidates = []
+        for path in cls.root.glob('*/alignment.json'):
+            try:
+                config = json.loads(path.read_text(encoding='utf-8'))
+                if config.get('port') == port and config.get('mode', 'alignment') == 'alignment':
+                    candidates.append((path.stat().st_mtime_ns, path.parent.name, config))
+            except (OSError, ValueError):
+                continue
+        if not candidates:
+            raise ValueError('此串口没有显示对齐记录，请先运行校准机械臂，确认起点和六轴方向')
+        _, identity, config = max(candidates, key=lambda item: item[0])
+        return cls.start(port, config['reference'], config['directions'], source_alignment=identity)
 
     @classmethod
     def stream(cls, session_id, emit):
@@ -127,6 +143,27 @@ class DisplayAlignment:
                 raise ValueError('显示对齐要求机械臂已安全支撑且力矩关闭；本工具不改变力矩')
             baseline = bus.sync_read('Present_Position', normalize=False)
             calibration = bus.read_calibration()
+            route = None
+            if request.get('source_alignment'):
+                source = cls.root / identifier(request['source_alignment']) / 'alignment.json'
+                saved = json.loads(source.read_text(encoding='utf-8'))
+                if saved['port'] != request['port'] or saved['device_calibration'] != {name: asdict(value) for name, value in calibration.items()}:
+                    raise ValueError('设备校准快照已变化，请重新做显示对齐')
+                baseline = saved['baseline_ticks']
+                from ..safety import JointLimits
+                from .motion_routes import MotionRouteClient
+                from ..contracts import Action
+                limits = JointLimits.from_urdf(Path(__file__).resolve().parents[4] / 'table/public/robots/so101/so101_new_calib.urdf')
+                route = MotionRouteClient('http://127.0.0.1:8766', 'table', limits,
+                    token=os.environ['XIAOXIA_MOTION_TOKEN'], timeout=1)
+                model = route._request('GET', '/state')
+                if model.get('physical') is not False or model.get('source') != 'display_target':
+                    raise ValueError('映射目标必须是 table 仿真显示模型')
+                if (model.get('playback') or {}).get('status') in ('running', 'paused'):
+                    raise ValueError('请先停止录制播放，再开始真机映射')
+                route.connect()
+                state.update(mode='mapping', source_alignment=request['source_alignment'], model_target='table', source_physical=True)
+
             atomic_json(directory / 'alignment.json', {**request, 'baseline_ticks': baseline,
                 'device_calibration': {name: asdict(value) for name, value in calibration.items()},
                 'verified_for_motion': False})
@@ -138,6 +175,13 @@ class DisplayAlignment:
                     * (((ticks[name] - baseline[name] + 2047.5) % 4095) - 2047.5) * 2 * pi / 4095 for name in JOINTS}
                 state.update(status='following', timestamp=time(), joint_positions=angles, ticks=ticks,
                     outside_device_calibration=[name for name in JOINTS if not calibration[name].range_min <= ticks[name] <= calibration[name].range_max])
+                if route is not None:
+                    constrained = {name: max(limits.joints[name].lower, min(limits.joints[name].upper, angle)) for name, angle in angles.items()}
+                    route.send_action(Action(constrained))
+                    receipt = route.last_receipt
+                    state.update(applied_joint_positions=receipt['applied_joint_positions'],
+                        model_limited=bool(receipt.get('limited')) or constrained != angles,
+                        limit_reason=receipt.get('limit_reason') or ('关节限位' if constrained != angles else ''))
                 atomic_json(directory / 'state.json', state)
                 sleep(.05)
             state['status'] = 'stopped'

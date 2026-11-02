@@ -7,6 +7,7 @@ import { jointPreview } from "../JointPreview";
 import { LiveJointRunner } from "./LiveJointRunner";
 import { blocksDebug } from "../debug/BlocksDebug";
 import { registerCameraCalibrationBlock } from "./cameraCalibrationBlock";
+import { registerArmMappingBlock } from "./armMappingBlock";
 import { registerCalibrationBlock } from "./calibrationBlock";
 import { registerCameraBlock } from "./cameraBlock";
 import { cameraCatalog } from "./CameraCatalog";
@@ -73,6 +74,7 @@ export function BlocksSidebar() {
         });
         registerCameraBlock();
         registerCalibrationBlock();
+        registerArmMappingBlock();
         registerCameraCalibrationBlock();
         registerFrameBlocks();
         new PolicyBlocks().register();

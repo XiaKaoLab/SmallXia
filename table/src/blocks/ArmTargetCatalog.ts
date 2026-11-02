@@ -28,12 +28,12 @@ export class ArmTargetCatalog {
       if (!workspace || workspace.isDragging()) return;
       const blocks = [...workspace.getAllBlocks(false), ...(workspace.getFlyout()?.getWorkspace().getAllBlocks(false) ?? [])];
       for (const block of blocks) {
-        if (!["table_set_arm_position", "table_calibrate_arm"].includes(block.type)) continue;
+        if (!["table_set_arm_position", "table_calibrate_arm", "table_map_hardware_arm"].includes(block.type)) continue;
         const field = block.getField("TARGET") as Blockly.FieldDropdown | null;
         if (!field) continue;
         const selected = field.getValue();
         field.setOptions(() => {
-          const options = this.options(selected).filter(([, value]) => block.type !== "table_calibrate_arm" || value !== "simulation");
+          const options = this.options(selected).filter(([, value]) => block.type === "table_set_arm_position" || value !== "simulation");
           return options.length ? options : [["未发现串口", "unavailable"]];
         });
         if (selected !== "unavailable") field.setValue(selected); field.forceRerender();

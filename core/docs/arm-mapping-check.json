@@ -1,0 +1,130 @@
+{
+  "status": "succeeded",
+  "source": "COM17",
+  "target": "table",
+  "physical_actuation": false,
+  "block": {
+    "command_id": "e67e79e189a543ab83e125c814893613",
+    "status": "succeeded",
+    "result": {
+      "fields": {
+        "TARGET": "serial:COM17"
+      },
+      "id": "UG5;L6rQp0KY$(rd]_f;",
+      "type": "table_map_hardware_arm",
+      "x": 16,
+      "y": 24
+    }
+  },
+  "session": {
+    "id": "0a0344d6c80644b6a601219a47931fbc",
+    "port": "COM17",
+    "status": "connecting",
+    "reference": {
+      "shoulder_pan": 1.226785540364583,
+      "shoulder_lift": -1.5515938248697925,
+      "elbow_flex": 0.9621777343750002,
+      "wrist_flex": 1.65806,
+      "wrist_roll": 0,
+      "gripper": 0
+    },
+    "display_only": true,
+    "mode": "mapping"
+  },
+  "sample": {
+    "status": "following",
+    "port": "COM17",
+    "display_only": true,
+    "mode": "mapping",
+    "source_alignment": "5ed840154e9c47fca8e684dbbacda948",
+    "model_target": "table",
+    "source_physical": true,
+    "timestamp": 1793628479.0016723,
+    "joint_positions": {
+      "shoulder_pan": 1.4523357821607734,
+      "shoulder_lift": -1.5515938248697925,
+      "elbow_flex": 0.9560403128295256,
+      "wrist_flex": 1.6565256446136314,
+      "wrist_roll": -0.10893923243217354,
+      "gripper": -0.09666438934122441
+    },
+    "ticks": {
+      "shoulder_pan": 2232,
+      "shoulder_lift": 789,
+      "elbow_flex": 3088,
+      "wrist_flex": 820,
+      "wrist_roll": 1993,
+      "gripper": 882
+    },
+    "outside_device_calibration": [
+      "gripper"
+    ],
+    "applied_joint_positions": {
+      "shoulder_pan": 1.4523357821607734,
+      "shoulder_lift": -1.5515938248697925,
+      "elbow_flex": 0.9560403128295256,
+      "wrist_flex": 1.6565256446136314,
+      "wrist_roll": -0.10893923243217354,
+      "gripper": -0.09666438934122441
+    },
+    "model_limited": false,
+    "limit_reason": ""
+  },
+  "stream_advances": true,
+  "model_matches_applied": true,
+  "final_state": {
+    "status": "stopped",
+    "port": "COM17",
+    "display_only": true,
+    "mode": "mapping",
+    "source_alignment": "5ed840154e9c47fca8e684dbbacda948",
+    "model_target": "table",
+    "source_physical": true,
+    "timestamp": 1793628480.1228898,
+    "joint_positions": {
+      "shoulder_pan": 1.4523357821607734,
+      "shoulder_lift": -1.5515938248697925,
+      "elbow_flex": 0.9560403128295256,
+      "wrist_flex": 1.6565256446136314,
+      "wrist_roll": -0.10893923243217354,
+      "gripper": -0.09666438934122441
+    },
+    "ticks": {
+      "shoulder_pan": 2232,
+      "shoulder_lift": 789,
+      "elbow_flex": 3088,
+      "wrist_flex": 820,
+      "wrist_roll": 1993,
+      "gripper": 882
+    },
+    "outside_device_calibration": [
+      "gripper"
+    ],
+    "applied_joint_positions": {
+      "shoulder_pan": 1.4523357821607734,
+      "shoulder_lift": -1.5515938248697925,
+      "elbow_flex": 0.9560403128295256,
+      "wrist_flex": 1.6565256446136314,
+      "wrist_roll": -0.10893923243217354,
+      "gripper": -0.09666438934122441
+    },
+    "model_limited": false,
+    "limit_reason": "",
+    "disconnected": true
+  },
+  "workspace_restored": true,
+  "checked_on": "2026-11-02",
+  "mapping_geometry_verified": false,
+  "checks": [
+    "actual Blockly mapping start",
+    "COM17 read-only six-axis stream",
+    "stream timestamps advance",
+    "table API equals applied mapped pose",
+    "stop releases serial port",
+    "workspace restored",
+    "TypeScript noEmit",
+    "Python AST syntax",
+    "git diff check"
+  ],
+  "native_build": false
+}

@@ -3,11 +3,13 @@
  * @author: https://github.com/Linmoqian
  */
 import { agentClient } from "./chat/AgentClient";
+import { jointPreview } from "./JointPreview";
 import { JOINTS } from "./blocks/positionBlock";
 
 interface AlignmentState {
   status: string; port: string; error?: string; joint_positions?: Record<string, number>;
-  outside_device_calibration?: string[];
+  outside_device_calibration?: string[]; applied_joint_positions?: Record<string, number>;
+  model_limited?: boolean; limit_reason?: string;
 }
 export class HardwareAlignmentDisplay {
   positions: Record<string, number> | null = null;
@@ -17,44 +19,54 @@ export class HardwareAlignmentDisplay {
   private readonly panel = document.createElement("section");
   private readonly status = document.createElement("span");
   private readonly values = document.createElement("div");
+  private readonly title = document.createElement("strong");
+  private readonly stopButton = document.createElement("button");
   private readonly warning = document.createElement("p");
   private readonly start = (event: Event) => {
-    const session = (event as CustomEvent<{ id: string; port: string }>).detail;
-    void this.follow(session.id, session.port);
+    const session = (event as CustomEvent<{ id: string; port: string; mode?: string }>).detail;
+    void this.follow(session.id, session.port, session.mode);
   };
 
   constructor(host: HTMLElement) {
     this.panel.className = "hardware-alignment"; this.panel.hidden = true;
     this.panel.setAttribute("aria-label", "机械臂显示对齐角度");
     const heading = document.createElement("div");
-    const title = document.createElement("strong"); title.textContent = "机械臂 · 显示对齐";
-    const stop = document.createElement("button"); stop.textContent = "停止跟随";
-    stop.onclick = () => this.stop();
-    heading.append(title, this.status, stop); this.panel.append(heading, this.values, this.warning);
+    this.title.textContent = "机械臂 · 显示对齐";
+    this.stopButton.textContent = "停止跟随";
+    this.stopButton.onclick = () => this.stop();
+    heading.append(this.title, this.status, this.stopButton); this.panel.append(heading, this.values, this.warning);
     host.append(this.panel); window.addEventListener("table:alignment-start", this.start);
   }
 
-  private async follow(session: string, port: string): Promise<void> {
+  private async follow(session: string, port: string, mode = "alignment"): Promise<void> {
     this.stop();
     const generation = ++this.generation;
+    this.title.textContent = mode === "mapping" ? "真机 → 仿真" : "机械臂 · 显示对齐";
+    this.stopButton.textContent = mode === "mapping" ? "停止映射" : "停止跟随";
     this.session = session; this.panel.hidden = false; this.status.textContent = `${port} · 连接中`;
-    this.values.replaceChildren(); this.warning.textContent = "请保持实机与当前仿真姿态一致，等待记录参考位置。";
+    this.values.replaceChildren(); this.warning.textContent = mode === "mapping" ? "正在读取实机并加载已保存的显示对齐。" : "请保持实机与当前仿真姿态一致，等待记录参考位置。";
     const requestId = crypto.randomUUID(); this.requestId = requestId;
+    let mapped = false;
     try {
       await agentClient.alignmentPreview<AlignmentState>(requestId, session, state => {
         if (generation !== this.generation) return;
         this.status.textContent = `${state.port} · ${state.status === "following" ? "只读跟随" : state.status === "failed" ? "连接失败" : state.status === "stopped" ? "已停止" : "连接中"}`;
         if (state.joint_positions && JOINTS.every(([name]) => Number.isFinite(state.joint_positions![name]))) {
-          this.positions = state.joint_positions;
+          this.positions = state.applied_joint_positions ?? state.joint_positions;
+          if (mode === "mapping" && !mapped) {
+            jointPreview.confirm(this.positions, jointPreview.revision); mapped = true;
+          }
           this.values.replaceChildren(...JOINTS.map(([name, label], index) => {
             const value = document.createElement("span");
-            value.textContent = `M${index + 1} ${label} ${(state.joint_positions![name] * 180 / Math.PI).toFixed(1)}°`;
+            const measured = state.joint_positions![name], applied = this.positions![name];
+            value.textContent = `M${index + 1} ${label} ${(measured * 180 / Math.PI).toFixed(1)}°${Math.abs(applied - measured) > .001 ? ` → ${(applied * 180 / Math.PI).toFixed(1)}°` : ""}`;
             return value;
           }));
         }
-        this.warning.textContent = state.error ?? (state.outside_device_calibration?.length
+        const limit = state.model_limited ? `模型已停在边界：${state.limit_reason || "姿态约束"}。角度箭头表示实际显示值。` : "";
+        this.warning.textContent = limit + (state.error ?? (state.outside_device_calibration?.length
           ? `设备校准范围异常：${state.outside_device_calibration.join("、")}。仅做显示对齐，不能用于实机控制。`
-          : "以手动对齐姿态为参考；模型受限位和碰撞约束。此映射不能用于实机运动。");
+          : "以手动对齐姿态为参考；模型受限位和碰撞约束。此映射不能用于实机运动。"));
       });
     } catch (error) {
       if (generation === this.generation) this.warning.textContent = String(error);
