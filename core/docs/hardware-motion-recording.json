@@ -1,0 +1,112 @@
+{
+  "status": "succeeded",
+  "port": "COM17",
+  "physical": true,
+  "read_only": true,
+  "motion_source": "human_manual",
+  "format": "xiaoxia_raw_encoder_v1",
+  "duration_requested_s": 10,
+  "wait_timeout_s": 90,
+  "calibrated_joint_angles": false,
+  "action_labels": false,
+  "trainable_dataset": false,
+  "camera_recorded": false,
+  "frames": 99,
+  "directory": "C:\\Users\\30470\\.codex\\worktrees\\xiaoxia-fresh-start\\小虾台\\core\\data\\recordings\\hardware-motion-20261102-194605-26c50485",
+  "device_calibration": {
+    "shoulder_pan": {
+      "id": 1,
+      "drive_mode": 0,
+      "homing_offset": 1943,
+      "range_min": 771,
+      "range_max": 3504
+    },
+    "shoulder_lift": {
+      "id": 2,
+      "drive_mode": 0,
+      "homing_offset": 1200,
+      "range_min": 745,
+      "range_max": 3315
+    },
+    "elbow_flex": {
+      "id": 3,
+      "drive_mode": 0,
+      "homing_offset": 1810,
+      "range_min": 864,
+      "range_max": 3093
+    },
+    "wrist_flex": {
+      "id": 4,
+      "drive_mode": 0,
+      "homing_offset": -1881,
+      "range_min": 779,
+      "range_max": 3138
+    },
+    "wrist_roll": {
+      "id": 5,
+      "drive_mode": 0,
+      "homing_offset": -2047,
+      "range_min": 0,
+      "range_max": 4095
+    },
+    "gripper": {
+      "id": 6,
+      "drive_mode": 0,
+      "homing_offset": 1337,
+      "range_min": 1090,
+      "range_max": 2660
+    }
+  },
+  "baseline_ticks": {
+    "shoulder_pan": 2085,
+    "shoulder_lift": 789,
+    "elbow_flex": 3092,
+    "wrist_flex": 821,
+    "wrist_roll": 2064,
+    "gripper": 945
+  },
+  "motion_detected": true,
+  "duration_wall_s": 10.07638790004421,
+  "position_span_ticks": {
+    "shoulder_pan": 220,
+    "shoulder_lift": 2,
+    "elbow_flex": 1,
+    "wrist_flex": 10,
+    "wrist_roll": 1501,
+    "gripper": 68
+  },
+  "min_ticks": {
+    "shoulder_pan": 2089,
+    "shoulder_lift": 789,
+    "elbow_flex": 3093,
+    "wrist_flex": 809,
+    "wrist_roll": 1131,
+    "gripper": 880
+  },
+  "max_ticks": {
+    "shoulder_pan": 2309,
+    "shoulder_lift": 791,
+    "elbow_flex": 3094,
+    "wrist_flex": 819,
+    "wrist_roll": 2632,
+    "gripper": 948
+  },
+  "disconnected": true,
+  "all_recorded_torque_off": true,
+  "outside_device_calibration": [
+    "elbow_flex",
+    "gripper"
+  ],
+  "moving_joints": [
+    "shoulder_pan",
+    "wrist_flex",
+    "wrist_roll",
+    "gripper"
+  ],
+  "observed_fps": 9.725904268182322,
+  "files": {
+    "frames.jsonl": "0e07a072eda369315ce385829a8fb292abae3ff731be31724d4363ff7ec8f325",
+    "positions.csv": "fb58900f84bcc2f6949211f7beabfe0e772ac5363aca9961ed70703b0f20ae6c"
+  },
+  "native_collection_api_verified": false
+}
