@@ -133,7 +133,21 @@ def main() -> None:
         request = json.loads(sys.stdin.readline())
         if not isinstance(request, dict):
             raise ValueError("桌面请求必须为对象")
-        if request.get('action') in ('reinforcement_pause', 'reinforcement_resume'):
+        if request.get('action') in ('camera_calibration_action', 'camera_calibration_preview'):
+            from ..communication.camera_calibration import CameraCalibration
+            service = CameraCalibration()
+            if request['action'] == 'camera_calibration_preview':
+                service.stream(request.get('session_id'), DesktopBridge.emit)
+            else:
+                operation = request.get('operation')
+                if operation not in ('start', 'get', 'capture', 'solve'):
+                    raise ValueError('未知相机标定操作')
+                if operation == 'start':
+                    result = service.start(request.get('camera_id'), request.get('columns', 9), request.get('rows', 6), request.get('square_mm', 25))
+                else:
+                    result = getattr(service, operation)(request.get('session_id'))
+                DesktopBridge.emit({'type': 'data', 'data': result})
+        elif request.get('action') in ('reinforcement_pause', 'reinforcement_resume'):
             from ..reinforcement.client import ReinforcementClient
             from ..imitation.api_jobs import identifier
             client = ReinforcementClient()

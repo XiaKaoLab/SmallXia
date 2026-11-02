@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { jointPreview } from "../JointPreview";
 import { LiveJointRunner } from "./LiveJointRunner";
 import { blocksDebug } from "../debug/BlocksDebug";
+import { registerCameraCalibrationBlock } from "./cameraCalibrationBlock";
 import { registerCalibrationBlock } from "./calibrationBlock";
 import { registerCameraBlock } from "./cameraBlock";
 import { cameraCatalog } from "./CameraCatalog";
@@ -72,6 +73,7 @@ export function BlocksSidebar() {
         });
         registerCameraBlock();
         registerCalibrationBlock();
+        registerCameraCalibrationBlock();
         registerFrameBlocks();
         new PolicyBlocks().register();
         new DataBlocks().register();
@@ -157,6 +159,7 @@ export function BlocksSidebar() {
             ballTraining = true;
             window.dispatchEvent(new CustomEvent("table:ball-training-started", { detail: receipt.ball_training }));
           }
+          if (receipt.camera_calibration?.id) window.dispatchEvent(new CustomEvent("table:camera-calibration-start", { detail: receipt.camera_calibration }));
           if (receipt.display_alignment?.id) window.dispatchEvent(new CustomEvent("table:alignment-start", { detail: receipt.display_alignment }));
           if (receipt.limited && receipt.applied_joint_positions) jointPreview.confirm(receipt.applied_joint_positions, revision);
         } catch { /* 相机积木等非 JSON 文本不属于关节回执。 */ }

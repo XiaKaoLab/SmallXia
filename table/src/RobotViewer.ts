@@ -2,6 +2,7 @@
  * Created on 2026-11-01; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
+import { CameraCalibrationDisplay } from "./CameraCalibrationDisplay";
 import { HardwareAlignmentDisplay } from "./HardwareAlignmentDisplay";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -30,6 +31,7 @@ export class RobotViewer {
   private readonly clock = new THREE.Clock();
   private readonly cameraRig: VirtualCameraRig;
   private readonly alignment: HardwareAlignmentDisplay;
+  private readonly cameraCalibration: CameraCalibrationDisplay;
   private alignmentVisible = false;
   private readonly stopPreview: () => void;
   private readonly motion = new ModelMotionClient((positions, camera) => {
@@ -41,6 +43,7 @@ export class RobotViewer {
 
   constructor(private readonly host: HTMLElement) {
     this.alignment = new HardwareAlignmentDisplay(host);
+    this.cameraCalibration = new CameraCalibrationDisplay(host);
     this.cameraRig = new VirtualCameraRig(this.scene, host);
     this.stopPreview = jointPreview.subscribe((name, angle) => {
       const joint = this.robot?.joints[name];
@@ -199,6 +202,7 @@ export class RobotViewer {
   dispose(): void {
     this.disposed = true;
     this.motion.dispose();
+    this.cameraCalibration.dispose();
     this.alignment.dispose();
     this.training.dispose();
     this.stopPreview();

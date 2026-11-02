@@ -47,6 +47,16 @@ export class AgentClient {
 
   bootstrap(): Promise<Bootstrap> { return this.request({ action: "bootstrap" }); }
 
+  async calibrationPreview<T>(requestId: string, sessionId: string, receive: (frame: T) => void): Promise<void> {
+    let failure = "";
+    await this.dispatch<{ type: "calibration"; data: T } | { type: "completed" } | { type: "error"; message: string }>(
+      requestId, { action: "camera_calibration_preview", session_id: sessionId }, event => {
+        if (event.type === "calibration") receive(event.data);
+        if (event.type === "error") failure = event.message;
+      }, event => event.type === "completed" || event.type === "error");
+    if (failure) throw new Error(failure);
+  }
+
   async alignmentPreview<T>(requestId: string, sessionId: string, receive: (frame: T) => void): Promise<void> {
     let failure = "";
     await this.dispatch<{ type: "alignment"; data: T } | { type: "completed" } | { type: "error"; message: string }>(

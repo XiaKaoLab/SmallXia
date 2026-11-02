@@ -1,0 +1,34 @@
+{
+  "checked_on": "2026-11-02",
+  "evidence": "synthetic_projection_and_generated_board_only",
+  "views": 24,
+  "rms_px": 0.11008483087570818,
+  "max_intrinsic_entry_error_px": 2.147169173466864,
+  "minimum_sample_guard": true,
+  "board_corner_count": 54,
+  "quality": "needs_review",
+  "warnings": [
+    "标定板覆盖区域不足，请补充画面边缘和不同位置"
+  ],
+  "real_camera_calibrated": false,
+  "independent_validation_passed": false,
+  "persistence_fixture": {
+    "samples_after_reopen": 1,
+    "duplicate_rejected": true,
+    "virtual_source_rejected": true,
+    "temporary_synthetic_camera": true
+  },
+  "webview": {
+    "block_available": true,
+    "panel_installed": true,
+    "discovered_camera_options": 3
+  },
+  "checks": [
+    "TypeScript noEmit",
+    "Python AST syntax",
+    "synthetic projection calibration",
+    "synthetic board detection and persistence",
+    "git diff check"
+  ],
+  "native_build": false
+}

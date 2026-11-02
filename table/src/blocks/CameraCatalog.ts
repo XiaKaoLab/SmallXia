@@ -21,6 +21,12 @@ export class CameraCatalog {
     return options.length ? options : [[this.message, "unavailable"]];
   }
 
+  realOptions(selected?: string | null): [string, string][] {
+    const options: [string, string][] = this.cameras.filter(camera => camera.physical).map(camera => [camera.name, camera.id]);
+    if (selected && /^opencv_[0-9a-f]{16}$/.test(selected) && !options.some(([, id]) => id === selected)) options.push(["所选真实相机（离线）", selected]);
+    return options.length ? options : [["未找到真实相机，请刷新", "unavailable"]];
+  }
+
   async refresh(): Promise<void> {
     if (this.pending || !agentClient.desktop) return;
     this.pending = true;
@@ -36,10 +42,10 @@ export class CameraCatalog {
       if (workspace && !workspace.isDragging()) {
         const blocks = [...workspace.getAllBlocks(false), ...(workspace.getFlyout()?.getWorkspace().getAllBlocks(false) ?? [])];
         for (const block of blocks) {
-          if (!["table_capture_frame", "table_frame_variable"].includes(block.type)) continue;
+          if (!["table_capture_frame", "table_frame_variable", "table_calibrate_camera"].includes(block.type)) continue;
           const field = block.getField("SOURCE") as Blockly.FieldDropdown;
           const selected = String(field.getValue());
-          field.setOptions(() => this.options(field.getValue()));
+          field.setOptions(() => block.type === "table_calibrate_camera" ? this.realOptions(field.getValue()) : this.options(field.getValue()));
           if (selected !== "unavailable") field.setValue(selected);
           field.forceRerender();
         }
