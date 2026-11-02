@@ -51,5 +51,35 @@
       0
     ],
     "note": "Display placement based on STL plate; lens standoff is illustrative, not measured extrinsics."
+  },
+  "display_support": {
+    "file": "camera_support_so100.stl",
+    "source_sha256": "6a371846553b3a772f9bccc546da1d3e0164e9d00d14aa45d26ab34b58c9cf43",
+    "sha256": "c8b1f481e53e790b7624569465b3e0d04f020b75cc8896d7b9d17d1525d57481",
+    "clip_plane_cad_mm": "Y >= 24",
+    "rotation_matrix": [
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        -1
+      ],
+      [
+        0,
+        1,
+        0
+      ]
+    ],
+    "translation_m": [
+      0,
+      -0.001,
+      0
+    ],
+    "scale": 0.001,
+    "note": "Display-only open cut mesh. Opposite mounting side; original fixed jaw stays unchanged. Not a printable replacement."
   }
 }
