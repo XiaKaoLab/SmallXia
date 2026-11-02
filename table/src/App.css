@@ -61,3 +61,5 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
 .calibration-track input::-webkit-slider-thumb { appearance: none; width: 13px; height: 13px; border-radius: 50%; background: #b5ead1; }
 .calibration-extents { position: absolute; top: 7px; height: 4px; background: #c2e3d3; border-radius: 4px; }
 .calibration-track > i { position: absolute; z-index: 1; top: 3px; width: 1px; height: 12px; background: #fff5bf; }
+
+.hardware-alignment.is-calibrating button { background: #e0f2e9; color: #35574b; }

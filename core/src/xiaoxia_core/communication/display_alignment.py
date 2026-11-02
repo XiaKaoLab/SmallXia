@@ -70,6 +70,11 @@ class DisplayAlignment:
         state = json.loads((directory / 'state.json').read_text(encoding='utf-8'))
         if state.get('status') not in ('waiting_center', 'checking_range') or state.get('calibration_stage') != stage or state.get('joint_index') != index:
             raise ValueError('校准步骤已变化，请等待最新状态')
+        if stage == 'range':
+            suspicious = [name for name, values in state.get('joint_ranges', {}).items()
+                          if name != 'wrist_roll' and values['max'] - values['min'] >= 3800]
+            if suspicious:
+                raise ValueError('采集范围疑似跨圈，请停止并在行程中部重新校准：' + '、'.join(suspicious))
         # 独占创建防止快速双击跳过关节；请求不自动重试。
         temporary = directory / f'command-{uuid4().hex}.json'
         atomic_json(temporary, {'stage': stage, 'index': index})

@@ -120,11 +120,15 @@ class GuidedArmCalibration:
                 raise InterruptedError('已取消校准')
             lows = highs = None
             issue = ''
+            previous = None
             while self.active():
                 self.require_manual_mode()
                 ticks = {name: int(value) for name, value in self.bus.sync_read('Present_Position', normalize=False).items()}
                 if set(ticks) != set(JOINTS) or any(not 0 <= value <= 4095 for value in ticks.values()):
                     raise ValueError('编码器跨圈，请重新摆正中位再校准')
+                if previous and any(abs(ticks[name] - previous[name]) > 2047 for name in JOINTS if name != 'wrist_roll'):
+                    raise ValueError('检测到非全周关节编码器跨圈，请重新将各关节放到行程中部后开始校准')
+                previous = ticks
                 lows = dict(ticks) if lows is None else {name: min(lows[name], ticks[name]) for name in JOINTS}
                 highs = dict(ticks) if highs is None else {name: max(highs[name], ticks[name]) for name in JOINTS}
                 ranges = {name: {'current': ticks[name], 'min': lows[name], 'max': highs[name],
