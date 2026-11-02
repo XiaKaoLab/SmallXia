@@ -1,4 +1,4 @@
-"""复用与 EEPROM 匹配的 LeRobot 校准；缺失时引导逐轴手动采集极限，不发送运动目标。
+"""复用与 EEPROM 匹配的 LeRobot 校准；缺失时同时采集六轴手动运动极限，不发送运动目标。
 Created on 2026-11-02; Updated on 2026-11-02
 @author: https://github.com/Linmoqian
 """
@@ -118,33 +118,32 @@ class GuidedArmCalibration:
                 sleep(.1)
             else:
                 raise InterruptedError('已取消校准')
-            raw = {}
-            labels = ('肩部旋转', '肩部抬升', '肘部弯曲', '腕部弯曲', '腕部旋转', '夹爪')
-            for index, name in enumerate(JOINTS):
-                low = high = None
-                while self.active():
-                    self.require_manual_mode()
-                    value = int(self.bus.read('Present_Position', name, normalize=False))
-                    if not 0 <= value <= 4095:
-                        raise ValueError(f'{name} 编码器跨圈，请重新摆正中位再校准')
-                    low = value if low is None else min(low, value)
-                    high = value if high is None else max(high, value)
-                    full_turn = name == 'wrist_roll'
-                    self.publish(status='checking_range', calibration_stage='range', joint_index=index,
-                        active_joint=name, current_tick=value, range_min=low, range_max=high,
-                        instruction=(f'第 {index + 1}/6 轴：{labels[index]}。腕部旋转按官方全周范围 0～4095；手动检查转动正常后确认，不必寻找硬限位。' if full_turn else f'第 {index + 1}/6 轴：{labels[index]}。仅手动移动这个关节，分别到达两个机械端点；夹爪需完全闭合、完全张开。读数已覆盖两端后，点击确认。' if name == 'gripper' else f'第 {index + 1}/6 轴：{labels[index]}。仅手动移动这个关节，分别到达两个机械端点，程序持续记录最小和最大位置；覆盖两端后点击确认进入下一关节。'),
-                        completed_ranges=raw)
-                    if self.command('range', index):
-                        if not full_turn and high - low < 100:
-                            self.publish(instruction='采集行程不足 100 刻度，请继续移动至两端后再确认。')
-                            sleep(1)
-                            continue
-                        raw[name] = dict(id=index + 1, drive_mode=0, homing_offset=int(offsets[name]),
-                            range_min=0 if full_turn else low, range_max=4095 if full_turn else high)
+            lows = highs = None
+            issue = ''
+            while self.active():
+                self.require_manual_mode()
+                ticks = {name: int(value) for name, value in self.bus.sync_read('Present_Position', normalize=False).items()}
+                if set(ticks) != set(JOINTS) or any(not 0 <= value <= 4095 for value in ticks.values()):
+                    raise ValueError('编码器跨圈，请重新摆正中位再校准')
+                lows = dict(ticks) if lows is None else {name: min(lows[name], ticks[name]) for name in JOINTS}
+                highs = dict(ticks) if highs is None else {name: max(highs[name], ticks[name]) for name in JOINTS}
+                ranges = {name: {'current': ticks[name], 'min': lows[name], 'max': highs[name],
+                                'mid': (lows[name] + highs[name]) / 2} for name in JOINTS}
+                self.publish(status='checking_range', calibration_stage='range', joint_index=-1,
+                    joint_ranges=ranges,
+                    instruction=issue or '同时采集全部六轴。手动活动各关节至两个端点，夹爪完全闭合并张开；六行滑杆实时显示当前、最小、最大及中值，全部完成后一次保存。腕部旋转仍按官方全周范围。')
+                if self.command('range', -1):
+                    missing = [name for name in JOINTS if name != 'wrist_roll' and highs[name] - lows[name] < 100]
+                    if missing:
+                        issue = '以下关节采集行程不足，请继续活动后保存：' + '、'.join(missing)
+                    else:
+                        raw = {name: dict(id=index + 1, drive_mode=0, homing_offset=int(offsets[name]),
+                            range_min=0 if name == 'wrist_roll' else lows[name],
+                            range_max=4095 if name == 'wrist_roll' else highs[name]) for index, name in enumerate(JOINTS)}
                         break
-                    sleep(.05)
-                else:
-                    raise InterruptedError('已取消校准')
+                sleep(.05)
+            else:
+                raise InterruptedError('已取消校准')
             OfficialCalibrationStore.validate(raw)
             from lerobot.motors import MotorCalibration
             self.require_manual_mode()

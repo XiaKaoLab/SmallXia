@@ -12,7 +12,7 @@ interface AlignmentState {
   model_limited?: boolean; limit_reason?: string; instruction?: string;
   calibration_stage?: string; joint_index?: number; active_joint?: string;
   current_tick?: number; range_min?: number; range_max?: number; calibration_source?: string;
-  completed_ranges?: Record<string, { range_min: number; range_max: number }>;
+  joint_ranges?: Record<string, { current: number; min: number; max: number; mid: number }>;
 }
 export class HardwareAlignmentDisplay {
   positions: Record<string, number> | null = null;
@@ -34,6 +34,7 @@ export class HardwareAlignmentDisplay {
   };
 
   constructor(host: HTMLElement) {
+    this.values.className = "alignment-values";
     this.panel.className = "hardware-alignment"; this.panel.hidden = true;
     this.panel.setAttribute("aria-label", "机械臂显示对齐角度");
     const heading = document.createElement("div");
@@ -53,7 +54,7 @@ export class HardwareAlignmentDisplay {
     this.stopButton.textContent = mode === "mapping" ? "停止映射" : "停止跟随";
     this.session = session; this.panel.hidden = false; this.status.textContent = `${port} · 连接中`;
     this.values.replaceChildren(); this.stepButton.hidden = true; this.calibrationProgress.hidden = true; this.stepPending = false;
-    this.warning.textContent = "正在读取并核对官方校准；缺失时进入逐轴检查。";
+    this.warning.textContent = "正在读取并核对官方校准；缺失时同时采集六轴范围。";
     const requestId = crypto.randomUUID(); this.requestId = requestId;
     let mapped = false;
     try {
@@ -61,15 +62,16 @@ export class HardwareAlignmentDisplay {
         if (generation !== this.generation) return;
         this.status.textContent = `${state.port} · ${state.status === "following" ? "只读跟随" : state.status === "failed" ? "连接失败" : state.status === "stopped" ? "已停止" : "连接中"}`;
         const calibrating = state.status === "waiting_center" || state.status === "checking_range";
+        this.panel.classList.toggle("is-calibrating", calibrating);
         this.stepButton.hidden = !calibrating; this.calibrationProgress.hidden = !calibrating;
         this.title.textContent = calibrating ? "机械臂 · 校准向导" : mode === "mapping" ? "真机 → 仿真" : "机械臂 · 校准跟随";
         if (calibrating) {
           this.positions = null;
           this.calibrationProgress.textContent = state.status === "waiting_center"
-            ? "步骤 1：摆放中位 → 步骤 2：逐轴检查 → 步骤 3：保存校准"
-            : JOINTS.map(([name, label], index) => `${state.completed_ranges?.[name] ? "✓" : index === state.joint_index ? "▶" : "○"} M${index + 1} ${label}`).join(" · ");
-          this.status.textContent = `${state.port} · ${state.status === "waiting_center" ? "等待中位" : `检查 M${(state.joint_index ?? 0) + 1}`}`;
-          this.stepButton.textContent = state.status === "waiting_center" ? "记录中位并检查行程" : state.joint_index === 5 ? "确认夹爪范围并保存" : "确认范围 · 下一关节";
+            ? "摆放中位 → 同时采集六轴 → 确认并保存"
+            : "全部关节同时采集 · 中值 =（最小值 + 最大值）÷ 2";
+          this.status.textContent = `${state.port} · ${state.status === "waiting_center" ? "等待开始" : "六轴采集中"}`;
+          this.stepButton.textContent = state.status === "waiting_center" ? "开始采集全部关节" : "确认全部范围并保存";
           this.stepButton.disabled = this.stepPending;
           this.stepButton.onclick = async () => {
             if (this.stepPending || generation !== this.generation) return;
@@ -80,9 +82,24 @@ export class HardwareAlignmentDisplay {
             } catch (error) { if (generation === this.generation) this.warning.textContent = String(error); }
             finally { if (generation === this.generation) { this.stepPending = false; this.stepButton.disabled = false; } }
           };
-          this.values.textContent = state.active_joint
-            ? `${JOINTS.find(([name]) => name === state.active_joint)?.[1] ?? state.active_joint} · 最小 ${state.range_min} / 当前 ${state.current_tick} / 最大 ${state.range_max} 刻度` : "";
+          this.values.classList.toggle("calibration-joints", !!state.joint_ranges);
+          this.values.replaceChildren(...(state.joint_ranges ? JOINTS.map(([name, label], index) => {
+            const range = state.joint_ranges![name];
+            const row = document.createElement("div"); row.className = "calibration-joint";
+            const title = document.createElement("label"); title.textContent = `M${index + 1} ${label}`;
+            const track = document.createElement("div"); track.className = "calibration-track";
+            const slider = document.createElement("input"); slider.type = "range"; slider.min = "0"; slider.max = "4095";
+            slider.value = String(range.current); slider.disabled = true; slider.setAttribute("aria-label", `${label}当前编码器位置`);
+            const markers = document.createElement("span"); markers.className = "calibration-extents";
+            markers.style.left = `${range.min / 4095 * 100}%`; markers.style.width = `${(range.max - range.min) / 4095 * 100}%`;
+            const middle = document.createElement("i"); middle.style.left = `${range.mid / 4095 * 100}%`;
+            track.append(markers, middle, slider);
+            const angle = document.createElement("output"); angle.textContent = `${((range.current - range.mid) * 360 / 4095).toFixed(1)}°`;
+            const limits = document.createElement("small"); limits.textContent = `最小 ${range.min} · 中值 ${range.mid.toFixed(1)} · 最大 ${range.max} 刻度${name === "wrist_roll" ? "（保存全周 0～4095）" : ""}`;
+            row.append(title, track, angle, limits); return row;
+          }) : []));
         }
+        if (!calibrating) this.values.classList.remove("calibration-joints");
         if (state.joint_positions && JOINTS.every(([name]) => Number.isFinite(state.joint_positions![name]))) {
           this.positions = state.applied_joint_positions ?? state.joint_positions;
           if (mode === "mapping" && !mapped) {

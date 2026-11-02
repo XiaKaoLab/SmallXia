@@ -1,4 +1,4 @@
-/** 功能：生成机械臂官方校准积木，复用官方校准，缺失时逐轴采集最小和最大位置。
+/** 功能：生成机械臂官方校准积木，复用官方校准，缺失时同时采集六轴最小和最大位置。
  * Created on 2026-11-02; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
@@ -16,9 +16,9 @@ export function registerCalibrationBlock(): void {
           return options.length ? options : [["未发现串口", "unavailable"]];
         }), "TARGET");
       this.appendDummyInput().appendField(new Blockly.FieldDropdown([["已有校准自动复用", "reuse"], ["重新校准", "recalibrate"]]), "MODE");
-      this.appendDummyInput().appendField("缺失时逐轴检查最小和最大位置");
+      this.appendDummyInput().appendField("缺失时同时检查六轴最小和最大位置");
       this.setColour("#638b80"); this.setPreviousStatement(true); this.setNextStatement(true);
-      this.setTooltip("读取并核对设备官方校准。有效时直接复用；缺失时在面板引导记录中位和逐轴极限，完成后保存。手动移动关节，不自动驱动电机。");
+      this.setTooltip("读取并核对设备官方校准。有效时直接复用；缺失时在面板引导记录中位和六轴极限，完成后保存。手动移动关节，不自动驱动电机。");
     },
   };
   pythonGenerator.forBlock[CALIBRATION_BLOCK] = block => {

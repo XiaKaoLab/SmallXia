@@ -80,11 +80,11 @@ python -m xiaoxia_core.imitation rollout --profile configs/so100.local.yaml --ch
 
 “机械臂”分类的“校准机械臂”和“映射真机到仿真”均先读取六轴 EEPROM 校准快照。优先查找官方校准目录中与六轴 ID、方向、Homing_Offset、range_min、range_max 完全匹配的 JSON；已有文件不匹配时绝不将它覆盖到设备。如果 EEPROM 中已有结构有效、非出厂全量程的行程数据，直接导出为官方格式 JSON 并复用，不重复采集。该匹配是设备配置指纹，不是电机唯一序列号认证，也不证明历史端点采集的精度。
 
-没有有效数据时进入手动向导：安全支撑并保持六轴力矩关闭、位置模式；将各关节放到行程中部，点击“记录中位并检查行程”。此时调用当前安装版 LeRobot 的 set_half_turn_homings，然后按 M1 到 M6 逐轴显示最小、当前、最大编码器值，手动走到两端并确认。非全周关节变化少于 100 刻度不能确认。腕部旋转按官方全周特例设为 0～4095，其余关节使用观测极限。最后写入偏移和范围、读回核对并保存官方格式文件。中途停止或租约到期会尝试恢复校准前快照；恢复失败明确报错。突然断电或进程被强杀无法保证自动恢复，原始快照保存在会话的 calibration-before.json。整个过程不自动驱动、使能力矩或切换模式。
+没有有效数据时进入手动向导：安全支撑并保持六轴力矩关闭、位置模式；将各关节放到行程中部，点击“记录中位并检查行程”。此时调用当前安装版 LeRobot 的 set_half_turn_homings，然后同时显示 M1～M6 的最小、当前、最大编码器值和中值，手动活动全部关节到两端，再一次确认保存。非全周关节变化少于 100 刻度不能确认。腕部旋转按官方全周特例设为 0～4095，其余关节使用观测极限。最后写入偏移和范围、读回核对并保存官方格式文件。中途停止或租约到期会尝试恢复校准前快照；恢复失败明确报错。突然断电或进程被强杀无法保证自动恢复，原始快照保存在会话的 calibration-before.json。整个过程不自动驱动、使能力矩或切换模式。
 
-单位显式区分：Present_Position 使用 normalize=False，输入是已应用 Homing_Offset 的编码器计数，不重复减偏移。五轴按本机 LeRobot DEGREES 公式 `(tick - (range_min + range_max) / 2) * 2π / 4095` 转成 URDF 弧度；当前 so101_new_calib 模型也采用行程中点零位，不做 ±180° 折返，不在每次连接重新归零。夹爪遵守官方闭合 0、张开 100 的比例，再转换到模型 0～upper 的角度。这是用于显示的线性近似，不是精确夹爪几何标定。实机 SO-100 与显示 SO-101 的方向、几何一致性仍需逐轴人工核对，geometry_verified 和 verified_for_motion 保持 false。
+单位显式区分：Present_Position 使用 normalize=False，输入是已应用 Homing_Offset 的编码器计数，不重复减偏移。五轴按本机 LeRobot DEGREES 公式 `(tick - (range_min + range_max) / 2) * 2π / 4095` 转成 URDF 弧度；当前 so101_new_calib 模型也采用行程中点零位，不做 ±180° 折返，不在每次连接重新归零。夹爪遵守官方闭合 0、张开 100 的比例，再转换到模型 0～upper 的角度。这是用于显示的线性近似，不是精确夹爪几何标定。实机 SO-100 与显示 SO-101 的方向、几何一致性仍需六轴同时人工核对，geometry_verified 和 verified_for_motion 保持 false。
 
-运行回执 display_alignment 启动持久 alignment_preview 流；alignment_stop 停止并释放串口。新桥动作 arm_calibration_action 接受 session_id、stage（center/range）和 index（-1/0..5），只接受当前步骤，防止双击跳过关节。界面断流后租约最多 10 秒到期。新运行会先停止同串口旧会话。
+运行回执 display_alignment 启动持久 alignment_preview 流；alignment_stop 停止并释放串口。新桥动作 arm_calibration_action 接受 session_id、stage（center/range）和 index（均为 -1），只接受当前步骤，防止双击跳过关节。界面断流后租约最多 10 秒到期。新运行会先停止同串口旧会话。
 
 映射积木直接检查并复用官方数据，不要求先运行另一个校准积木；两个积木同时启用仍提示分开运行，避免串口争用。每帧固定发送至 table 模型路由，验证目标为非物理 display_target。关节范围和碰撞路径继续限制模型姿态；面板区分测量值与实际采用值，保留实机超出设备校准范围的提示。播放录制期间不启动映射。历史录制回放仍属于相对仿真回放，此处不改变它的语义。
 
@@ -94,6 +94,8 @@ python -m xiaoxia_core.imitation rollout --profile configs/so100.local.yaml --ch
 - https://github.com/TheRobotStudio/SO-ARM100/blob/main/Simulation/SO101/README.md
 - 当前 Conda base 安装版 lerobot/robots/so_follower/so_follower.py 与 lerobot/motors/motors_bus.py。
 
-2026-11-02 COM17 实机检查：读取并复用现有 EEPROM 校准，已导出官方格式文件；校准寄存器写入次数 0，无实机运动指令。读取单位 encoder_ticks，输出 rad；停止后 disconnected=true。夹爪当前位置仍超出设备已存范围，界面保留异常提示，不据此宣称历史校准精确。逐轴向导、腕部全周特例和取消回滚仅通过假总线验证，未在实机重新走端点。证据见 official-calibration-check.json。
+2026-11-02 COM17 实机检查：读取并复用现有 EEPROM 校准，已导出官方格式文件；校准寄存器写入次数 0，无实机运动指令。读取单位 encoder_ticks，输出 rad；停止后 disconnected=true。夹爪当前位置仍超出设备已存范围，界面保留异常提示，不据此宣称历史校准精确。六轴同时向导、腕部全周特例和取消回滚仅通过假总线验证，未在实机重新走端点。证据见 official-calibration-check.json。
 
 校准积木 MODE 可选 reuse（默认）或 recalibrate（强制重新采集）。桌面桥 alignment_recalibrate 传 port 启动重新校准；仍先等待面板“记录中位并检查行程”，不会直接改写零点。面板显示当前关节操作提示和六轴完成进度。
+
+六轴同时采集时每帧 sync_read 全部位置，各轴独立累积 min/max，mid=(min+max)/2。面板六行滑杆为只读反馈；色带表示已采集范围，竖线表示中值。非全周关节都达到采集门槛后一次保存；腕部旋转显示实测范围，但保存仍遵守官方 0～4095 特例。中位摆放步骤用于设置 Homing_Offset 以避免跨圈，最终角度零点由保存的极限中值计算。

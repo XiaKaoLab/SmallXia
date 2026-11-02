@@ -29,7 +29,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
 .hardware-alignment[hidden] { display: none; }
 .hardware-alignment > div:first-child { display: flex; align-items: center; gap: 8px; }
 .hardware-alignment > div:first-child span { flex: 1; }
-.hardware-alignment > div:nth-child(2) { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; font-variant-numeric: tabular-nums; }
+.hardware-alignment .alignment-values { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; font-variant-numeric: tabular-nums; }
 .hardware-alignment button { min-height: 32px; border: 1px solid #c8d7ce; background: #ffffffb0; border-radius: 6px; color: inherit; }
 .hardware-alignment p { margin: 10px 0 0; color: #856b44; line-height: 1.5; }
 
@@ -44,3 +44,20 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
 .camera-calibration-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .camera-calibration p { line-height: 1.5; margin: 10px 0; }
 .camera-calibration pre { font: inherit; font-variant-numeric: tabular-nums; white-space: pre-wrap; line-height: 1.7; }
+
+/* 六轴同时校准：滑杆显示实时读数，色带标出采集范围，竖线为中值。
+   Created on 2026-11-02; Updated on 2026-11-02
+   @author: https://github.com/Linmoqian */
+.hardware-alignment.is-calibrating { background: #588575ed; color: #e4f5ed; }
+.hardware-alignment.is-calibrating p { color: #dfede6; }
+.hardware-alignment .alignment-values.calibration-joints { display: flex; flex-direction: column; gap: 18px; margin-top: 16px; }
+.calibration-joint { display: grid; grid-template-columns: 100px minmax(80px, 1fr) 46px; align-items: center; gap: 6px; }
+.calibration-joint label { font-size: 12px; font-weight: 700; }
+.calibration-joint output { text-align: right; font-variant-numeric: tabular-nums; }
+.calibration-joint small { grid-column: 1 / -1; opacity: .85; font-size: 10px; font-variant-numeric: tabular-nums; }
+.calibration-track { position: relative; height: 18px; }
+.calibration-track input { position: relative; z-index: 2; width: 100%; height: 18px; margin: 0; opacity: 1; appearance: none; background: transparent; }
+.calibration-track::before { content: ""; position: absolute; top: 7px; left: 0; right: 0; height: 4px; border-radius: 4px; background: #385a50; }
+.calibration-track input::-webkit-slider-thumb { appearance: none; width: 13px; height: 13px; border-radius: 50%; background: #b5ead1; }
+.calibration-extents { position: absolute; top: 7px; height: 4px; background: #c2e3d3; border-radius: 4px; }
+.calibration-track > i { position: absolute; z-index: 1; top: 3px; width: 1px; height: 12px; background: #fff5bf; }

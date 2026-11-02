@@ -18,7 +18,7 @@ export function registerArmMappingBlock(): void {
         }), "TARGET");
       this.appendDummyInput().appendField("复用官方校准 · 缺失则引导检查");
       this.setPreviousStatement(true); this.setNextStatement(true); this.setColour("#638b80");
-      this.setTooltip("自动复用匹配的官方校准；缺失时引导逐轴检查最小和最大位置。运行本积木只读实机编码器，按官方单位转换计算关节角度并发送到仿真模型；已有有效校准时不改写参数、不使能力矩。面板可停止映射。");
+      this.setTooltip("自动复用匹配的官方校准；缺失时引导同时检查六轴最小和最大位置。运行本积木只读实机编码器，按官方单位转换计算关节角度并发送到仿真模型；已有有效校准时不改写参数、不使能力矩。面板可停止映射。");
     },
   };
   pythonGenerator.forBlock[ARM_MAPPING_BLOCK] = block => {
