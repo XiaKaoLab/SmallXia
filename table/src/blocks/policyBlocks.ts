@@ -1,5 +1,5 @@
 /** 功能：策略积木通过既有模仿学习客户端创建任务、查询状态和停止任务。
- * Created on 2026-11-02; Updated on 2026-11-02
+ * Created on 2026-11-02; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 import * as Blockly from "blockly/core";
@@ -28,7 +28,7 @@ export class PolicyBlocks {
       },
     };
     pythonGenerator.forBlock[POLICY_RL_BALL] = block =>
-      `print(__import__('json').dumps({'ball_training': __import__('xiaoxia_core.reinforcement.client', fromlist=['ReinforcementClient']).ReinforcementClient().train_ball(num_envs=${block.getFieldValue("NUM_ENVS")}, rounds=${block.getFieldValue("ROUNDS")}, device=${JSON.stringify(block.getFieldValue("DEVICE"))})}))\n`;
+      `_ball_job = __import__('xiaoxia_core.reinforcement.client', fromlist=['ReinforcementClient']).ReinforcementClient().train_ball(num_envs=${block.getFieldValue("NUM_ENVS")}, rounds=${block.getFieldValue("ROUNDS")}, device=${JSON.stringify(block.getFieldValue("DEVICE"))})\nprint(__import__('json').dumps({'ball_training': _ball_job}), flush=True)\n__import__('xiaoxia_core.blocks.workflow', fromlist=['BlockWorkflow']).BlockWorkflow().wait_job(_ball_job, 'reinforcement')\n`;
     for (const type of POLICY_TYPES) {
       if (type === POLICY_RL_BALL) continue;
       Blockly.Blocks[type] = {

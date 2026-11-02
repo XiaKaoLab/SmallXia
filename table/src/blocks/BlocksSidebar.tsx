@@ -1,5 +1,5 @@
 /** 功能：左侧六分类 Blockly 工作区与 Python 后台运行。
- * Created on 2026-11-01; Updated on 2026-11-02
+ * Created on 2026-11-01; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 import { UiMessage } from "../shared/UiMessage";
@@ -19,8 +19,14 @@ import { BlocksToolbox, BLOCK_LIMITS } from "./BlocksToolbox";
 import { BlocksControlBridge } from "./BlocksControlBridge";
 import { DataBlocks } from "./dataBlocks";
 import { PolicyBlocks } from "./policyBlocks";
+import { WorkflowBlocks } from "./WorkflowBlocks";
+import { workflowCatalog } from "./WorkflowCatalog";
+import { ProgramClient, type ProgramReceipt } from "./ProgramClient";
+import { HardwareBlocks } from "./HardwareBlocks";
+import { WorkflowTemplate } from "./WorkflowTemplate";
+import { WorkspaceStore } from "./WorkspaceStore";
 import "blockly/blocks";
-import { Play } from "lucide-react";
+import { Play, Square } from "lucide-react";
 import { agentClient } from "../chat/AgentClient";
 import * as Blockly from "blockly/core";
 import * as Zh from "blockly/msg/zh-hans";
@@ -35,6 +41,7 @@ export function BlocksSidebar() {
   const [notice, setNotice] = useState("");
   const [running, setRunning] = useState(false);
   const runLock = useRef(false);
+  const programRef = useRef<ProgramClient | null>(null);
   const liveRef = useRef<LiveJointRunner | null>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const runRef = useRef<() => Promise<unknown>>(async () => undefined);
@@ -49,6 +56,7 @@ export function BlocksSidebar() {
     const onLimit = () => { setNotice("已到运动边界"); };
     window.addEventListener("table:pose-limit", onLimit);
     const onConfirmed = (event: Event) => {
+      if (workspace?.getBlocksByType(BLOCK_TYPE, false).length !== 1) return;
       const block = workspace?.getBlocksByType(BLOCK_TYPE, false)[0];
       if (!block || block.getFieldValue("TARGET") !== "simulation") return;
       const positions = (event as CustomEvent<Record<string, number>>).detail;
@@ -60,6 +68,7 @@ export function BlocksSidebar() {
     let detachDebug: (() => void) | undefined;
     let detachCameras: (() => void) | undefined;
     let detachModels: (() => void) | undefined;
+    let detachWorkflow: (() => void) | undefined;
     let detachArmTargets: (() => void) | undefined;
     let controlBridge: BlocksControlBridge | undefined;
     async function initialize() {
@@ -80,7 +89,9 @@ export function BlocksSidebar() {
         registerFrameBlocks();
         new PolicyBlocks().register();
         new DataBlocks().register();
-        pythonGenerator.addReservedWords("CameraFrameClient,virtual_frame,real_frame");
+        new WorkflowBlocks().register();
+        new HardwareBlocks().register();
+        pythonGenerator.addReservedWords("CameraFrameClient,virtual_frame,real_frame,_block_wait,_ball_job,_onnx_job");
         workspace = Blockly.inject(element, {
           media: `${import.meta.env.BASE_URL}blockly-media/`,
           maxInstances: BLOCK_LIMITS,
@@ -94,13 +105,15 @@ export function BlocksSidebar() {
         detachCameras = cameraCatalog.attach(workspace);
         detachArmTargets = armTargetCatalog.attach(workspace);
         detachModels = onnxModelCatalog.attach(workspace);
+        detachWorkflow = workflowCatalog.attach(workspace);
+        new WorkflowTemplate().attach(workspace);
         workspace.registerButtonCallback("CREATE_VARIABLE", () => {
           if (workspace) Blockly.Variables.createVariableButtonHandler(workspace);
         });
-        const block = workspace.newBlock(BLOCK_TYPE);
-        block.initSvg();
-        block.render();
-        block.moveBy(16, 24);
+        const storage = new WorkspaceStore();
+        const restored = storage.restore(workspace);
+        const block = restored ? undefined : workspace.newBlock(BLOCK_TYPE);
+        if (block) { block.initSvg(); block.render(); block.moveBy(16, 24); }
         const update = () => {
           if (!workspace) return;
           try { setCode(pythonGenerator.workspaceToCode(workspace)); setError(""); setNotice(""); }
@@ -110,11 +123,27 @@ export function BlocksSidebar() {
         workspace.addChangeListener((event) => {
           if (event.type === Blockly.Events.BLOCK_CHANGE) edited = true;
           update();
+          if (!event.isUiEvent && workspace) storage.save(workspace);
         });
         update();
         detachDebug = blocksDebug.attach(workspace, limits, () => { edited = true; update(); });
         controlBridge = new BlocksControlBridge(() => runRef.current(), () => runLock.current);
         void controlBridge.start();
+        const program = new ProgramClient(setNotice, receiveReceipt);
+        void program.recover().then(async job => {
+          if (abort.signal.aborted || !job || runLock.current) { program.dispose(); return; }
+          runLock.current = true; setRunning(true); programRef.current = program;
+          await live.pause();
+          try { await program.observe(job); }
+          catch (failure) { if (!abort.signal.aborted) setError(UiMessage.error(failure)); }
+          finally {
+            program.dispose();
+            if (programRef.current === program) {
+              programRef.current = null; runLock.current = false;
+              if (!abort.signal.aborted) { live.resume(); setRunning(false); }
+            }
+          }
+        }).catch(() => program.dispose());
         observer = new ResizeObserver(() => { if (workspace) Blockly.svgResize(workspace); });
         observer.observe(element);
         // API 可用时以当前显示目标初始化；不可用时保留模型范围内的零位。
@@ -128,7 +157,7 @@ export function BlocksSidebar() {
           const positions = state.joint_positions;
           if (!positions || JOINTS.some(([name]) => !Number.isFinite(positions[name]) || positions[name] < limits[name].lower || positions[name] > limits[name].upper)) return;
           // 用户开始编辑后不覆盖字段。
-          if (edited || workspace.getBlockById(block.id) !== block) return;
+          if (!block || edited || workspace.getBlockById(block.id) !== block) return;
           for (const [name] of JOINTS) block.setFieldValue(String(positions[name]), name);
           workspace.clearUndo();
           update();
@@ -138,8 +167,15 @@ export function BlocksSidebar() {
       }
     }
     void initialize();
-    return () => { abort.abort(); window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; controlBridge?.stop(); detachDebug?.(); detachCameras?.(); detachArmTargets?.(); detachModels?.(); observer?.disconnect(); workspace?.dispose(); };
+    return () => { abort.abort(); programRef.current?.dispose(); programRef.current = null; window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; controlBridge?.stop(); detachDebug?.(); detachCameras?.(); detachArmTargets?.(); detachModels?.(); detachWorkflow?.(); observer?.disconnect(); workspace?.dispose(); };
   }, []);
+
+  function receiveReceipt(receipt: ProgramReceipt) {
+    if (receipt.ball_training && ["ball_pickup", "ball_onnx_rollout"].includes(receipt.ball_training.kind)) window.dispatchEvent(new CustomEvent("table:ball-training-started", { detail: receipt.ball_training }));
+    if (receipt.camera_calibration?.id) window.dispatchEvent(new CustomEvent("table:camera-calibration-start", { detail: receipt.camera_calibration }));
+    if (receipt.display_alignment?.id) window.dispatchEvent(new CustomEvent("table:alignment-start", { detail: receipt.display_alignment }));
+    if (receipt.limited && receipt.applied_joint_positions) jointPreview.confirm(receipt.applied_joint_positions, jointPreview.revision);
+  }
 
   async function run(strict = false) {
     if (runLock.current) { if (strict) throw new Error("已有程序运行中"); return; }
@@ -147,38 +183,27 @@ export function BlocksSidebar() {
     if (!source.trim()) { if (strict) throw new Error("工作区为空"); return; }
     if (!agentClient.desktop) { setError("请在桌面应用中运行"); if (strict) throw new Error("需要 Tauri 窗口"); return; }
     runLock.current = true;
-    const revision = jointPreview.revision;
     setRunning(true);
     setError("");
     setNotice("运行中…");
     try {
       await liveRef.current?.pause();
-      const result = await agentClient.request<{ output: string; exit_code: number }>({ action: "run_program", source });
-      let ballTraining = false;
-      let dataRecording = false;
-      for (const line of result.output.trim().split("\n")) {
-        try {
-          const receipt = JSON.parse(line);
-          if (["ball_pickup", "ball_onnx_rollout"].includes(receipt.ball_training?.kind)) {
-            ballTraining = true;
-            window.dispatchEvent(new CustomEvent("table:ball-training-started", { detail: receipt.ball_training }));
-          }
-          if (receipt.data_recording?.command_id) dataRecording = true;
-          if (receipt.camera_calibration?.id) window.dispatchEvent(new CustomEvent("table:camera-calibration-start", { detail: receipt.camera_calibration }));
-          if (receipt.display_alignment?.id) window.dispatchEvent(new CustomEvent("table:alignment-start", { detail: receipt.display_alignment }));
-          if (receipt.limited && receipt.applied_joint_positions) jointPreview.confirm(receipt.applied_joint_positions, revision);
-        } catch { /* 相机积木等非 JSON 文本不属于关节回执。 */ }
-      }
-      setNotice(ballTraining ? "任务已启动" : dataRecording ? "录制已提交" : "运行完成");
-      return result;
+      const program = new ProgramClient(setNotice, receiveReceipt);
+      programRef.current = program;
+      let job;
+      try { job = await program.start(source); }
+      catch (failure) { program.dispose(); programRef.current = null; throw failure; }
+      // 调试接口立即获得可查询任务回执；UI 继续等待真实完成。
+      const completion = program.observe(job).catch(failure => { setError(UiMessage.error(failure)); setNotice(""); })
+        .finally(() => { program.dispose(); programRef.current = null; liveRef.current?.resume(); runLock.current = false; setRunning(false); void workflowCatalog.refresh(); });
+      void completion;
+      return { program: job };
     } catch (failure) {
       setError(UiMessage.error(failure));
       setNotice("");
       if (strict) throw failure;
     } finally {
-      liveRef.current?.resume();
-      runLock.current = false;
-      setRunning(false);
+      if (!programRef.current) { liveRef.current?.resume(); runLock.current = false; setRunning(false); }
     }
   }
 
@@ -188,6 +213,7 @@ export function BlocksSidebar() {
         aria-label={running ? "运行中" : "运行"} aria-busy={running} title="运行">
         <Play size={15} fill="currentColor" /><span>{running ? "运行中" : "运行"}</span>
       </button>
+      {running && <button type="button" className="blocks-run blocks-stop" onClick={() => void programRef.current?.stop().catch(failure => setError(UiMessage.error(failure)))} aria-label="停止程序"><Square size={14} fill="currentColor" /><span>停止</span></button>}
     </div></header>
     <div ref={host} className="blocks-workspace" aria-label="机械臂、相机、逻辑、变量、策略和数据积木工作区" />
     {(error || notice) && <p className="blocks-status" role="status">{error || notice}</p>}

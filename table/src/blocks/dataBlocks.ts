@@ -1,11 +1,10 @@
 /** 功能：数据分类积木调用物理仿真与只读真机采集 API，保留异步命令回执。
- * Created on 2026-11-02; Updated on 2026-11-02
+ * Created on 2026-11-02; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 import * as Blockly from "blockly/core";
 import { pythonGenerator, Order } from "blockly/python";
 import { cameraCatalog } from "./CameraCatalog";
-import { BLOCK_TYPE, JOINTS } from "./positionBlock";
 
 export const DATA_SIM = "table_data_simulation";
 export const DATA_HARDWARE = "table_data_hardware";
@@ -55,7 +54,7 @@ export class DataBlocks {
             this.appendDummyInput().appendField(PLAYBACK_OPERATIONS[type][0]);
             if (type !== "table_data_recordings") this.appendValueInput("PLAYBACK").appendField("播放回执");
           } else if (type === DATA_TARGET) {
-            this.appendDummyInput().appendField("机械臂设定角度");
+            this.appendDummyInput().appendField("当前仿真目标角度");
           } else {
             this.appendDummyInput().appendField(type === DATA_RECORD ? "录制一段" : type === DATA_CAPTURE ? "记录一帧" : type === DATA_COMMAND ? "采集命令状态" : DATA_OPERATIONS[type][0]);
             this.appendValueInput("SESSION").appendField("采集会话");
@@ -76,9 +75,7 @@ export class DataBlocks {
           const playback = idValue(generator.valueToCode(block, "PLAYBACK", Order.NONE) || "''");
           expression = type === "table_data_recordings" ? `${client}.recordings()` : `${client}.${PLAYBACK_OPERATIONS[type][1]}(${playback})`;
         } else if (type === DATA_TARGET) {
-          const arm = block.workspace.getBlocksByType(BLOCK_TYPE, false)[0];
-          if (!arm) throw new Error("机械臂设定角度需要工作区中的机械臂位置积木");
-          expression = `{${JOINTS.map(([name]) => `${JSON.stringify(name)}: ${Number(arm.getFieldValue(name))}`).join(", ")}}`;
+          expression = "__import__('xiaoxia_core.blocks.workflow', fromlist=['BlockWorkflow']).BlockWorkflow.http('robots/table/state')['joint_positions']";
         } else if ([DATA_SIM, DATA_HARDWARE].includes(type)) {
           const common = `${JSON.stringify(block.getFieldValue("TASK"))}, fps=${block.getFieldValue("FPS")}, record_actions=${block.getFieldValue("ACTIONS") === "TRUE" ? "True" : "False"}`;
           if (type === DATA_SIM) expression = `${client}.create_simulation(${common}, cameras=${block.getFieldValue("IMAGES") === "TRUE" ? "['simulation']" : "[]"})`;

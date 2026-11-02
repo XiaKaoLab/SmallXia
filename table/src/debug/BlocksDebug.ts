@@ -1,5 +1,5 @@
 /** 功能：为开发接口管理分类积木、字段和保留连接/变量的工作区快照。
- * Created on 2026-11-01; Updated on 2026-11-02
+ * Created on 2026-11-01; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 import { DATA_PLAY, PLAYBACK_OPERATIONS, DATA_RECORD } from "../blocks/dataBlocks";
@@ -17,6 +17,7 @@ import { POLICY_RL_BALL } from "../blocks/policyBlocks";
 import { ONNX_EXPORT, ONNX_RUN, ONNX_TYPES } from "../blocks/OnnxPolicyBlocks";
 import { onnxModelCatalog } from "../blocks/OnnxModelCatalog";
 import { armTargetCatalog } from "../blocks/ArmTargetCatalog";
+import { BlockMetadata } from "./BlockMetadata";
 
 export interface BlockSnapshot { id: string; type: string; fields: Record<string, number | string>; x: number; y: number }
 export interface BlocksSnapshot { version: 2; state: Record<string, unknown> }
@@ -70,7 +71,8 @@ class WorkspaceManager {
     const labels: Record<string, string> = { [ARM_MAPPING_BLOCK]: "映射真机到仿真", ...Object.fromEntries(Object.entries(PLAYBACK_OPERATIONS).map(([type, [label]]) => [type, label])), [DATA_PLAY]: "播放录制（仿真）", [DATA_RECORD]: "录制一段", [CAMERA_CALIBRATION_BLOCK]: "标定真实相机内参", [CALIBRATION_BLOCK]: "校准机械臂（显示对齐）", [BLOCK_TYPE]: "设置机械臂位置", [CAMERA_BLOCK_TYPE]: "装配相机",
       [FRAME_CAPTURE]: "获取画面", [FRAME_VARIABLE]: "画面变量", [POLICY_RL_BALL]: "强化学习 · 拿取小球",
       [ONNX_EXPORT]: "导出抓球模型 ONNX", [ONNX_RUN]: "ONNX 推理 · 拿取小球" };
-    return TOOLBOX_TYPES.map(type => ({ type, label: labels[type] || type, maxInstances: BLOCK_LIMITS[type] ?? 100,
+    const metadata = new BlockMetadata();
+    return TOOLBOX_TYPES.map(type => ({ type, label: labels[type] || metadata.describe(type).label, maxInstances: BLOCK_LIMITS[type] ?? 100,
       fields: type === ARM_MAPPING_BLOCK ? [{ name: "TARGET", label: "真机串口", options: armTargetCatalog.options().filter(([, value]) => value !== "simulation").map(([, id]) => id) }] : type === DATA_PLAY ? [{ name: "RECORDING_ID", label: "录制 ID" }, { name: "SPEED", label: "播放速度", lower: .1, upper: 4 }] : type === DATA_RECORD ? [{ name: "DURATION", label: "录制时长", unit: "s", lower: 1, upper: 3600 }] : type === CAMERA_CALIBRATION_BLOCK ? [{ name: "SOURCE", label: "真实相机", options: cameraCatalog.realOptions().map(([, id]) => id) },
         { name: "COLUMNS", label: "内角点列数", lower: 3, upper: 20 }, { name: "ROWS", label: "内角点行数", lower: 3, upper: 20 }, { name: "SQUARE_MM", label: "方格边长", unit: "mm", lower: 1, upper: 200 }] : type === CALIBRATION_BLOCK ? [{ name: "TARGET", label: "机械臂", options: armTargetCatalog.options().filter(([, value]) => value !== "simulation").map(([, id]) => id) }, { name: "MODE", label: "校准方式", options: ["reuse", "recalibrate"] }] : type === BLOCK_TYPE ? [{ name: "TARGET", label: "机械臂", options: armTargetCatalog.options().map(([, id]) => id) },
         ...JOINTS.map(([name, label]) => ({ name, label, unit: "rad", ...this.limits[name] }))]
@@ -78,7 +80,7 @@ class WorkspaceManager {
           { name: "ROUNDS", label: "每环境训练轮数", lower: 1, upper: 10000 }, { name: "DEVICE", label: "设备", options: ["cpu", "cuda"] }]
         : ONNX_TYPES.includes(type) ? [{ name: "MODEL_ID", label: "模型", options: onnxModelCatalog.options(type === ONNX_RUN).map(([, id]) => id) },
           ...(type === ONNX_RUN ? [{ name: "ROUNDS", label: "推理回合数", lower: 1, upper: 1000 }] : [])]
-        : [FRAME_CAPTURE, FRAME_VARIABLE].includes(type) ? [{ name: "SOURCE", label: "来源", options: cameraCatalog.options().map(([, id]) => id) }] : [] }));
+        : [FRAME_CAPTURE, FRAME_VARIABLE].includes(type) ? [{ name: "SOURCE", label: "来源", options: cameraCatalog.options().map(([, id]) => id) }] : metadata.describe(type).fields }));
   }
   list(): BlockSnapshot[] {
     return this.workspace.getAllBlocks(false).map(block => {

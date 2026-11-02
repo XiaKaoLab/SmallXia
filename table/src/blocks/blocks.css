@@ -1,5 +1,5 @@
 /* 功能：左侧积木工作区与运行按钮，沿用半透明侧栏风格。
- * Created on 2026-11-01; Updated on 2026-11-02
+ * Created on 2026-11-01; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 .blocks-sidebar { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #ffffffe0; border-right: 1px solid #ffffffd9; }
@@ -16,6 +16,8 @@
 .blocks-run { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 72px; min-height: 44px; padding: 0 12px; border: 1px solid #248b53; border-radius: 10px; background: #2c9a60; color: #fff; font-size: 12px; font-weight: 600; }
 .blocks-run:hover:not(:disabled) { background: #238450; }
 .blocks-run:disabled { opacity: .55; }
+.blocks-stop { background: #fff; color: #6e514a; border-color: #d8c5bc; }
+.blocks-stop:hover:not(:disabled) { background: #f5eeea; }
 .blocks-status { overflow-wrap: anywhere; max-height: 100px; overflow-y: auto; }
 
 .joint-angle-control { display: flex; align-items: center; gap: 6px; width: 180px; height: 44px; padding: 0 5px; color: #fff; font: 600 12px "Segoe UI", sans-serif; }

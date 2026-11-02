@@ -1,5 +1,5 @@
 /** 功能：提供已有抓球模型的 ONNX 导出和 Runtime 仿真推理积木。
- * Created on 2026-11-02; Updated on 2026-11-02
+ * Created on 2026-11-02; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 import * as Blockly from "blockly/core";
@@ -30,7 +30,7 @@ export class OnnxPolicyBlocks {
         const client = "__import__('xiaoxia_core.reinforcement.client', fromlist=['ReinforcementClient']).ReinforcementClient()";
         const id = JSON.stringify(block.getFieldValue("MODEL_ID"));
         const call = type === ONNX_EXPORT ? `${client}.export_onnx(${id})` : `${client}.rollout_onnx(${id}, rounds=${block.getFieldValue("ROUNDS")})`;
-        return `print(__import__('json').dumps({${JSON.stringify(type === ONNX_EXPORT ? "onnx_export" : "ball_training")}: ${call}}))\n`;
+        return `_onnx_job = ${call}\nprint(__import__('json').dumps({${JSON.stringify(type === ONNX_EXPORT ? "onnx_export" : "ball_training")}: _onnx_job}), flush=True)\n__import__('xiaoxia_core.blocks.workflow', fromlist=['BlockWorkflow']).BlockWorkflow().wait_job(_onnx_job, 'reinforcement')\n`;
       };
     }
   }

@@ -1,5 +1,5 @@
 /** 功能：缓存实际发现的相机，为 Blockly 下拉框提供设备名称和稳定标识。
- * Created on 2026-11-02; Updated on 2026-11-02
+ * Created on 2026-11-02; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 import * as Blockly from "blockly/core";
@@ -42,6 +42,12 @@ export class CameraCatalog {
       if (workspace && !workspace.isDragging()) {
         const blocks = [...workspace.getAllBlocks(false), ...(workspace.getFlyout()?.getWorkspace().getAllBlocks(false) ?? [])];
         for (const block of blocks) {
+          if (["table_demo_hardware", "table_demo_begin"].includes(block.type)) {
+            const field = block.getField("CAMERA") as Blockly.FieldDropdown;
+            const selected = field.getValue();
+            field.setOptions(() => [["不录制画面", "none"], ...(block.type === 'table_demo_begin' ? [["腕部虚拟相机", "virtual"] as [string, string]] : []), ...this.realOptions(field.getValue()).filter(([, id]) => id.startsWith('opencv_'))]);
+            field.setValue(selected); field.forceRerender(); continue;
+          }
           if (!["table_capture_frame", "table_frame_variable", "table_calibrate_camera"].includes(block.type)) continue;
           const field = block.getField("SOURCE") as Blockly.FieldDropdown;
           const selected = String(field.getValue());
