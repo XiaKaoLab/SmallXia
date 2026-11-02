@@ -16,7 +16,6 @@ export function registerArmMappingBlock(): void {
           const ports = armTargetCatalog.options(this.getValue()).filter(([, value]) => value !== "simulation");
           return ports.length ? ports : [["未发现串口", "unavailable"]];
         }), "TARGET");
-      this.appendDummyInput().appendField("复用官方校准 · 缺失则引导检查");
       this.setPreviousStatement(true); this.setNextStatement(true); this.setColour("#638b80");
       this.setTooltip("自动复用匹配的官方校准；缺失时引导同时检查六轴最小和最大位置。运行本积木只读实机编码器，按官方单位转换计算关节角度并发送到仿真模型；已有有效校准时不改写参数、不使能力矩。面板可停止映射。");
     },
