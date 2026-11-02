@@ -30,7 +30,7 @@ class InferencePlayback:
             if monotonic() - acknowledged >= .5:
                 self.worker.progress(paused=True, phase='paused')
                 acknowledged = monotonic()
-            sleep(.03)
+            sleep(.005)
         self.worker.progress(paused=False, phase='inferencing')
 
     def wait(self, seconds):
@@ -38,7 +38,7 @@ class InferencePlayback:
         while remaining > 0:
             self.checkpoint()
             started = monotonic()
-            sleep(min(.02, remaining))
+            sleep(min(.005, remaining))
             remaining -= monotonic() - started
         self.checkpoint()
 

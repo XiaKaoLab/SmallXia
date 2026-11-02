@@ -10,15 +10,16 @@ from contextlib import closing
 from dataclasses import asdict
 from pathlib import Path
 
-from ..llm import LLMConfig, OpenAILLM
 from ..environment import EnvironmentSettings
-from .runtime import SimpleAgent
-from .sessions import SessionStore
-from .skills import SkillRegistry
 
 
 class DesktopBridge:
     def __init__(self, directory: Path) -> None:
+        global LLMConfig, OpenAILLM, SimpleAgent
+        from ..llm import LLMConfig, OpenAILLM
+        from .runtime import SimpleAgent
+        from .sessions import SessionStore
+        from .skills import SkillRegistry
         EnvironmentSettings.load()
         self.sessions = SessionStore(directory / "data" / "agent.sqlite3")
         self.skills = SkillRegistry(directory / "skills")
@@ -126,7 +127,22 @@ def main() -> None:
         request = json.loads(sys.stdin.readline())
         if not isinstance(request, dict):
             raise ValueError("桌面请求必须为对象")
-        DesktopBridge(Path.cwd()).handle(request)
+        if request.get('action') in ('reinforcement_pause', 'reinforcement_resume'):
+            from ..reinforcement.client import ReinforcementClient
+            from ..imitation.api_jobs import identifier
+            client = ReinforcementClient()
+            operation = client.pause_job if request['action'] == 'reinforcement_pause' else client.resume_job
+            from time import monotonic, sleep
+            job_id = identifier(request.get('job_id'))
+            result = operation(job_id)
+            target = request['action'] == 'reinforcement_pause'
+            deadline = monotonic() + .5
+            while bool(result.get('paused')) != target and result['status'] in ('queued', 'running') and monotonic() < deadline:
+                sleep(.005)
+                result = client.job(job_id)
+            DesktopBridge.emit({'type': 'data', 'data': result})
+        else:
+            DesktopBridge(Path.cwd()).handle(request)
     except Exception as error:
         DesktopBridge.emit({"type": "error", "message": str(error)})
         raise SystemExit(1) from None

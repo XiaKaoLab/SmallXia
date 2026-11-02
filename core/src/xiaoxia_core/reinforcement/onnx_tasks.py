@@ -33,6 +33,7 @@ class BallOnnxTasks:
         preview.publish([env], force=True)
         from .inference_playback import InferencePlayback
         playback = InferencePlayback(self.request.get('playback_speed', 1.0), self.worker)
+        env.playback_checkpoint = playback.checkpoint
         rounds = self.request['rounds']
         positions = [(float(x), float(y)) for x in np.linspace(.16, .23, 7)
                      for y in np.linspace(-.05, .05, 5)] if self.request.get('suite') == 'grid' else None

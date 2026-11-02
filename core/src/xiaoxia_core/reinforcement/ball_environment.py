@@ -173,6 +173,9 @@ class BallPickupEnvironment(MujocoSimulation):
     def _physics_step(self, *, track_hold=True):
         model, data = self._state()
         for _ in range(10):
+            checkpoint = getattr(self, 'playback_checkpoint', None)
+            if checkpoint:
+                checkpoint()
             data.qfrc_applied[:] = 0
             for index, name in enumerate(JOINTS):
                 limit = self.limits.joints[name]

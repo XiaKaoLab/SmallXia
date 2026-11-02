@@ -19,6 +19,11 @@ export class BallTrainingScene {
   private version = "";
   private jobId = "";
   private changed = false;
+  private frozen = false;
+  private readonly playback = (event: Event) => {
+    const detail = (event as CustomEvent<{ jobId: string; paused: boolean }>).detail;
+    if (detail.jobId === this.jobId) this.frozen = detail.paused;
+  };
   private previewKind = "";
   private inputFrame: string | null = null;
   private readonly client = new TrainingPreviewClient(frame => this.receiveFrame(frame));
@@ -27,15 +32,18 @@ export class BallTrainingScene {
   };
 
   constructor(scene: THREE.Scene, private readonly fit: (count: number) => void) {
+    window.addEventListener("table:inference-playback", this.playback);
     this.group.name = "training_environments";
     scene.add(this.group);
     window.addEventListener("table:ball-training", this.close);
   }
 
   private receiveFrame(frame: TrainingPreview): void {
+    if (this.frozen && frame.job_id === this.jobId) return;
     const version = `${frame.job_id}:${frame.timestamp_ns}`;
     if (version === this.version) return;
     this.version = version;
+    if (this.jobId !== frame.job_id) this.frozen = false;
     this.changed ||= this.jobId !== frame.job_id;
     this.jobId = frame.job_id;
     this.previewKind = frame.kind ?? "";
@@ -84,7 +92,7 @@ export class BallTrainingScene {
   }
 
   update(robot: URDFRobot, dt: number): void {
-    if (!this.active) return;
+    if (!this.active || this.frozen) return;
     const fresh = this.changed || this.instances.length !== this.snapshots.length || this.source !== robot;
     if (fresh) this.layout(robot);
     const alpha = fresh ? 1 : 1 - Math.exp(-dt / .09);
@@ -103,7 +111,7 @@ export class BallTrainingScene {
   }
 
   dispose(): void {
-    this.client.dispose(); window.removeEventListener("table:ball-training", this.close);
+    this.client.dispose(); window.removeEventListener("table:inference-playback", this.playback); window.removeEventListener("table:ball-training", this.close);
     this.clear(); this.group.removeFromParent();
     this.sphere.dispose(); this.material.dispose(); this.floorGeometry.dispose(); this.floorMaterial.dispose();
   }

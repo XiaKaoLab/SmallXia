@@ -5,6 +5,7 @@ Created on 2026-11-02; Updated on 2026-11-02
 from collections import OrderedDict
 import json
 from math import isfinite
+from time import monotonic, sleep
 
 from ..imitation.api_jobs import identifier, atomic_json
 from ..inference.ball_onnx import BallOnnxPolicy
@@ -21,7 +22,13 @@ class BallOnnxAPI:
         if job['kind'] != 'ball_onnx_rollout' or job['status'] not in ('queued', 'running'):
             raise ValueError('只能暂停或继续尚未结束的ONNX推理')
         atomic_json(self.jobs.root / job_id / 'playback-control.json', {'paused': paused})
-        return {**self.jobs.get(job_id), 'pause_requested': paused}
+        deadline = monotonic() + .4
+        while monotonic() < deadline:
+            job = self.jobs.get(job_id)
+            if bool(job.get('paused')) == paused or job['status'] not in ('queued', 'running'):
+                break
+            sleep(.005)
+        return {**job, 'pause_requested': paused}
 
     def catalog(self):
         from .ball_environment import BallPickupEnvironment

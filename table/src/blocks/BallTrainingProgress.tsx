@@ -55,19 +55,28 @@ export function BallTrainingProgress() {
   }, []);
 
   useEffect(() => {
-    if (job && (!active(job) || Boolean(job.paused) === pauseTarget)) setPauseTarget(null);
+    if (job && (!active(job) || Boolean(job.paused) === pauseTarget)) {
+      setPauseTarget(null);
+      if (!job.paused || !active(job)) window.dispatchEvent(new CustomEvent("table:inference-playback", { detail: { jobId: job.id, paused: false } }));
+    }
   }, [job, pauseTarget]);
 
   async function togglePause() {
     if (!job || pauseTarget !== null || stopping) return;
     const target = !job.paused;
     setPauseTarget(target);
+    // 按下暂停的这一帧就冻结插值和相机，后台确认仍单独显示。
+    if (target) window.dispatchEvent(new CustomEvent("table:inference-playback", { detail: { jobId: job.id, paused: true } }));
     try {
       const result = await agentClient.request<TrainingJob>({
         action: target ? "reinforcement_pause" : "reinforcement_resume", job_id: job.id,
       });
       selected.current = result; setJob(result); setError("");
-    } catch (failure) { setError(String(failure)); setPauseTarget(null); }
+      if (!target && !result.paused) window.dispatchEvent(new CustomEvent("table:inference-playback", { detail: { jobId: job.id, paused: false } }));
+    } catch (failure) {
+      window.dispatchEvent(new CustomEvent("table:inference-playback", { detail: { jobId: job.id, paused: Boolean(job.paused) } }));
+      setError(String(failure)); setPauseTarget(null);
+    }
   }
 
   async function stop() {
