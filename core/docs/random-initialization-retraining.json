@@ -1,0 +1,25 @@
+{
+  "started_on": "2026-11-02",
+  "job_id": "5863de2fb2c1402a804ec06e1f4b946c",
+  "initialization": "random_collision_free_arm_and_random_ball",
+  "weights": "from_scratch",
+  "demonstrations": "newly_collected_random_initial_states",
+  "configuration": {
+    "num_envs": 8,
+    "rounds": 1000,
+    "device": "cuda",
+    "seed": 20261102,
+    "demonstration_episodes": 64,
+    "pretraining_updates": 5000,
+    "corrective_demonstrations": true,
+    "stop_on_success": true,
+    "minimum_online_updates": 2000
+  },
+  "stopped_rollouts": [],
+  "observed_status": "running",
+  "observed_phase": "demonstrating",
+  "observed_demonstration_successes": 55,
+  "observed_demonstration_transitions": 2422,
+  "model_validated": false,
+  "note": "Launch snapshot only; current progress remains in runtime job status. Export ONNX at training completion; no success rate claimed."
+}
