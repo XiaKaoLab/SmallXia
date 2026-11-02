@@ -41,7 +41,13 @@ class PickupTrainingCampaign:
                     demonstration_job_id=self.demonstration_job_id if batch == 1 else None)
                 self.report['batch'] = batch
                 self.report['training_job_id'] = training['id']
-                self.wait(training['id'], 'training')
+                trained = self.wait(training['id'], 'training')
+                if not trained.get('result', {}).get('training_candidate_qualified', False):
+                    self.report['batches'].append({'training_job_id': training['id'],
+                        'candidate_qualified': False, 'plateau': trained.get('result', {}).get('training_plateau', False)})
+                    previous = training['id']
+                    self.save()
+                    continue
                 suites = []
                 for index, (suite, rounds) in enumerate((('clean', 100), ('noisy', 100), ('grid', 35))):
                     evaluation = self.client.rollout_onnx(training['id'], rounds=rounds,

@@ -9,10 +9,13 @@ import numpy as np
 
 @dataclass(frozen=True)
 class PickupRewardConfig:
-    version: str = 'pickup_v4_phase'
+    version: str = 'pickup_v5_progress'
     found_ball: float = 1.0
     empty_close_cost: float = .2
-    approach_gain: float = 5.0
+    approach_gain: float = 25.0
+    orientation_gain: float = 2.0
+    alignment_stall_cost: float = .03
+    first_jaw_contact: float = .5
     first_grasp: float = 1.0
     lift_gain: float = 10.0
     success: float = 50.0
@@ -25,19 +28,25 @@ class PickupRewardConfig:
 
 
 class PickupReward:
-    def __init__(self, distance):
+    def __init__(self, distance, orientation_error=0.):
         self.config = PickupRewardConfig()
         self.previous_distance = distance
+        self.previous_orientation = orientation_error
+        self.rewarded_jaws = set()
         self.previous_lift = 0.0
         self.grasp_rewarded = False
         self.was_lifted = False
         self.ball_found_rewarded = False
 
-    def calculate(self, *, distance, lift_fraction, grasped, success, failed, truncated, action, floor_force, ball_contact=False):
+    def calculate(self, *, distance, lift_fraction, grasped, success, failed, truncated, action, floor_force, ball_contact=False, orientation_error=0., phase=None, jaw_contacts=()):
         settings = self.config
         lift = lift_fraction if grasped else 0.0
         dropped = self.was_lifted and (not grasped or lift_fraction < .1)
         terms = {
+            'orientation_progress': settings.orientation_gain * (self.previous_orientation - orientation_error),
+            'alignment_stall': -settings.alignment_stall_cost
+                if phase in ('align', 'approach') and distance > .01 and self.previous_distance - distance < .0001 else 0.,
+            'first_jaw_contact': settings.first_jaw_contact * len(set(jaw_contacts) - self.rewarded_jaws),
             'empty_close': -settings.empty_close_cost * min(1., max(0., -float(action[5])))
                 if float(action[5]) < -.02 and not ball_contact else 0.0,
             'approach': settings.approach_gain * (self.previous_distance - distance),
@@ -52,6 +61,8 @@ class PickupReward:
             'floor_collision': -settings.floor_force_cost * min(floor_force, 20.0),
         }
         self.previous_distance, self.previous_lift = distance, lift
+        self.previous_orientation = orientation_error
+        self.rewarded_jaws.update(jaw_contacts)
         self.grasp_rewarded |= grasped
         self.was_lifted = grasped and lift_fraction >= .1
         return float(sum(terms.values())), terms

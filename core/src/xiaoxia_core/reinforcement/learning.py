@@ -14,7 +14,7 @@ def make_policy(config, device):
                    for camera in config['cameras']})
     settings = SACConfig(input_features=inputs, output_features={'action': PolicyFeature(FeatureType.ACTION, (6,))},
         device=device, shared_encoder=config.get('shared_encoder', True), push_to_hub=False, use_torch_compile=False, freeze_vision_encoder=False,
-        vision_encoder_name=None, latent_dim=128, image_encoder_hidden_dim=16, temperature_init=0.01,
+        vision_encoder_name=None, latent_dim=128, image_encoder_hidden_dim=16, temperature_init=config.get('temperature_init', .01),
         actor_network_kwargs=ActorNetworkConfig(hidden_dims=[128, 128]),
         critic_network_kwargs=CriticNetworkConfig(hidden_dims=[128, 128]),
         policy_kwargs=PolicyConfig(std_min=config.get('actor_std_min', -5), std_max=config.get('actor_std_max', 2)))
@@ -26,16 +26,16 @@ class SACLearner:
         import torch
         self.policy = make_policy(config, device)
         parameters = self.policy.get_optim_params()
-        self.optimizers = {key: torch.optim.Adam([value] if key == 'temperature' else value, lr=3e-4)
+        self.optimizers = {key: torch.optim.Adam([value] if key == 'temperature' else value, lr=config.get(f'{key}_lr', 3e-4))
                            for key, value in parameters.items()}
         self.device = device
         self.bc_optimizer = None
 
-    def update(self, batch, demonstration_batch=None, bc_weight=.5):
+    def update(self, batch, demonstration_batch=None, bc_weight=.5, update_actor=True):
         import torch
         self.policy.train()
         metrics = {}
-        for model in ('critic', 'actor', 'temperature'):
+        for model in (('critic', 'actor', 'temperature') if update_actor else ('critic',)):
             optimizer = self.optimizers[model]
             optimizer.zero_grad(set_to_none=True)
             loss = self.policy(batch, model=model)[f'loss_{model}']
@@ -44,7 +44,10 @@ class SACLearner:
                 features = actor.encoder(demonstration_batch['state'])
                 predicted = torch.tanh(actor.mean_layer(actor.network(features)))
                 bc_loss = torch.nn.functional.mse_loss(predicted, demonstration_batch['action'])
-                loss = loss + bc_weight * bc_loss
+                # 将随Q尺度增长的策略梯度约束在有限量级，避免压过示教锚点。
+                sac_scale = 1. / (1. + loss.detach().abs())
+                metrics['actor_sac_scale'] = float(sac_scale.cpu())
+                loss = sac_scale * loss + bc_weight * bc_loss
                 metrics['loss_bc'] = float(bc_loss.detach().cpu())
             if not torch.isfinite(loss):
                 raise ValueError('SAC 损失非有限值')
@@ -61,7 +64,7 @@ class SACLearner:
         self.policy.train()
         actor = self.policy.actor
         if self.bc_optimizer is None:
-            self.bc_optimizer = torch.optim.Adam(actor.parameters(), lr=3e-4) if self.policy.shared_encoder else self.optimizers['actor']
+            self.bc_optimizer = torch.optim.Adam(actor.parameters(), lr=3e-4)
         optimizer = self.bc_optimizer
         optimizer.zero_grad(set_to_none=True)
         features = actor.encoder(observations)

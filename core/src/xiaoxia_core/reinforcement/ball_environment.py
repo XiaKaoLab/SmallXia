@@ -17,7 +17,7 @@ from .pickup_curriculum import PickupCurriculum
 
 
 class BallPickupEnvironment(MujocoSimulation):
-    version = 'so101_pickup_v5_phase_sac'
+    version = 'so101_pickup_v6_stable_sac'
     radius = 0.015
     episode_steps = 180
     floor_z = -.003
@@ -94,7 +94,8 @@ class BallPickupEnvironment(MujocoSimulation):
         self._physics_step(track_hold=False)
         self.initial_ball_position = self.ball_position()
         self.spawn_position = self.initial_ball_position.copy()
-        self.reward = PickupReward(float(np.linalg.norm(self.ball_position() - data.site_xpos[self.tip])))
+        self.reward = PickupReward(float(np.linalg.norm(self.ball_position() - data.site_xpos[self.tip])),
+            float(np.linalg.norm(data.site_xmat[self.tip].reshape(3, 3)[:, 2] - [0, 0, 1])))
         self.last_reward_terms = {}
         self.visual_reward_step = 0
         self.last_visual_reward = 0.0
@@ -143,7 +144,9 @@ class BallPickupEnvironment(MujocoSimulation):
         reward, self.last_reward_terms = self.reward.calculate(distance=distance, lift_fraction=lifted,
             grasped=grasped, success=success, failed=failed, truncated=truncated,
             action=action, floor_force=contact['arm_floor_force'],
-            ball_contact=any(force > .01 for force in contact['jaw_forces'].values()))
+            ball_contact=any(force > .01 for force in contact['jaw_forces'].values()),
+            orientation_error=float(np.linalg.norm(data.site_xmat[self.tip].reshape(3, 3)[:, 2] - [0, 0, 1])),
+            phase=self.phases.name, jaw_contacts=[name for name, force in contact['jaw_forces'].items() if force > .01])
         progress = self.phases.update(visible=self.ball_visible, delta=ball - data.site_xpos[self.tip],
             orientation_error=float(np.linalg.norm(data.site_xmat[self.tip].reshape(3, 3)[:, 2] - [0, 0, 1])),
             contact=contact, lifted=ball[2] - self.initial_ball_position[2],
