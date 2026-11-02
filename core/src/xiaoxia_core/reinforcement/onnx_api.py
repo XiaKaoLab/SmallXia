@@ -6,7 +6,7 @@ from collections import OrderedDict
 import json
 from math import isfinite
 
-from ..imitation.api_jobs import identifier
+from ..imitation.api_jobs import identifier, atomic_json
 from ..inference.ball_onnx import BallOnnxPolicy
 
 
@@ -14,6 +14,14 @@ class BallOnnxAPI:
     def __init__(self, jobs):
         self.jobs = jobs
         self.policies = OrderedDict()
+
+    def pause(self, job_id, paused):
+        job_id = identifier(job_id)
+        job = self.jobs.get(job_id)
+        if job['kind'] != 'ball_onnx_rollout' or job['status'] not in ('queued', 'running'):
+            raise ValueError('只能暂停或继续尚未结束的ONNX推理')
+        atomic_json(self.jobs.root / job_id / 'playback-control.json', {'paused': paused})
+        return {**self.jobs.get(job_id), 'pause_requested': paused}
 
     def catalog(self):
         from .ball_environment import BallPickupEnvironment

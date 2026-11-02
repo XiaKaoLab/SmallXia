@@ -32,7 +32,7 @@ class BallOnnxTasks:
         preview = TrainingPreviewPublisher(self.worker.directory, kind='ball_onnx_rollout')
         preview.publish([env], force=True)
         from .inference_playback import InferencePlayback
-        playback = InferencePlayback(self.request.get('playback_speed', 1.0))
+        playback = InferencePlayback(self.request.get('playback_speed', 1.0), self.worker)
         rounds = self.request['rounds']
         positions = [(float(x), float(y)) for x in np.linspace(.16, .23, 7)
                      for y in np.linspace(-.05, .05, 5)] if self.request.get('suite') == 'grid' else None
@@ -42,10 +42,12 @@ class BallOnnxTasks:
         last_publish = 0
         try:
             for episode in range(rounds):
+                playback.checkpoint()
                 state = env.reset_episode(position=positions[episode] if positions else None)
                 preview.publish([env], force=True)
                 peak_floor_force = 0.
                 while True:
+                    playback.checkpoint()
                     started = monotonic()
                     simulation_time = float(env._data.time)
                     observation = observer.read() if observer else None
@@ -53,12 +55,12 @@ class BallOnnxTasks:
                         preview.set_camera_frame(observation[BallObservation.camera_key], simulation_time)
                     action = policy.predict(np.asarray([observation['observation.state'] if observation else state]),
                         np.asarray([observation[BallObservation.camera_key]], dtype=np.float32) / 255 if observation else None)[0]
+                    playback.checkpoint()
                     state, _, terminated, truncated, success = env.advance(action)
                     if observer:
                         observer.read()  # 将当前动作后的相机发现奖励计入回合分数。
                     peak_floor_force = max(peak_floor_force, env.contact_state()['arm_floor_force'])
                     transitions += 1
-                    playback.wait_step(started, float(env._data.time) - simulation_time)
                     preview.publish([env], force=True)
                     done = terminated or truncated
                     if done:
@@ -75,6 +77,7 @@ class BallOnnxTasks:
                             success_rate=successes / completed if completed else 0,
                             snapshot=env.snapshot(), physical=False)
                         last_publish = monotonic()
+                    playback.wait_step(started, float(env._data.time) - simulation_time)
                     if done:
                         if episode + 1 < rounds:
                             playback.pause_episode()

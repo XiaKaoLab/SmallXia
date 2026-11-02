@@ -55,7 +55,7 @@ class DesktopBridge:
         elif action == 'reinforcement_preview':
             from ..reinforcement.preview import TrainingPreviewStream
             TrainingPreviewStream(Path(__file__).resolve().parents[3] / 'data/reinforcement_api/jobs').run(self.emit)
-        elif action in ('reinforcement_jobs', 'reinforcement_job', 'reinforcement_stop', 'reinforcement_models'):
+        elif action in ('reinforcement_jobs', 'reinforcement_job', 'reinforcement_stop', 'reinforcement_models', 'reinforcement_pause', 'reinforcement_resume'):
             from ..reinforcement.client import ReinforcementClient
             from ..imitation.api_jobs import identifier
             client = ReinforcementClient()
@@ -63,6 +63,10 @@ class DesktopBridge:
                 result = client.request('models')
             elif action == 'reinforcement_jobs':
                 result = client.request('jobs')
+            elif action == 'reinforcement_pause':
+                result = client.pause_job(identifier(request.get('job_id')))
+            elif action == 'reinforcement_resume':
+                result = client.resume_job(identifier(request.get('job_id')))
             elif action == 'reinforcement_job':
                 result = client.job(identifier(request.get('job_id')))
             else:

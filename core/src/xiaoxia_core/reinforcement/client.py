@@ -72,6 +72,12 @@ class ReinforcementClient:
     def job(self, job_id):
         return self.request(f'jobs/{job_id}')
 
+    def pause_job(self, job_id):
+        return self.request(f'jobs/{job_id}/pause', {})
+
+    def resume_job(self, job_id):
+        return self.request(f'jobs/{job_id}/resume', {})
+
     def stop_job(self, job_id):
         return self.request(f'jobs/{job_id}/stop', {})
 

@@ -227,6 +227,8 @@ class ReinforcementAPI:
             if parts in (['learners'], ['actors'], ['reward-trainings'], ['predictions']):
                 role = {'learners': 'learner', 'actors': 'actor', 'reward-trainings': 'reward', 'predictions': 'predict'}[parts[0]]
                 return 202, self.launch(role, body)
+            if len(parts) == 3 and parts[0] == 'jobs' and parts[2] in ('pause', 'resume'):
+                return 200, self.onnx.pause(parts[1], parts[2] == 'pause')
             if len(parts) == 3 and parts[0] == 'jobs' and parts[2] == 'stop':
                 return 200, self.jobs.stop(parts[1])
             if len(parts) == 3 and parts[0] == 'sessions':

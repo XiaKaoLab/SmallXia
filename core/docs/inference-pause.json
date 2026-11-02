@@ -1,0 +1,13 @@
+{
+  "checked_on": "2026-11-02",
+  "job_id": "0707a1e3a853412b91476d5a83ac73d6",
+  "source": "Blockly table_policy_onnx_run -> ONNX rollout",
+  "pause_acknowledged": true,
+  "preview_frozen_for_seconds": 0.7,
+  "resume_preview_advanced": true,
+  "status": "succeeded",
+  "completed_episodes": 2,
+  "successes": 2,
+  "workspace_restored": true,
+  "scope": "Simulation API and preview; button handler TypeScript checked, no native rebuild"
+}

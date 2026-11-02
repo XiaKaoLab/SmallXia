@@ -250,3 +250,15 @@ ONNX推理自动显示固定腕部相机与支架，无需额外装配相机积�
 普通虚拟相机积木仍按原设置显示；关闭推理面板后恢复手动相机配置。相机装配坐标由CameraPreset共享。画面仅通过已有本机预览通道传递，不新增外部服务。
 
 任务8ae8166f7629401c930521cc8dd7b54b通过积木执行1轮半速ONNX推理，成功抓取1次，工作区恢复一致。WebView检查确认相机预览可见、source=policy_input、PNG自然尺寸64×64；原生截图确认模型上的相机及支架、输入画面和红球可见。TypeScript检查通过，未构建桌面、未操作实机。
+
+
+### ONNX 推理暂停与继续
+
+推理进度面板在任务运行时显示“暂停”和“停止”，暂停确认后切换为“继续”。暂停保留当前回合、仿真状态和相机输入，继续后从当前位置执行；已结束任务仅显示“关闭”。默认仍按正常速度播放，回合间等待 0.3 秒。
+
+- `POST /api/v1/reinforcement/jobs/{job_id}/pause`，请求体 `{}`。
+- `POST /api/v1/reinforcement/jobs/{job_id}/resume`，请求体 `{}`。
+- 只接受未结束的 `ball_onnx_rollout` 任务。响应 `pause_requested` 表示已提交意图；查询任务中的 `paused` 和 `phase=paused` 表示执行进程确认停住。暂停期间任务仍为 `running`，保留资源占用，也可以停止。
+- 桌面桥动作：`reinforcement_pause` / `reinforcement_resume`，均传入 `job_id`。
+
+2026-11-02 实测通过积木启动两回合推理，在执行进程确认暂停后，相隔 0.7 秒的预览文件字节完全一致；继续后预览重新变化。结果见 `inference-pause.json`。
