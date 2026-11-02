@@ -72,12 +72,12 @@ class DisplayAlignment:
         for path in cls.root.glob('*/alignment.json'):
             try:
                 config = json.loads(path.read_text(encoding='utf-8'))
-                if config.get('port') == port and config.get('mode', 'alignment') == 'alignment':
+                if config.get('port') == port and config.get('mode', 'alignment') == 'alignment' and config.get('angle_basis') == 'fixed_urdf_zero_v1':
                     candidates.append((path.stat().st_mtime_ns, path.parent.name, config))
             except (OSError, ValueError):
                 continue
         if not candidates:
-            raise ValueError('此串口没有显示对齐记录，请先运行校准机械臂，确认起点和六轴方向')
+            raise ValueError('此串口没有固定零点记录，请先在校准机械臂中填写实机已知参考角度和方向，再运行校准；旧的相对对齐记录不可使用')
         _, identity, config = max(candidates, key=lambda item: item[0])
         return cls.start(port, config['reference'], config['directions'], source_alignment=identity)
 
@@ -119,7 +119,7 @@ class DisplayAlignment:
     @classmethod
     def run(cls, session_id):
         from dataclasses import asdict
-        from math import pi
+        from .display_joint_map import DisplayJointMap
         from lerobot.motors import Motor, MotorNormMode
         from lerobot.motors.feetech import FeetechMotorsBus
 
@@ -149,6 +149,8 @@ class DisplayAlignment:
                 saved = json.loads(source.read_text(encoding='utf-8'))
                 if saved['port'] != request['port'] or saved['device_calibration'] != {name: asdict(value) for name, value in calibration.items()}:
                     raise ValueError('设备校准快照已变化，请重新做显示对齐')
+                if saved.get('angle_basis') != 'fixed_urdf_zero_v1':
+                    raise ValueError('旧的相对对齐记录不可用于固定零点映射，请重新校准')
                 baseline = saved['baseline_ticks']
                 from ..safety import JointLimits
                 from .motion_routes import MotionRouteClient
@@ -164,15 +166,18 @@ class DisplayAlignment:
                 route.connect()
                 state.update(mode='mapping', source_alignment=request['source_alignment'], model_target='table', source_physical=True)
 
+            joint_map = (DisplayJointMap(saved['zero_ticks'], saved['directions']) if request.get('source_alignment')
+                         else DisplayJointMap.from_reference(baseline, request['reference'], request['directions']))
+            state.update(angle_basis='fixed_urdf_zero_v1', geometry_verified=False)
             atomic_json(directory / 'alignment.json', {**request, 'baseline_ticks': baseline,
+                'angle_basis': 'fixed_urdf_zero_v1', 'zero_ticks': joint_map.zero_ticks, 'geometry_verified': False,
                 'device_calibration': {name: asdict(value) for name, value in calibration.items()},
                 'verified_for_motion': False})
             while not (directory / 'stop').exists() and time() - (directory / 'lease').stat().st_mtime < 10:
                 ticks = bus.sync_read('Present_Position', normalize=False)
                 if any(bus.sync_read('Torque_Enable', normalize=False).values()):
                     raise ValueError('检测到力矩已开启，结束只读显示对齐')
-                angles = {name: request['reference'][name] + request['directions'][name]
-                    * (((ticks[name] - baseline[name] + 2047.5) % 4095) - 2047.5) * 2 * pi / 4095 for name in JOINTS}
+                angles = joint_map.angles(ticks)
                 state.update(status='following', timestamp=time(), joint_positions=angles, ticks=ticks,
                     outside_device_calibration=[name for name in JOINTS if not calibration[name].range_min <= ticks[name] <= calibration[name].range_max])
                 if route is not None:

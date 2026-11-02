@@ -16,9 +16,9 @@ export function registerArmMappingBlock(): void {
           const ports = armTargetCatalog.options(this.getValue()).filter(([, value]) => value !== "simulation");
           return ports.length ? ports : [["未发现串口", "unavailable"]];
         }), "TARGET");
-      this.appendDummyInput().appendField("使用已保存的起点和六轴方向");
+      this.appendDummyInput().appendField("使用已保存的固定零点和六轴方向");
       this.setPreviousStatement(true); this.setNextStatement(true); this.setColour("#638b80");
-      this.setTooltip("先单独运行校准机械臂完成显示对齐，再禁用或移除校准积木。运行本积木只读实机编码器，把关节变化发送到仿真模型；不改写电机、不使能力矩。面板可停止映射。");
+      this.setTooltip("先单独运行校准机械臂完成显示对齐，再禁用或移除校准积木。运行本积木只读实机编码器，按固定零点计算关节角度并发送到仿真模型；不改写电机、不使能力矩。面板可停止映射。");
     },
   };
   pythonGenerator.forBlock[ARM_MAPPING_BLOCK] = block => {

@@ -44,7 +44,7 @@ export class HardwareAlignmentDisplay {
     this.title.textContent = mode === "mapping" ? "真机 → 仿真" : "机械臂 · 显示对齐";
     this.stopButton.textContent = mode === "mapping" ? "停止映射" : "停止跟随";
     this.session = session; this.panel.hidden = false; this.status.textContent = `${port} · 连接中`;
-    this.values.replaceChildren(); this.warning.textContent = mode === "mapping" ? "正在读取实机并加载已保存的显示对齐。" : "请保持实机与当前仿真姿态一致，等待记录参考位置。";
+    this.values.replaceChildren(); this.warning.textContent = mode === "mapping" ? "正在读取实机并加载已保存的显示对齐。" : "请保持实机在积木填写的已知角度，等待记录固定零点。";
     const requestId = crypto.randomUUID(); this.requestId = requestId;
     let mapped = false;
     try {
@@ -66,7 +66,7 @@ export class HardwareAlignmentDisplay {
         const limit = state.model_limited ? `模型已停在边界：${state.limit_reason || "姿态约束"}。角度箭头表示实际显示值。` : "";
         this.warning.textContent = limit + (state.error ?? (state.outside_device_calibration?.length
           ? `设备校准范围异常：${state.outside_device_calibration.join("、")}。仅做显示对齐，不能用于实机控制。`
-          : "以手动对齐姿态为参考；模型受限位和碰撞约束。此映射不能用于实机运动。"));
+          : "按已填写参考角度计算固定零点；物理零点和方向尚需人工核对。模型受限位和碰撞约束，不用于实机运动。"));
       });
     } catch (error) {
       if (generation === this.generation) this.warning.textContent = String(error);
