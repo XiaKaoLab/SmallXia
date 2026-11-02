@@ -3,6 +3,7 @@
  * @author: https://github.com/Linmoqian
  */
 import * as THREE from "three";
+import { WristCameraMount } from "./WristCameraMount";
 import type { URDFRobot } from "urdf-loader";
 import { TrainingPreviewClient, type TrainingPreview, type TrainingSnapshot } from "./TrainingPreviewClient";
 
@@ -15,6 +16,7 @@ export class BallTrainingScene {
   private readonly floorMaterial = new THREE.MeshStandardMaterial({ color: "#d6e2dc", side: THREE.DoubleSide, roughness: 1 });
   private snapshots: TrainingSnapshot[] = [];
   private instances: Instance[] = [];
+  private brackets: WristCameraMount[] = [];
   private source?: URDFRobot;
   private version = "";
   private jobId = "";
@@ -56,10 +58,12 @@ export class BallTrainingScene {
 
   get active(): boolean { return this.snapshots.length > 0; }
   get inferenceCamera(): boolean { return this.previewKind === "ball_onnx_rollout"; }
+  get cameraVisible(): boolean { return this.active; }
   get cameraFrame(): string | null { return this.inputFrame; }
   get count(): number { return this.instances.length; }
 
   private clear(): void {
+    this.brackets.forEach(bracket => bracket.dispose()); this.brackets = [];
     for (const instance of this.instances) {
       if (instance.robot !== this.source) instance.robot.removeFromParent();
     }
@@ -77,6 +81,9 @@ export class BallTrainingScene {
       if (index > 0) {
         arm.name = `training_arm_${index + 1}`;
         arm.getObjectByName("virtual_camera_mount")?.removeFromParent();
+        arm.getObjectByName("wrist_camera_mount_stl")?.removeFromParent();
+        const bracket = new WristCameraMount();
+        bracket.setVisible(arm, true); this.brackets.push(bracket);
         this.group.add(arm);
       }
       const ball = new THREE.Mesh(this.sphere, this.material);

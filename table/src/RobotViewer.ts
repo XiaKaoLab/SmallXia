@@ -140,8 +140,8 @@ export class RobotViewer {
     if (!this.robot || !this.modelReady) return;
     if (this.training.active) {
       this.training.update(this.robot, dt);
-      this.cameraRig.configure(this.robot, this.training.inferenceCamera ? WRIST_CAMERA_PRESET : this.modelCamera);
-      this.cameraRig.setInferenceFrame(this.training.cameraFrame, this.training.inferenceCamera);
+      this.cameraRig.configure(this.robot, this.training.cameraVisible ? WRIST_CAMERA_PRESET : this.modelCamera);
+      this.cameraRig.setInferenceFrame(this.training.cameraFrame, this.training.cameraFrame !== null, this.training.inferenceCamera ? "推理输入" : "训练输入");
       return;
     }
     this.cameraRig.configure(this.robot, this.modelCamera);

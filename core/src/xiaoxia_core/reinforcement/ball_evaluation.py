@@ -42,6 +42,7 @@ class BallPolicyEvaluation:
                     max_lift = max(max_lift, float(env.ball_position()[2] - env.spawn_position[2]))
                     peak_floor_force = max(peak_floor_force, env.contact_state()['arm_floor_force'])
                     if preview:
+                        preview.set_camera_frame(observation[BallObservation.camera_key], float(env._data.time))
                         preview.publish([env])
                 results.append({'success': bool(success and peak_floor_force <= 5.), 'peak_arm_floor_force': peak_floor_force, 'score': env.return_,
                     'held_seconds': env.held_seconds, 'closest_distance_m': closest_distance,

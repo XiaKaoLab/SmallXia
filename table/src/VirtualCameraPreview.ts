@@ -34,13 +34,13 @@ export class VirtualCameraPreview {
     this.panel = panel;
   }
 
-  setInputFrame(source: string | null, active: boolean): void {
+  setInputFrame(source: string | null, active: boolean, label = "推理输入"): void {
     this.inputMode = active;
     if (!this.panel || !this.renderer) return;
     this.renderer.domElement.hidden = active;
     if (active && !this.inputImage) {
       this.inputImage = document.createElement("img");
-      this.inputImage.alt = "ONNX策略使用的腕部相机画面";
+      this.inputImage.alt = "策略使用的腕部相机画面";
       this.inputImage.width = 320; this.inputImage.height = 240;
       this.inputImage.style.objectFit = "contain";
       this.panel.appendChild(this.inputImage);
@@ -52,7 +52,7 @@ export class VirtualCameraPreview {
       }
     }
     const title = this.panel.querySelector(".virtual-camera-preview-title");
-    if (title) title.textContent = active ? "腕部相机 · 推理输入" : "腕部相机 · 虚拟画面";
+    if (title) title.textContent = active ? `腕部相机 · ${label}` : "腕部相机 · 虚拟画面";
     this.panel.dataset.source = active ? "policy_input" : "virtual_scene";
   }
 

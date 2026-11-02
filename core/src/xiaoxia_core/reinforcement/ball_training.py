@@ -55,7 +55,7 @@ class BallPickupTraining:
             learner = SACLearner(BallObservation.config, self.request['device'])
             if self.request.get('warm_start_checkpoint'):
                 learner.policy.load_state_dict(torch.load(self.request['warm_start_checkpoint'], map_location=self.request['device'], weights_only=True))
-            preview = TrainingPreviewPublisher(self.worker.directory)
+            preview = TrainingPreviewPublisher(self.worker.directory, kind='ball_pickup')
             self.worker.progress(reward_config=environments[0].reward.description())
             preview.publish(environments, force=True)
             replay = deque(maxlen=10000)
@@ -281,6 +281,7 @@ class BallPickupTraining:
                                 self.worker.progress(correction_labels=len(correction_labels))
                         if updates % 200 == 0:
                             learner.publish(self.worker.directory, pretraining_completed + updates)
+                    preview.set_camera_frame(states[0][BallObservation.camera_key], float(environments[0]._data.time))
                     preview.publish(environments)
                     if monotonic() - last_publish >= .5 or min(completed) >= rounds:
                         done = sum(completed)
