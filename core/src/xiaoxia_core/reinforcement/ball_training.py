@@ -144,8 +144,10 @@ class BallPickupTraining:
                     if (self.request.get('corrective_demonstrations', False)
                             and evaluation['successes'] < evaluation['rounds']):
                         self.worker.progress(phase='correcting')
+                        failed_positions = [row['snapshot']['spawn_position'][:2]
+                            for row in evaluation['episodes'] if not row['success']]
                         for _ in range(8):
-                            environments[0].reset_episode()
+                            environments[0].reset_episode(position=rng.choice(failed_positions) if failed_positions else None)
                             try:
                                 correction_labels.extend(teacher.corrections(environments[0], observers[0],
                                     learner.policy, self.request['device'], preview))
@@ -255,8 +257,10 @@ class BallPickupTraining:
                                 self.worker.progress(restored_best_policy=True)
                             if not validated and not plateau and self.request.get('corrective_demonstrations', False):
                                 self.worker.progress(phase='correcting')
+                                failed_positions = [row['snapshot']['spawn_position'][:2]
+                                    for row in evaluation['episodes'] if not row['success']]
                                 for _ in range(4):
-                                    environments[0].reset_episode()
+                                    environments[0].reset_episode(position=rng.choice(failed_positions) if failed_positions else None)
                                     try:
                                         correction_labels.extend(teacher.corrections(environments[0], observers[0],
                                             learner.policy, self.request['device'], preview))
