@@ -37,7 +37,7 @@ class BallPickupTraining:
             **BallObservation.config, 'state_order': 'joint_positions_6,joint_velocities_6,ball_xyz_3,ball_minus_tip_xyz_3,phase_onehot_7,jaw_forces_2,hold_fraction_1,orientation_error_3',
             'action_space': 'normalized_joint_delta', 'action_scale': .08, 'num_envs': count, 'rounds': rounds,
             'observation_noise': BallObservation.noise, 'demonstration_episodes': demo_count, 'pretraining_updates': pretraining,
-            'critic_warmup_updates': 1000, 'bc_weight': 10., 'actor_update_interval': 2,
+            'online_update_budget': 10000, 'critic_warmup_updates': 1000, 'bc_weight': 10., 'actor_update_interval': 2,
             'privileged_state': True, 'seed': self.request['seed'], 'physical': False})
         self.worker.progress(phase='initializing', task='拿取小球', num_envs=count, rounds=rounds,
                              environment_version=BallPickupEnvironment.version,
@@ -180,7 +180,7 @@ class BallPickupTraining:
             metrics = {}
             self.worker.progress(phase='collecting', snapshot=environments[0].snapshot())
             with ThreadPoolExecutor(max_workers=min(count, 8)) as pool:
-                while min(completed) < rounds and not validated and not plateau:
+                while min(completed) < rounds and not validated and not plateau and updates < 10000:
                     active = [index for index in range(count) if completed[index] < rounds]
                     observations = BallObservation.batch([states[index] for index in active], self.request['device'])
                     learner.policy.eval()
@@ -286,7 +286,7 @@ class BallPickupTraining:
             exported = BallOnnxExporter().export(Path(checkpoint), self.worker.directory, policy=learner.policy, config=BallObservation.config, environment_version=BallPickupEnvironment.version)
             return {'checkpoint': checkpoint, **exported, 'completed_episodes': sum(completed), 'successes': successes,
                     'score': float(np.mean(scores)) if scores else None, 'updates': updates, 'physical': False,
-                    'training_plateau': plateau, 'curriculum_level': curriculum.level, 'minimum_online_updates': self.request.get('minimum_online_updates', 2000),
+                    'online_budget_exhausted': updates >= 10000, 'training_plateau': plateau, 'curriculum_level': curriculum.level, 'minimum_online_updates': self.request.get('minimum_online_updates', 2000),
                     'evaluation': evaluation, 'task_success_validated': False, 'training_candidate_qualified': validated, 'stopped_on_success': validated}
         finally:
             for observer in observers:

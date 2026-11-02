@@ -1,4 +1,4 @@
-# 抓球强化学习策略 v5
+# 抓球强化学习策略（当前 v6）
 
 2026-11-02。目标是在定义的仿真工作区与观测噪声范围内，所有验收回合均成功。旧版35%模型保留作历史基线，不是新版验收结果。
 
@@ -34,7 +34,7 @@
 
 ## 接口和运行
 
-现有ball-trainings积木/API入口保持不变。环境版本变为so101_pickup_v5_phase_sac；旧18维权重与示教不能接续新版训练。ONNX-predictions根据manifest要求31维原始状态，缩放在ONNX内部完成；旧18维ONNX仍可单独做数值预测，但不能在新版环境执行有效rollout。
+现有ball-trainings积木/API入口保持不变。当前环境版本为so101_pickup_v6_stable_sac；旧18维权重与示教不能接续新版训练。ONNX-predictions根据manifest要求31维原始状态，缩放在ONNX内部完成；旧18维ONNX仍可单独做数值预测，但不能在新版环境执行有效rollout。
 
 onnx-rollouts新增suite=clean/noisy/grid，grid固定35轮；train_ball可指定minimum_online_updates（500–100000，默认2000）。持续训练脚本为core/scripts/train_ball_until_success.py，报告写入core/data/runtime/pickup-campaign.json。
 
@@ -54,3 +54,5 @@ onnx-rollouts新增suite=clean/noisy/grid，grid固定35轮；train_ball可指�
 连续六次在线验证零成功（默认500次更新检查一次）即结束当前停滞批次，保留最优模型并进入下一批更大示教/预训练；未达到候选条件不执行235轮最终验收，也不标为成功。逐次在线评估结果保存在任务evaluations目录，增加最近距离、最大抬升、各阶段步数与失败阶段记录。235/235验收条件保持不变。
 
 有限检查覆盖Critic单独更新时Actor权重不变、带强示教约束的SAC更新损失为有限值，以及悬停/下降奖励方向。优化效果需由新训练验证，尚不能报告新成功率。
+
+每批在线更新上限10000次，未通过候选验证就进入下一批增加示教与预训练，整体235/235目标不变。
