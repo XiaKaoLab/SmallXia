@@ -1,5 +1,5 @@
 """提供独立的物理仿真/只读真机采集会话、命令回执和 v3 数据集结果。
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 import json
@@ -87,7 +87,7 @@ class CollectionAPI:
         if not isinstance(action, dict) or any(type(v) not in (int, float) for v in action.values()):
             raise ValueError('此会话需要显式六关节 action 弧度目标')
         if queue.config['source'] == 'simulation':
-            limits = JointLimits.from_urdf(self.core / 'assets/so100/so100.urdf')
+            limits = JointLimits.from_urdf(self.core.parent / 'table/public/robots/so100/so100_mid_calib.urdf')
         else:
             from ..imitation.workflows import HardwareWorkflow
             limits = HardwareWorkflow(self.core / 'configs' / queue.config['profile']).arm('follower').limits

@@ -1,5 +1,5 @@
 """隔离执行 LeRobot 导出、ACT 训练及仅面向 table 的策略推理和回放。
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 import base64
@@ -44,18 +44,20 @@ class ImitationWorker:
             for episode in range(manifest['episodes']):
                 rows = 0
                 with (source / f'episode-{episode:05d}.jsonl').open(encoding='utf-8') as stream:
-                    for line in stream:
-                        row = json.loads(line)
+                    episode_rows = [json.loads(line) for line in stream]
+                    for index, row in enumerate(episode_rows):
                         observation = Observation(row['timestamp_ns'], row['observation'],
                                                   {name: str(source / path) for name, path in row['images'].items()})
                         if writer is None:
                             writer = DemonstrationWriter(self.directory / 'dataset', f"local/{manifest['id']}",
-                                manifest['fps'], limits, observation, simulated=True, robot_type='so100_table_model')
+                                manifest['fps'], limits, observation, simulated=manifest['simulated'], robot_type='so100_table_model')
                             writer.metadata.update(state_source=manifest['state_source'],
                                 camera_sources=manifest['cameras'], camera_joint_synchronized=False,
-                                action_semantics='explicit_demonstrator_target_not_dispatched_by_record_api')
+                                action_semantics=manifest.get('action_semantics', 'explicit_demonstrator_target_not_dispatched_by_record_api'),
+                                model_frame=manifest.get('model_frame'))
                             atomic_json(self.directory / 'dataset/imitation.json', writer.metadata)
-                        writer.append(observation, Action(row['action']), manifest['task'])
+                        action = episode_rows[min(index + 1, len(episode_rows) - 1)]['action'] if manifest.get('action_semantics') == 'waypoint_next_target' else row['action']
+                        writer.append(observation, Action(action), manifest['task'])
                         written += 1
                         rows += 1
                         self.progress(frames=written, total_frames=manifest['total_frames'])
@@ -90,6 +92,10 @@ class ImitationWorker:
         from .act import ACTJointPolicy
         policy = ACTJointPolicy(self.request['device'])
         policy.load(Path(self.request['checkpoint']))
+        if policy.metadata.get('model_frame') != 'so100_mid_calib':
+            raise ValueError('模型坐标与当前 SO100 仿真不匹配，请使用当前仿真重新采集或完成坐标转换')
+        if 'simulation' in policy.metadata['images']:
+            return self.predict_simulation(policy, rollout)
         client = CameraFrameClient()
         period = 1 / self.request['fps']
         receipts = []
@@ -98,7 +104,7 @@ class ImitationWorker:
             state = self.http('/api/v1/robots/table/state')
             images = {}
             for source in policy.metadata['images']:
-                if source not in ('virtual', 'real'):
+                if source not in ('virtual', 'real') and not source.startswith('opencv_'):
                     raise ValueError('检查点相机名称不属于统一画面 API')
                 frame = client.read(source)
                 path = self.directory / f'{source}.jpg'
@@ -118,6 +124,30 @@ class ImitationWorker:
             sleep(max(0, period - (monotonic() - started)))
         return {'steps': len(receipts), 'executed': True, 'target': 'table', 'physical': False,
                 'task_success_validated': False, 'last_receipt': receipts[-1]}
+
+    def predict_simulation(self, policy, rollout):
+        from ..collection.capture_sources import SimulationCaptureSource
+        source = SimulationCaptureSource({'fps': self.request['fps'], 'cameras': ['simulation']}, Path(__file__).resolve().parents[3])
+        images = self.directory / 'rollout_images'
+        images.mkdir(exist_ok=True)
+        try:
+            source.connect()
+            for step in range(self.request['steps']):
+                started = monotonic()
+                observation = source.observation(images, step)
+                action = policy.predict(observation)
+                if not rollout:
+                    return {'joint_positions': action.joint_positions, 'unit': 'rad', 'executed': False, 'physical': False}
+                safe = policy.limits.constrain(action, observation.joint_positions, 1 / self.request['fps'], .25)
+                source.advance(safe)
+                state = source.transport.read_observation()
+                receipt = self.http('/api/v1/robots/table/motions', {'request_id': str(uuid4()),
+                    'expires_at_ms': int(time() * 1000) + 900, 'unit': 'rad', 'joint_positions': state.joint_positions})
+                self.progress(step=step + 1, total_steps=self.request['steps'], last_receipt=receipt)
+                sleep(max(0, 1 / self.request['fps'] - (monotonic() - started)))
+            return {'steps': self.request['steps'], 'executed': True, 'physical': False, 'task_success_validated': False}
+        finally:
+            source.close()
 
     def watch_parent(self):
         # 服务进程异常退出时也终止任务，避免重启后留下孤立训练/回放。

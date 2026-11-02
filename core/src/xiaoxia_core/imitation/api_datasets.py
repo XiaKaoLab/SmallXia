@@ -1,9 +1,10 @@
 """记录模型观测、显式示教目标及统一相机帧，保存可导出 LeRobot 的 episode。
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 import base64
 import json
+import re
 from pathlib import Path
 from threading import RLock
 from time import time_ns
@@ -22,9 +23,12 @@ class APIDemonstrations:
         fps = body.get('fps', 2)
         sources = body.get('cameras', [])
         task = body.get('task')
+        semantics = body.get('action_semantics', 'explicit_demonstrator_target')
+        if semantics not in ('explicit_demonstrator_target', 'waypoint_next_target'):
+            raise ValueError('不支持此示教动作标签')
         if type(fps) is not int or not 1 <= fps <= 60:
             raise ValueError('fps 必须是 1–60 的整数')
-        if not isinstance(sources, list) or len(sources) > 2 or any(source not in ('virtual', 'real') for source in sources) or len(set(sources)) != len(sources):
+        if not isinstance(sources, list) or len(sources) > 2 or any(not isinstance(source, str) or (source not in ('virtual', 'real') and not re.fullmatch(r'opencv_[0-9a-f]{16}', source)) for source in sources) or len(set(sources)) != len(sources):
             raise ValueError('cameras 仅支持 virtual、real，不能重复')
         if 'virtual' in sources and fps > 2:
             raise ValueError('当前虚拟画面最多 2 FPS，请降低数据集 fps')
@@ -33,10 +37,14 @@ class APIDemonstrations:
         dataset_id = uuid4().hex
         directory = self.root / dataset_id
         directory.mkdir()
+        state_source = body.get('state_source', 'table_display_target')
+        if state_source not in ('table_display_target', 'manual_encoder'):
+            raise ValueError('不支持此示教来源')
         manifest = {'id': dataset_id, 'status': 'recording', 'fps': fps, 'task': task,
                     'cameras': sources, 'episodes': 0, 'episode_frames': 0, 'total_frames': 0,
-                    'unit': 'rad', 'state_source': 'table_display_target', 'physical': False,
-                    'simulated': True, 'camera_joint_synchronized': False, 'created_at_ns': time_ns()}
+                    'unit': 'rad', 'state_source': state_source, 'physical': state_source == 'manual_encoder',
+                    'simulated': state_source != 'manual_encoder', 'camera_joint_synchronized': False, 'created_at_ns': time_ns(),
+                    'action_semantics': semantics, 'model_frame': 'so100_mid_calib'}
         atomic_json(directory / 'manifest.json', manifest)
         return manifest
 
@@ -61,6 +69,9 @@ class APIDemonstrations:
             if manifest['total_frames'] >= 100000:
                 raise ValueError('单数据集最多 100000 帧')
             state = self.model_state()
+            if manifest['state_source'] == 'manual_encoder':
+                state = body.get('observation')
+                self.limits.validate(state)
             directory = self.root / dataset_id
             images, image_metadata, sequences = {}, {}, {}
             fetched = {source: self.frames.read(source) for source in manifest['cameras']}

@@ -1,5 +1,5 @@
 """提供 MuJoCo 物理采集及只读实机采集源，图像与状态保留各自时间来源。
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 import base64
@@ -14,7 +14,7 @@ from .frame_client import CameraFrameClient
 class SimulationCaptureSource:
     def __init__(self, config, core):
         from ..simulation import MujocoSimulation, SimulationConfig
-        self.transport = MujocoSimulation(SimulationConfig(urdf_path=core / 'assets/so100/so100.urdf',
+        self.transport = MujocoSimulation(SimulationConfig(urdf_path=core.parent / 'table/public/robots/so100/so100_mid_calib.urdf',
                                       timestep=1 / (config['fps'] * 10)))
         self.config = config
         self.renderer = None

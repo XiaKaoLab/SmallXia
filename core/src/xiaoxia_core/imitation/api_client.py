@@ -1,5 +1,5 @@
 """为 Blockly、Agent 或脚本提供模仿学习 API 客户端。
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 import json
@@ -15,12 +15,15 @@ class ImitationClient:
             headers={'Content-Type': 'application/json', 'Authorization': 'Bearer ' + os.environ['XIAOXIA_MOTION_TOKEN']})
         try:
             with urlopen(request, timeout=5) as response:
-                return json.load(response)
+                result = json.load(response)
+                from ..blocks.workflow import BlockWorkflow
+                BlockWorkflow.track_created('imitation', endpoint, body, result)
+                return result
         except HTTPError as error:
             raise RuntimeError(json.loads(error.read()).get('error', str(error))) from None
 
-    def create_dataset(self, task, fps=2, cameras=None):
-        return self.request('datasets', {'task': task, 'fps': fps, 'cameras': cameras or []})
+    def create_dataset(self, task, fps=2, cameras=None, **options):
+        return self.request('datasets', {'task': task, 'fps': fps, 'cameras': cameras or [], **options})
 
     def record_frame(self, dataset_id, action):
         return self.request(f'datasets/{dataset_id}/frames', {'action': action})

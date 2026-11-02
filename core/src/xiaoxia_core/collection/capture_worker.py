@@ -1,5 +1,5 @@
 """隔离持有仿真或只读实机连接，消费采集命令并生成 LeRobot v3 数据集。
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 import json
@@ -45,7 +45,8 @@ class CaptureWorker(ImitationWorker):
                 writer.metadata.update(state_source='mujoco_physics' if config['source'] == 'simulation' else 'calibrated_encoder_feedback',
                     action_semantics=('simulation_position_target' if config['source'] == 'simulation' else 'external_target_label_not_executed')
                                      if config['record_actions'] else 'observation_only',
-                    camera_joint_synchronized=config['source'] == 'simulation', physical=config['source'] == 'hardware')
+                    camera_joint_synchronized=config['source'] == 'simulation', physical=config['source'] == 'hardware',
+                    model_frame='so100_mid_calib' if config['source'] == 'simulation' else 'verified_hardware_profile')
                 atomic_json(self.directory / 'dataset/imitation.json', writer.metadata)
             source.advance(action)
             writer.append(observation, action, config['task'])

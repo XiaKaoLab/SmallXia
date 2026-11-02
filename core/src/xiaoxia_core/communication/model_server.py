@@ -1,5 +1,5 @@
 """提供 table 模型专用的本机运动路由；不接触串口或实机。
-Created on 2026-11-01; Updated on 2026-11-02
+Created on 2026-11-01; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 
@@ -24,6 +24,8 @@ from ..imitation.api_service import ImitationAPI
 from ..reinforcement.service import ReinforcementAPI
 from ..collection.capture_api import CollectionAPI
 from .blocks_control import BlocksControlAPI
+from .program_jobs import ProgramJobsAPI
+from .hardware_control import HardwareControlAPI
 
 
 class ModelTransport(RobotTransport):
@@ -58,6 +60,7 @@ class ModelHTTPServer(ThreadingHTTPServer):
     def __init__(self, token: str, limits: JointLimits) -> None:
         urdf = Path(__file__).resolve().parents[4] / "table/public/robots/so100/so100_mid_calib.urdf"
         self.blocks = BlocksControlAPI()
+        self.programs = ProgramJobsAPI(Path(__file__).resolve().parents[3] / 'data/program_jobs')
         self.frames = CameraFrames()
         self.camera = VirtualCameraStore({link.attrib["name"] for link in ElementTree.parse(urdf).getroot().findall("link")})
         self.routes = MotionRouteService(token=token)
@@ -68,6 +71,7 @@ class ModelHTTPServer(ThreadingHTTPServer):
         self.reinforcement = ReinforcementAPI(Path(__file__).resolve().parents[3] / 'data/reinforcement_api',
             limits, self.frames, self.routes, self.read_authorization)
         core = Path(__file__).resolve().parents[3]
+        self.hardware = HardwareControlAPI(core)
         from ..collection.playback import RecordingPlaybackAPI
         self.playback = RecordingPlaybackAPI(core / 'data/recordings', core / 'data/playbacks', limits,
             self.playback_reference, self.playback_apply)
@@ -92,6 +96,8 @@ class ModelHTTPServer(ThreadingHTTPServer):
         return receipt
 
     def server_close(self):
+        self.programs.close()
+        self.hardware.close()
         self.collection.close()
         self.reinforcement.close()
         self.imitation.close()
@@ -117,7 +123,7 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _learning(self, method, body=None):
-        for service in (self.server.imitation, self.server.reinforcement, self.server.collection, self.server.blocks):
+        for service in (self.server.hardware, self.server.programs, self.server.imitation, self.server.reinforcement, self.server.collection, self.server.blocks):
             if not self.path.startswith(service.prefix + '/'):
                 continue
             if not compare_digest(self.headers.get('Authorization', '').encode(), self.server.read_authorization.encode()):
@@ -149,7 +155,7 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         try:
             length = int(self.headers.get("Content-Length", "0"))
-            if not 0 < length <= (1500000 if self.path == "/api/v1/cameras/virtual/frame" else 1000000 if self.path.startswith("/api/v1/blocks/") else 16384):
+            if not 0 < length <= (1500000 if self.path == "/api/v1/cameras/virtual/frame" else 1000000 if self.path.startswith(("/api/v1/blocks/", "/api/v1/programs/")) else 16384):
                 self._reply(413, {"error": "body_size_invalid"})
                 return
             if self.headers.get_content_type() != "application/json":

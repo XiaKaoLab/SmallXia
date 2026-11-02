@@ -1,5 +1,5 @@
 """为 Tauri 提供单请求 JSONL 桥接，复用会话、技能与 Agent 流。
-Created on 2026-11-01; Updated on 2026-11-02
+Created on 2026-11-01; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 
@@ -109,6 +109,23 @@ class DesktopBridge:
                                       'Authorization': 'Bearer ' + os.environ['XIAOXIA_MOTION_TOKEN']}, method='POST')
             with urlopen(upload, timeout=2) as response:
                 self.emit({'type': 'data', 'data': json.load(response)})
+        elif action == 'program_request':
+            from ..blocks.workflow import BlockWorkflow
+            from ..imitation.api_jobs import identifier
+            operation = request.get('operation')
+            if operation == 'start':
+                result = BlockWorkflow.http('programs/jobs', {'source': request.get('source')})
+            elif operation == 'list':
+                result = BlockWorkflow.http('programs/jobs')
+            elif operation in ('get', 'stop'):
+                identity = identifier(request.get('id'))
+                result = BlockWorkflow.http(f'programs/jobs/{identity}' + ('/stop' if operation == 'stop' else ''), {} if operation == 'stop' else None)
+            else:
+                raise ValueError('未知程序操作')
+            self.emit({'type': 'data', 'data': result})
+        elif action == 'workflow_catalog':
+            from ..blocks.workflow import BlockWorkflow
+            self.emit({'type': 'data', 'data': BlockWorkflow().catalog()})
         elif action == "run_program":
             from ..communication.program_runner import PythonProgramRunner
             self.emit({"type": "data", "data": PythonProgramRunner().run(request.get("source"))})

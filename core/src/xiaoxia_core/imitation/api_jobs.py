@@ -1,5 +1,5 @@
 """持久化模仿学习子进程任务，提供状态、日志、停止和重启恢复。
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 import json
@@ -77,6 +77,7 @@ class ImitationJobs:
             path = directory / 'status.json'
             state = json.loads(path.read_text(encoding='utf-8'))
             process = self._processes.get(job_id)
+            state['process_exited'] = process is None or process.poll() is not None
             if process is not None and process.poll() is not None and state['status'] in ('queued', 'running'):
                 state.update(status='failed', error=f'任务进程异常退出：{process.returncode}')
                 atomic_json(path, state)
