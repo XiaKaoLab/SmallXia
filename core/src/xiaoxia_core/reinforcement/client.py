@@ -36,8 +36,8 @@ class ReinforcementClient:
         return self.request('onnx-predictions', {'model_job_id': model_job_id, 'states': states,
             **({'images': images} if images is not None else {})})
 
-    def rollout_onnx(self, model_job_id, rounds=1, seed=42, suite=None):
-        return self.request('onnx-rollouts', {'model_job_id': model_job_id, 'rounds': rounds, 'seed': seed, **({'suite': suite} if suite else {})})
+    def rollout_onnx(self, model_job_id, rounds=1, seed=42, suite=None, playback_speed=.5):
+        return self.request('onnx-rollouts', {'model_job_id': model_job_id, 'rounds': rounds, 'seed': seed, 'playback_speed': playback_speed, **({'suite': suite} if suite else {})})
 
     def session(self, session_id):
         return self.request(f'sessions/{session_id}')

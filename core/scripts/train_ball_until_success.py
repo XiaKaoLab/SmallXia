@@ -52,7 +52,7 @@ class PickupTrainingCampaign:
                 suites = []
                 for index, (suite, rounds) in enumerate((('clean', 100), ('noisy', 100), ('grid', 35))):
                     evaluation = self.client.rollout_onnx(training['id'], rounds=rounds,
-                        seed=30261103 + batch * 10 + index, suite=suite)
+                        seed=30261103 + batch * 10 + index, suite=suite, playback_speed=0)
                     self.report['evaluation_job_id'] = evaluation['id']
                     self.report['evaluation_suite'] = suite
                     result = self.wait(evaluation['id'], 'evaluation')

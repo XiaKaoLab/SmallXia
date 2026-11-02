@@ -31,6 +31,8 @@ class BallOnnxTasks:
         from .preview import TrainingPreviewPublisher
         preview = TrainingPreviewPublisher(self.worker.directory)
         preview.publish([env], force=True)
+        from .inference_playback import InferencePlayback
+        playback = InferencePlayback(self.request.get('playback_speed', .5))
         rounds = self.request['rounds']
         positions = [(float(x), float(y)) for x in np.linspace(.16, .23, 7)
                      for y in np.linspace(-.05, .05, 5)] if self.request.get('suite') == 'grid' else None
@@ -41,8 +43,11 @@ class BallOnnxTasks:
         try:
             for episode in range(rounds):
                 state = env.reset_episode(position=positions[episode] if positions else None)
+                preview.publish([env], force=True)
                 peak_floor_force = 0.
                 while True:
+                    started = monotonic()
+                    simulation_time = float(env._data.time)
                     observation = observer.read() if observer else None
                     action = policy.predict(np.asarray([observation['observation.state'] if observation else state]),
                         np.asarray([observation[BallObservation.camera_key]], dtype=np.float32) / 255 if observation else None)[0]
@@ -51,7 +56,8 @@ class BallOnnxTasks:
                         observer.read()  # 将当前动作后的相机发现奖励计入回合分数。
                     peak_floor_force = max(peak_floor_force, env.contact_state()['arm_floor_force'])
                     transitions += 1
-                    preview.publish([env])
+                    playback.wait_step(started, float(env._data.time) - simulation_time)
+                    preview.publish([env], force=True)
                     done = terminated or truncated
                     if done:
                         scores.append(env.return_)
@@ -61,18 +67,19 @@ class BallOnnxTasks:
                             'peak_arm_floor_force': peak_floor_force, 'snapshot': env.snapshot()})
                     if monotonic() - last_publish >= .5 or done:
                         completed = episode + int(done)
-                        self.worker.progress(phase='inferencing', runtime='onnxruntime', completed_episodes=completed,
+                        self.worker.progress(phase='inferencing', runtime='onnxruntime', playback_speed=playback.speed, completed_episodes=completed,
                             progress=completed / rounds, score=float(np.mean(scores)) if scores else None,
                             current_score=float(env.return_), successes=successes, transitions=transitions,
                             success_rate=successes / completed if completed else 0,
                             snapshot=env.snapshot(), physical=False)
                         last_publish = monotonic()
                     if done:
+                        playback.pause_episode()
                         break
             preview.publish([env], force=True)
             return {'runtime': 'onnxruntime', 'completed_episodes': rounds, 'score': float(np.mean(scores)),
                     'successes': successes, 'transitions': transitions, 'training': False, 'physical': False, 'suite': self.request.get('suite', 'clean'),
-                    'episodes': episodes, 'all_passed': successes == rounds}
+                    'playback_speed': playback.speed, 'episodes': episodes, 'all_passed': successes == rounds}
         finally:
             if observer:
                 observer.close()

@@ -4,6 +4,7 @@ Created on 2026-11-02; Updated on 2026-11-02
 """
 from collections import OrderedDict
 import json
+from math import isfinite
 
 from ..imitation.api_jobs import identifier
 from ..inference.ball_onnx import BallOnnxPolicy
@@ -84,11 +85,14 @@ class BallOnnxAPI:
             raise ValueError('模型使用旧抓球环境，请在新版物理与奖励环境重新训练')
         if any(job['kind'] in ('ball_pickup', 'ball_onnx_rollout') and job['status'] in ('queued', 'running') for job in self.jobs.list()):
             raise ValueError('已有抓球训练或 ONNX 推理运行中，请先停止或等待结束')
+        speed = body.get('playback_speed', .5)
+        if type(speed) not in (int, float) or not isfinite(speed) or (speed != 0 and not .1 <= speed <= 4):
+            raise ValueError('playback_speed 需要0（批量快速评估）或0.1–4倍速')
         suite = body.get('suite', 'clean')
         if suite not in ('clean', 'noisy', 'grid'):
             raise ValueError('suite 需要 clean、noisy 或 grid')
         if suite == 'grid':
             rounds = 35
-        return self.jobs.start('ball_onnx_rollout', {'source_directory': str(source), 'rounds': rounds, 'seed': seed, 'suite': suite},
+        return self.jobs.start('ball_onnx_rollout', {'source_directory': str(source), 'rounds': rounds, 'seed': seed, 'suite': suite, 'playback_speed': speed},
             initial_state={'task': '拿取小球 · ONNX 推理', 'phase': 'initializing', 'num_envs': 1, 'rounds': rounds,
                            'completed_episodes': 0, 'total_episodes': rounds, 'progress': 0, 'score': None, 'physical': False})
