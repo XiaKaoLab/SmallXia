@@ -76,15 +76,15 @@ export class HardwareAlignmentDisplay {
           return;
         }
         this.status.textContent = `${state.port} · ${state.status === "following" ? "只读跟随" : state.status === "failed" ? "连接失败" : state.status === "stopped" ? "已停止" : "连接中"}`;
-        const calibrating = state.status === "waiting_center" || state.status === "checking_range";
+        const calibrating = state.status === "checking_range";
         this.panel.classList.toggle("is-calibrating", calibrating);
         this.stepButton.hidden = !calibrating; this.calibrationProgress.hidden = !calibrating;
         this.title.textContent = calibrating ? "机械臂 · 校准向导" : mode === "mapping" ? "真机 → 仿真" : "机械臂 · 校准跟随";
         if (calibrating) {
           this.positions = null;
           this.calibrationProgress.textContent = "请转动各个关节";
-          this.status.textContent = `${state.port} · ${state.status === "waiting_center" ? "等待开始" : "六轴采集中"}`;
-          this.stepButton.textContent = state.status === "waiting_center" ? "开始采集" : "保存校准";
+          this.status.textContent = `${state.port} · 六轴采集中`;
+          this.stepButton.textContent = "保存校准";
           this.stepButton.disabled = this.stepPending;
           this.stepButton.onclick = async () => {
             if (this.stepPending || generation !== this.generation) return;

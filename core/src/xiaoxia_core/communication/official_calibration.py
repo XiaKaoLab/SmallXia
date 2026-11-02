@@ -105,19 +105,10 @@ class GuidedArmCalibration:
         changed = False
         committed = False
         try:
-            while self.active():
-                self.require_manual_mode()
-                self.publish(status='waiting_center', calibration_stage='center', joint_index=-1,
-                             instruction='请转动各个关节')
-                if self.command('center', -1):
-                    changed = True
-                    self.bus.allow_calibration_writes = True
-                    atomic_json(self.directory / "calibration-before.json", original)
-                    offsets = self.bus.set_half_turn_homings()
-                    break
-                sleep(.1)
-            else:
+            if not self.active():
                 raise InterruptedError('已取消校准')
+            # 直接沿用设备坐标采集，不把启动姿态设成零位；确认保存前不写 EEPROM。
+            offsets = {name: row['homing_offset'] for name, row in original.items()}
             lows = highs = None
             issue = ''
             previous = None
@@ -151,6 +142,9 @@ class GuidedArmCalibration:
             OfficialCalibrationStore.validate(raw)
             from lerobot.motors import MotorCalibration
             self.require_manual_mode()
+            atomic_json(self.directory / 'calibration-before.json', original)
+            changed = True
+            self.bus.allow_calibration_writes = True
             self.bus.write_calibration({name: MotorCalibration(**row) for name, row in raw.items()})
             readback = {name: asdict(value) for name, value in self.bus.read_calibration().items()}
             if readback != raw:
