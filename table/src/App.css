@@ -63,3 +63,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
 .calibration-track > i { position: absolute; z-index: 1; top: 3px; width: 1px; height: 12px; background: #fff5bf; }
 
 .hardware-alignment.is-calibrating button { background: #e0f2e9; color: #35574b; }
+
+/* 校准成功提示，独立于自动关闭的面板。Updated on 2026-11-02 */
+.calibration-saved-notice { position: absolute; z-index: 12; top: 24px; left: 50%; transform: translateX(-50%); padding: 10px 18px; border: 1px solid #b9d9c8; border-radius: 10px; background: #e5f5ecf2; color: #35574b; box-shadow: 0 6px 24px #35574b18; font-size: 13px; pointer-events: none; }
+.calibration-saved-notice[hidden] { display: none; }

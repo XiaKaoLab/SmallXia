@@ -38,7 +38,7 @@ class DisplayAlignment:
             for previous in pending:
                 try:
                     state = json.loads((previous / 'state.json').read_text(encoding='utf-8'))
-                    if state['status'] not in ('failed', 'stopped'):
+                    if state['status'] not in ('failed', 'stopped', 'saved'):
                         remaining.append(previous)
                 except (OSError, ValueError):
                     remaining.append(previous)
@@ -105,7 +105,7 @@ class DisplayAlignment:
                 if state != previous:
                     emit({'type': 'alignment', 'data': state})
                     previous = state
-                if state['status'] in ('failed', 'stopped'):
+                if state['status'] in ('failed', 'stopped', 'saved'):
                     break
                 sleep(.05)
         finally:
@@ -154,6 +154,10 @@ class DisplayAlignment:
                 state.update(values, timestamp=time())
                 atomic_json(directory / 'state.json', state)
             raw_calibration, calibration_path, calibration_source = GuidedArmCalibration(bus, directory, publish).ensure(force=request.get('recalibrate', False))
+            if calibration_source == 'guided_range_check':
+                state.update(status='saved', calibration_path=calibration_path, calibration_source=calibration_source,
+                             instruction='校准已保存', timestamp=time())
+                return
             calibration = bus.read_calibration()
             from ..safety import JointLimits
             limits = JointLimits.from_urdf(Path(__file__).resolve().parents[4] / 'table/public/robots/so101/so101_new_calib.urdf')

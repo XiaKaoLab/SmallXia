@@ -99,3 +99,5 @@ python -m xiaoxia_core.imitation rollout --profile configs/so100.local.yaml --ch
 校准积木 MODE 可选 reuse（默认）或 recalibrate（强制重新采集）。桌面桥 alignment_recalibrate 传 port 启动重新校准；仍先等待面板“记录中位并检查行程”，不会直接改写零点。面板显示当前关节操作提示和六轴完成进度。
 
 六轴同时采集时每帧 sync_read 全部位置，各轴独立累积 min/max，mid=(min+max)/2。面板六行滑杆为只读反馈；色带表示已采集范围，竖线表示中值。非全周关节都达到采集门槛后一次保存；腕部旋转显示实测范围，但保存仍遵守官方 0～4095 特例。中位摆放步骤用于设置 Homing_Offset 以避免跨圈，最终角度零点由保存的极限中值计算。
+
+完成重新校准并保存、读回核对成功后，会话以 saved 结束，释放串口；前端自动关闭校准面板，独立显示“COM 口 · 校准已保存”提示 4 秒。失败保留错误面板，不显示保存成功。复用已有校准的普通跟随不触发该提示。

@@ -1,4 +1,4 @@
-/** 功能：显示实机六轴角度，管理官方校准逐轴向导、跟随流与停止操作。
+/** 功能：显示实机六轴角度，管理官方校准六轴向导、跟随流与停止操作。
  * Created on 2026-11-02; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
@@ -27,6 +27,8 @@ export class HardwareAlignmentDisplay {
   private readonly calibrationProgress = document.createElement("p");
   private readonly stepButton = document.createElement("button");
   private stepPending = false;
+  private readonly savedNotice = document.createElement("div");
+  private noticeTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly warning = document.createElement("p");
   private readonly start = (event: Event) => {
     const session = (event as CustomEvent<{ id: string; port: string; mode?: string }>).detail;
@@ -44,11 +46,15 @@ export class HardwareAlignmentDisplay {
     heading.append(this.title, this.status, this.stopButton); this.stepButton.hidden = true;
     this.calibrationProgress.hidden = true; this.calibrationProgress.setAttribute("aria-live", "polite");
     this.panel.append(heading, this.calibrationProgress, this.values, this.warning, this.stepButton);
+    this.savedNotice.className = "calibration-saved-notice"; this.savedNotice.hidden = true;
+    this.savedNotice.setAttribute("role", "status"); this.savedNotice.setAttribute("aria-live", "polite");
+    host.append(this.savedNotice);
     host.append(this.panel); window.addEventListener("table:alignment-start", this.start);
   }
 
   private async follow(session: string, port: string, mode = "alignment"): Promise<void> {
     this.stop();
+    clearTimeout(this.noticeTimer); this.savedNotice.hidden = true;
     const generation = ++this.generation;
     this.title.textContent = mode === "mapping" ? "真机 → 仿真" : "机械臂 · 显示对齐";
     this.stopButton.textContent = mode === "mapping" ? "停止映射" : "停止跟随";
@@ -60,6 +66,14 @@ export class HardwareAlignmentDisplay {
     try {
       await agentClient.alignmentPreview<AlignmentState>(requestId, session, state => {
         if (generation !== this.generation) return;
+        if (state.status === "saved" || (state.status === "following" && state.calibration_source === "guided_range_check")) {
+          this.stop();
+          this.savedNotice.textContent = `${state.port} · 校准已保存`;
+          this.savedNotice.hidden = false;
+          clearTimeout(this.noticeTimer);
+          this.noticeTimer = setTimeout(() => { this.savedNotice.hidden = true; }, 4000);
+          return;
+        }
         this.status.textContent = `${state.port} · ${state.status === "following" ? "只读跟随" : state.status === "failed" ? "连接失败" : state.status === "stopped" ? "已停止" : "连接中"}`;
         const calibrating = state.status === "waiting_center" || state.status === "checking_range";
         this.panel.classList.toggle("is-calibrating", calibrating);
@@ -132,6 +146,7 @@ export class HardwareAlignmentDisplay {
   }
 
   dispose(): void {
+    clearTimeout(this.noticeTimer); this.savedNotice.remove();
     this.stop(); window.removeEventListener("table:alignment-start", this.start); this.panel.remove();
   }
 }
