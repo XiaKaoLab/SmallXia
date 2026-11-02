@@ -7,7 +7,7 @@ from hashlib import sha256
 import json
 from math import pi
 from pathlib import Path
-from time import sleep, time
+from time import sleep, time, time_ns
 
 from ..imitation.api_jobs import atomic_json
 from ..safety import JOINTS
@@ -36,17 +36,64 @@ class OfficialCalibrationStore:
         return Path(HF_LEROBOT_CALIBRATION) / 'robots' / 'so_follower'
 
     @classmethod
+    def remember(cls, port, path, calibration):
+        """只在完成校准并读回成功后更新默认配置，普通映射不改变最近保存顺序。"""
+        cls.validate(calibration)
+        directory = cls.root() / '.xiaoxia'
+        directory.mkdir(parents=True, exist_ok=True)
+        atomic_json(directory / f'{port}.json', {
+            'port': port, 'path': str(Path(path).resolve()), 'calibration': calibration,
+            'saved_at_ns': time_ns(),
+        })
+
+    @classmethod
+    def recent(cls, device, port):
+        candidates = []
+        index = cls.root() / '.xiaoxia' / f'{port}.json'
+        if index.exists():
+            try:
+                entry = json.loads(index.read_text(encoding='utf-8'))
+                path = Path(entry['path'])
+                raw = cls.validate(json.loads(path.read_text(encoding='utf-8')))
+                if type(entry['saved_at_ns']) is not int:
+                    raise ValueError('校准保存时间无效')
+                if entry['port'] == port and raw == entry['calibration'] == device:
+                    candidates.append((entry['saved_at_ns'], path))
+            except (OSError, ValueError, TypeError, KeyError):
+                pass
+        # 兼容已经完成的校准会话；取消、失败或只读跟随不参与选择。
+        sessions = Path(__file__).resolve().parents[3] / 'data/display_alignment'
+        for state_path in sessions.glob('*/state.json'):
+            try:
+                state = json.loads(state_path.read_text(encoding='utf-8'))
+                if state.get('port') != port or state.get('status') != 'saved':
+                    continue
+                path = Path(state['calibration_path'])
+                raw = cls.validate(json.loads(path.read_text(encoding='utf-8')))
+                if raw == device:
+                    candidates.append((int(state['timestamp'] * 1_000_000_000), path))
+            except (OSError, ValueError, TypeError, KeyError):
+                continue
+        return str(max(candidates, key=lambda item: (item[0], str(item[1])))[1]) if candidates else None
+
+    @classmethod
     def reuse(cls, device, port):
         cls.validate(device)
         root = cls.root()
+        recent = cls.recent(device, port)
+        if recent:
+            return recent, 'latest_saved'
+        candidates = []
         for folder in (root, root.parent / 'so100_follower'):
             for path in sorted(folder.glob('*.json')):
                 try:
                     candidate = cls.validate(json.loads(path.read_text(encoding='utf-8')))
                     if candidate == device:
-                        return str(path), 'matching_file'
+                        candidates.append((path.stat().st_mtime_ns, path))
                 except (OSError, ValueError, TypeError, KeyError):
                     continue
+        if candidates:
+            return str(max(candidates, key=lambda item: (item[0], str(item[1])))[1]), 'matching_file'
         # EEPROM 本身也保存 LeRobot 的偏移和范围。仅导出当前数据，绝不将旧文件覆盖到设备。
         digest = sha256(json.dumps(device, sort_keys=True).encode()).hexdigest()[:12]
         path = root / f'xiaoxia_{port}_{digest}.json'
@@ -150,6 +197,7 @@ class GuidedArmCalibration:
             if readback != raw:
                 raise ValueError('校准写入后读回不一致')
             path, _ = OfficialCalibrationStore.reuse(raw, self.bus.port)
+            OfficialCalibrationStore.remember(self.bus.port, path, raw)
             committed = True
             self.bus.allow_calibration_writes = False
             return raw, path, 'guided_range_check'
