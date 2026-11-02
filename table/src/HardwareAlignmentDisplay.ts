@@ -61,7 +61,7 @@ export class HardwareAlignmentDisplay {
     this.session = session; this.panel.hidden = false; this.status.textContent = `${port} · 连接中`;
     this.values.replaceChildren(); this.stepButton.hidden = true; this.calibrationProgress.hidden = true; this.stepPending = false;
     this.warning.hidden = false;
-    this.warning.textContent = "正在读取并核对官方校准；缺失时同时采集六轴范围。";
+    this.warning.textContent = ""; this.warning.hidden = true;
     const requestId = crypto.randomUUID(); this.requestId = requestId;
     let mapped = false;
     try {
@@ -82,9 +82,7 @@ export class HardwareAlignmentDisplay {
         this.title.textContent = calibrating ? "机械臂 · 校准向导" : mode === "mapping" ? "真机 → 仿真" : "机械臂 · 校准跟随";
         if (calibrating) {
           this.positions = null;
-          this.calibrationProgress.textContent = state.status === "waiting_center"
-            ? "摆放中位 → 同时采集六轴 → 确认并保存"
-            : "全部关节同时采集 · 中值 =（最小值 + 最大值）÷ 2";
+          this.calibrationProgress.textContent = "请转动各个关节";
           this.status.textContent = `${state.port} · ${state.status === "waiting_center" ? "等待开始" : "六轴采集中"}`;
           this.stepButton.textContent = state.status === "waiting_center" ? "开始采集全部关节" : "确认全部范围并保存";
           this.stepButton.disabled = this.stepPending;
@@ -128,7 +126,7 @@ export class HardwareAlignmentDisplay {
           }));
         }
         const limit = state.model_limited ? `模型已停在边界：${state.limit_reason || "姿态约束"}。角度箭头表示实际显示值。` : "";
-        this.warning.textContent = limit + (state.error ?? (calibrating ? (state.instruction?.startsWith("同时采集全部六轴。") ? "" : state.instruction) : undefined) ?? (state.outside_device_calibration?.length
+        this.warning.textContent = limit + (state.error ?? (calibrating ? (state.instruction?.startsWith("以下关节采集行程不足") ? state.instruction : "") : undefined) ?? (state.outside_device_calibration?.length
           ? `设备校准范围异常：${state.outside_device_calibration.join("、")}。仅做显示对齐，不能用于实机控制。`
           : ""));
         this.warning.hidden = !this.warning.textContent;
