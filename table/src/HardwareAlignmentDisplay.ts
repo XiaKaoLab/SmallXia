@@ -130,7 +130,7 @@ export class HardwareAlignmentDisplay {
         const limit = state.model_limited ? `模型已停在边界：${state.limit_reason || "姿态约束"}。角度箭头表示实际显示值。` : "";
         this.warning.textContent = limit + (state.error ?? (calibrating ? (state.instruction?.startsWith("同时采集全部六轴。") ? "" : state.instruction) : undefined) ?? (state.outside_device_calibration?.length
           ? `设备校准范围异常：${state.outside_device_calibration.join("、")}。仅做显示对齐，不能用于实机控制。`
-          : "已复用官方校准，编码器计数已转换为模型角度；夹爪为开合比例转换。SO-100 与 SO-101 几何一致性尚需核对。"));
+          : ""));
         this.warning.hidden = !this.warning.textContent;
       });
     } catch (error) {
