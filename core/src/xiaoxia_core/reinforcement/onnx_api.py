@@ -14,11 +14,33 @@ class BallOnnxAPI:
         self.jobs = jobs
         self.policies = OrderedDict()
 
+    def catalog(self):
+        from .ball_environment import BallPickupEnvironment
+        models = []
+        for job in self.jobs.list():
+            if job['status'] != 'succeeded' or job['kind'] not in ('ball_pickup', 'ball_onnx_export'):
+                continue
+            directory = self.jobs.root / job['id']
+            manifest = directory / 'policy.onnx.json'
+            config_path = manifest if manifest.exists() else directory / 'policy_config.json'
+            try:
+                config = json.loads(config_path.read_text(encoding='utf-8'))
+            except (OSError, ValueError):
+                continue
+            compatible = config.get('environment_version') == BallPickupEnvironment.version
+            exported = manifest.exists() and (directory / 'policy.onnx').is_file()
+            models.append({'id': job['id'], 'kind': job['kind'], 'label': f"抓球 · {job['id'][:8]} · 未验收",
+                'created_at_ns': job.get('created_at_ns', 0), 'exported': exported,
+                'compatible': compatible, 'environment_version': config.get('environment_version'),
+                'state_dim': config.get('state_dim'), 'task_success_validated': False})
+        return {'models': sorted(models, key=lambda item: item['created_at_ns'], reverse=True),
+                'environment_version': BallPickupEnvironment.version}
+
     def source(self, value, *, exported=False):
         if value == 'latest':
-            candidates = [job for job in self.jobs.list() if job['status'] == 'succeeded'
-                and job['kind'] in (('ball_pickup', 'ball_onnx_export') if exported else ('ball_pickup',))
-                and (not exported or (self.jobs.root / job['id'] / 'policy.onnx.json').exists())]
+            candidates = [model for model in self.catalog()['models'] if model['compatible']
+                and model['kind'] in (('ball_pickup', 'ball_onnx_export') if exported else ('ball_pickup',))
+                and (not exported or model['exported'])]
             if not candidates:
                 raise ValueError('没有已完成且可用的抓球模型，请先训练或导出 ONNX')
             value = max(candidates, key=lambda job: job.get('created_at_ns', 0))['id']

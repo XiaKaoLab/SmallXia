@@ -1,0 +1,42 @@
+{
+  "date": "2026-11-02",
+  "entrypoint": "block_api_create_then_run",
+  "model_job_id": "6afb815b26a94e8d8ff4193d6c8b403a",
+  "inference_job_id": "5d3ed7a6bb174ad58a63151545391452",
+  "block_type": "table_policy_onnx_run",
+  "block_fields": {
+    "MODEL_ID": "6afb815b26a94e8d8ff4193d6c8b403a",
+    "ROUNDS": 1
+  },
+  "command_receipts": [
+    {
+      "operation": "catalog",
+      "command_id": "ea87f098c575492683247cac3be53e95",
+      "status": "succeeded"
+    },
+    {
+      "operation": "create",
+      "command_id": "2531df6261814b59880f6d756ba513ac",
+      "status": "succeeded"
+    },
+    {
+      "operation": "run",
+      "command_id": "007c6080690d4936869ccca63f3b1032",
+      "status": "succeeded"
+    }
+  ],
+  "status": "succeeded",
+  "runtime": "onnxruntime",
+  "rounds": 1,
+  "successes": 1,
+  "held_seconds": 1.1400000000000006,
+  "ball_on_floor": false,
+  "jaw_forces": {
+    "moving_jaw_so101_v1_link": 0.39045019732425507,
+    "gripper_link": 0.40798117679830975
+  },
+  "peak_arm_floor_force": 0.0,
+  "workspace_restored": true,
+  "physical": false,
+  "full_success_qualification": false
+}

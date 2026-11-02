@@ -11,6 +11,7 @@ import { FRAME_CAPTURE, FRAME_VARIABLE } from "../blocks/frameBlocks";
 import { BlocksToolbox, BLOCK_LIMITS, TOOLBOX_TYPES } from "../blocks/BlocksToolbox";
 import { POLICY_RL_BALL } from "../blocks/policyBlocks";
 import { ONNX_EXPORT, ONNX_RUN, ONNX_TYPES } from "../blocks/OnnxPolicyBlocks";
+import { onnxModelCatalog } from "../blocks/OnnxModelCatalog";
 import { armTargetCatalog } from "../blocks/ArmTargetCatalog";
 
 export interface BlockSnapshot { id: string; type: string; fields: Record<string, number | string>; x: number; y: number }
@@ -70,7 +71,7 @@ class WorkspaceManager {
         ...JOINTS.map(([name, label]) => ({ name, label, unit: "rad", ...this.limits[name] }))]
         : type === POLICY_RL_BALL ? [{ name: "NUM_ENVS", label: "同时训练数量", lower: 1, upper: 16 },
           { name: "ROUNDS", label: "每环境训练轮数", lower: 1, upper: 10000 }, { name: "DEVICE", label: "设备", options: ["cpu", "cuda"] }]
-        : ONNX_TYPES.includes(type) ? [{ name: "MODEL_ID", label: "模型任务 ID 或 latest" },
+        : ONNX_TYPES.includes(type) ? [{ name: "MODEL_ID", label: "模型", options: onnxModelCatalog.options(type === ONNX_RUN).map(([, id]) => id) },
           ...(type === ONNX_RUN ? [{ name: "ROUNDS", label: "推理回合数", lower: 1, upper: 1000 }] : [])]
         : [FRAME_CAPTURE, FRAME_VARIABLE].includes(type) ? [{ name: "SOURCE", label: "来源", options: cameraCatalog.options().map(([, id]) => id) }] : [] }));
   }

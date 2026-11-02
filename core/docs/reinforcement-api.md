@@ -227,3 +227,10 @@ ONNX Runtime任务 aa953077234d4036be66436b183c8967 使用新种子20261104完�
 ### 当前优化 v6（2026-11-02）
 
 当前环境so101_pickup_v6_stable_sac，针对v5在7cm处悬停、在线更新破坏示教的表现，增加下降/方向/首次接触奖励、Critic预热、强示教锚定和小步Actor更新。连续六次验证零成功或每批10000次在线更新仍未合格则扩量进入下一批，235/235最终验收不变。详见[当前策略](pickup-strategy.md)。
+
+
+### 积木模型目录与一次推理检查（2026-11-02）
+
+GET /api/v1/reinforcement/models 返回已完成训练/导出的模型目录、环境兼容性和ONNX是否存在。策略分类增加“刷新模型”；ONNX导出/推理积木的模型字段改为动态下拉，推理只列同环境且已导出的模型。latest在服务端也过滤环境版本；未知或失效的已选ID保留为不可用提示，防止快照加载静默换模型。当前目录用“未验收”标明尚未具备235/235证据的候选，不将任务完成误当作模型合格。
+
+通过实际WebView命令桥执行catalog→export备份→import临时工作区→create(table_policy_onnx_run，MODEL_ID=6afb815b26a94e8d8ff4193d6c8b403a，ROUNDS=1)→run→import恢复→export比对。仅由积木生成Python启动推理，没有直接调用rollout接口替代积木执行。任务5d3ed7a6bb174ad58a63151545391452成功完成1轮，成功抓取1次，工作区恢复一致；这不代表235/235或全范围100%验收通过。证据见[积木推理回执](onnx-block-inference.json)。TypeScript检查通过，未构建桌面，未连接实机。

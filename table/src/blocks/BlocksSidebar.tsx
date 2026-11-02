@@ -8,6 +8,7 @@ import { LiveJointRunner } from "./LiveJointRunner";
 import { blocksDebug } from "../debug/BlocksDebug";
 import { registerCameraBlock } from "./cameraBlock";
 import { cameraCatalog } from "./CameraCatalog";
+import { onnxModelCatalog } from "./OnnxModelCatalog";
 import { armTargetCatalog } from "./ArmTargetCatalog";
 import { registerFrameBlocks } from "./frameBlocks";
 import { BlocksToolbox, BLOCK_LIMITS } from "./BlocksToolbox";
@@ -54,6 +55,7 @@ export function BlocksSidebar() {
     liveRef.current = live;
     let detachDebug: (() => void) | undefined;
     let detachCameras: (() => void) | undefined;
+    let detachModels: (() => void) | undefined;
     let detachArmTargets: (() => void) | undefined;
     let controlBridge: BlocksControlBridge | undefined;
     async function initialize() {
@@ -84,6 +86,7 @@ export function BlocksSidebar() {
         workspaceRef.current = workspace;
         detachCameras = cameraCatalog.attach(workspace);
         detachArmTargets = armTargetCatalog.attach(workspace);
+        detachModels = onnxModelCatalog.attach(workspace);
         workspace.registerButtonCallback("CREATE_VARIABLE", () => {
           if (workspace) Blockly.Variables.createVariableButtonHandler(workspace);
         });
@@ -128,7 +131,7 @@ export function BlocksSidebar() {
       }
     }
     void initialize();
-    return () => { abort.abort(); window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; controlBridge?.stop(); detachDebug?.(); detachCameras?.(); detachArmTargets?.(); observer?.disconnect(); workspace?.dispose(); };
+    return () => { abort.abort(); window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; controlBridge?.stop(); detachDebug?.(); detachCameras?.(); detachArmTargets?.(); detachModels?.(); observer?.disconnect(); workspace?.dispose(); };
   }, []);
 
   async function run(strict = false) {

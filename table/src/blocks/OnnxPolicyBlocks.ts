@@ -4,6 +4,7 @@
  */
 import * as Blockly from "blockly/core";
 import { pythonGenerator } from "blockly/python";
+import { onnxModelCatalog } from "./OnnxModelCatalog";
 
 export const ONNX_EXPORT = "table_policy_onnx_export";
 export const ONNX_RUN = "table_policy_onnx_run";
@@ -15,7 +16,9 @@ export class OnnxPolicyBlocks {
       Blockly.Blocks[type] = {
         init(this: Blockly.Block) {
           this.appendDummyInput().appendField(type === ONNX_EXPORT ? "导出抓球模型 ONNX" : "ONNX 推理 · 拿取小球");
-          this.appendDummyInput().appendField("模型任务").appendField(new Blockly.FieldTextInput("latest"), "MODEL_ID");
+          this.appendDummyInput().appendField("模型").appendField(new Blockly.FieldDropdown(function () {
+            return onnxModelCatalog.options(type === ONNX_RUN, this.getValue());
+          }), "MODEL_ID");
           if (type === ONNX_RUN) this.appendDummyInput().appendField("运行")
             .appendField(new Blockly.FieldNumber(1, 1, 1000, 1), "ROUNDS").appendField("轮");
           this.setPreviousStatement(true); this.setNextStatement(true); this.setColour("#7d7297");

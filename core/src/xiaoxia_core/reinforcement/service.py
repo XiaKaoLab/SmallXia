@@ -134,6 +134,8 @@ class ReinforcementAPI:
         parts = path.removeprefix(self.prefix).strip('/').split('/')
         try:
             if method == 'GET':
+                if parts == ['models']:
+                    return 200, self.onnx.catalog()
                 if parts == ['capabilities']:
                     return 200, {'backend': 'lerobot_sac', 'lerobot_version': version('lerobot'), 'target': 'table',
                         'physical': False, 'action_space': 'normalized_joint_delta', 'transport': 'HTTP+SQLite',

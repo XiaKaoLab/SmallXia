@@ -28,7 +28,7 @@ export class BlocksToolbox {
         { kind: "button", text: "创建变量", callbackkey: "CREATE_VARIABLE" },
         block("variables_set"), block("variables_get"), block(FRAME_VARIABLE), block("text"), block("math_number"),
       ] },
-      { kind: "category", name: "策略", colour: "#7d7297", contents: [block(POLICY_RL_BALL), ...ONNX_TYPES.map(block), ...[POLICY_TRAIN, POLICY_PREDICT, POLICY_ROLLOUT, POLICY_JOB, POLICY_STOP].map(policy)] },
+      { kind: "category", name: "策略", colour: "#7d7297", contents: [{ kind: "button", text: "刷新模型", callbackkey: "REFRESH_ONNX_MODELS" }, block(POLICY_RL_BALL), ...ONNX_TYPES.map(block), ...[POLICY_TRAIN, POLICY_PREDICT, POLICY_ROLLOUT, POLICY_JOB, POLICY_STOP].map(policy)] },
       { kind: "category", name: "数据", colour: "#61898d", contents: [block(DATA_SIM), block(DATA_HARDWARE),
         ...Object.keys(DATA_OPERATIONS).map(type => ({ kind: "block", type, inputs: { SESSION: { shadow: { type: "text", fields: { TEXT: "" } } } } })),
         { kind: "block", type: DATA_CAPTURE, inputs: { SESSION: { shadow: { type: "text", fields: { TEXT: "" } } }, ACTION: { shadow: { type: DATA_TARGET } } } },
