@@ -1,7 +1,8 @@
 /** 功能：四分之一宽度的聊天侧栏，整合会话、技能和流式消息。
- * Created on 2026-11-01; Updated on 2026-11-01
+ * Created on 2026-11-01; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
+import { UiMessage } from "../shared/UiMessage";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
@@ -29,7 +30,7 @@ export function ChatSidebar() {
   }, [menu]);
   const toggle = (name: "sessions" | "skills") => setMenu((value) => value === name ? null : name);
   const send = () => { const text = draft; setDraft(""); setMenu(null); void chat.send(text); };
-  const notice = chat.error || refreshError;
+  const notice = chat.error || refreshError ? UiMessage.error(chat.error || refreshError) : "";
   return <aside ref={panel} className="chat-sidebar" aria-label="小虾聊天侧栏">
     <header className="chat-header">
       <div className="chat-heading"><button className="heading-trigger" onClick={() => toggle("sessions")} disabled={chat.busy} aria-expanded={menu === "sessions"}>小虾<ChevronDown size={14} /></button><span className="model-label"><i className={chat.data.configured ? "connected" : ""} />{chat.data.model || "你的机械臂助手"}</span></div>
@@ -50,10 +51,9 @@ export function ChatSidebar() {
     <MessageList messages={chat.messages} busy={chat.busy} />
     <footer className="chat-footer">
       {notice && <div className="chat-notice error" role="alert"><CircleAlert size={14} /><span>{notice}</span><IconButton label="重新连接" onClick={() => { setRefreshError(""); void chat.refresh().catch((failure: unknown) => setRefreshError(String(failure))); }}><RefreshCw size={14} /></IconButton></div>}
-      {!chat.desktop ? <p className="chat-notice">请在桌面应用中连接助手。</p> : !chat.loading && !chat.error && !chat.data.configured ? <p className="chat-notice">配置模型和 API 密钥后，即可开始对话。</p> : null}
+      {!chat.desktop ? <p className="chat-notice">请打开桌面应用</p> : !chat.loading && !chat.error && !chat.data.configured ? <p className="chat-notice">请配置模型和密钥</p> : null}
       {chat.skills.length > 0 && <div className="selected-skills">{chat.skills.map((skill) => <button key={skill} disabled={chat.busy} onClick={() => chat.setSkills((values) => values.filter((value) => value !== skill))}><WandSparkles size={11} />{skill}<X size={11} /></button>)}</div>}
       <Composer value={draft} onChange={setDraft} onSend={send} onStop={() => { void chat.stop(); }} busy={chat.busy} disabled={!chat.desktop || !chat.data.configured || chat.loading} skillCount={chat.skills.length} onSkills={() => toggle("skills")} />
-      <p className="composer-caption">小虾的回答仅供参考，请核对重要信息。</p>
     </footer>
   </aside>;
 }

@@ -24,7 +24,7 @@ export class CameraCatalog {
   realOptions(selected?: string | null): [string, string][] {
     const options: [string, string][] = this.cameras.filter(camera => camera.physical).map(camera => [camera.name, camera.id]);
     if (selected && /^opencv_[0-9a-f]{16}$/.test(selected) && !options.some(([, id]) => id === selected)) options.push(["所选真实相机（离线）", selected]);
-    return options.length ? options : [["未找到真实相机，请刷新", "unavailable"]];
+    return options.length ? options : [["未找到相机", "unavailable"]];
   }
 
   async refresh(): Promise<void> {
@@ -65,6 +65,6 @@ export class CameraCatalog {
 export function frameVariableName(cameraId: string): string {
   if (cameraId === "virtual" || cameraId === "real") return `${cameraId}_frame`;
   if (/^opencv_[0-9a-f]{16}$/.test(cameraId)) return `frame_${cameraId}`;
-  throw new Error("请选择已找到的摄像头；可在相机分类中刷新列表");
+  throw new Error("请选择相机");
 }
 export const cameraCatalog = new CameraCatalog();

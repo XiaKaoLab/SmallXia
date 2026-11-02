@@ -18,12 +18,12 @@ export function registerCameraCalibrationBlock(): void {
       this.appendDummyInput().appendField("方格边长")
         .appendField(new Blockly.FieldNumber(25, 1, 200, .1), "SQUARE_MM").appendField("mm");
       this.setColour("#587e9d"); this.setPreviousStatement(true); this.setNextStatement(true);
-      this.setTooltip("运行后打开真实相机标定窗口。下载棋盘格并按实际尺寸打印，从不同位置和倾角采集至少 12 帧，再计算内参与畸变系数。");
+      this.setTooltip("从不同角度采集标定板，完成后保存。");
     },
   };
   pythonGenerator.forBlock[CAMERA_CALIBRATION_BLOCK] = block => {
     const source = String(block.getFieldValue("SOURCE"));
-    if (!/^opencv_[0-9a-f]{16}$/.test(source)) throw new Error("请选择发现的真实相机，可在相机分类中刷新列表");
+    if (!/^opencv_[0-9a-f]{16}$/.test(source)) throw new Error("请选择真实相机");
     const columns = Number(block.getFieldValue("COLUMNS"));
     const rows = Number(block.getFieldValue("ROWS"));
     const square = Number(block.getFieldValue("SQUARE_MM"));

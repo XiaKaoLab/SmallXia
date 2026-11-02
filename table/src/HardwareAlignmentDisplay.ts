@@ -2,6 +2,7 @@
  * Created on 2026-11-02; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
+import { UiMessage } from "./shared/UiMessage";
 import { agentClient } from "./chat/AgentClient";
 import { jointPreview } from "./JointPreview";
 import { JOINTS } from "./blocks/positionBlock";
@@ -92,7 +93,7 @@ export class HardwareAlignmentDisplay {
             try {
               await agentClient.request({ action: "arm_calibration_action", session_id: session,
                 stage: state.calibration_stage, index: state.joint_index });
-            } catch (error) { if (generation === this.generation) { this.warning.hidden = false; this.warning.textContent = String(error); } }
+            } catch (error) { if (generation === this.generation) { this.warning.hidden = false; this.warning.textContent = UiMessage.error(error); } }
             finally { if (generation === this.generation) { this.stepPending = false; this.stepButton.disabled = false; } }
           };
           this.values.classList.toggle("calibration-joints", !!state.joint_ranges);
@@ -124,14 +125,14 @@ export class HardwareAlignmentDisplay {
             return value;
           }));
         }
-        const limit = state.model_limited ? `模型已停在边界：${state.limit_reason || "姿态约束"}。角度箭头表示实际显示值。` : "";
-        this.warning.textContent = limit + (state.error ?? (calibrating ? (state.instruction?.startsWith("以下关节采集行程不足") ? state.instruction : "") : undefined) ?? (state.outside_device_calibration?.length
-          ? `设备校准范围异常：${state.outside_device_calibration.join("、")}。仅做显示对齐，不能用于实机控制。`
-          : ""));
+        this.warning.textContent = state.error ? UiMessage.error(state.error)
+          : calibrating && state.instruction?.startsWith("以下关节采集行程不足") ? "部分关节行程不足，请继续转动"
+          : state.model_limited ? "已到运动边界"
+          : state.outside_device_calibration?.length ? "关节超出校准范围" : "";
         this.warning.hidden = !this.warning.textContent;
       });
     } catch (error) {
-      if (generation === this.generation) { this.warning.hidden = false; this.warning.textContent = String(error); }
+      if (generation === this.generation) { this.warning.hidden = false; this.warning.textContent = UiMessage.error(error); }
     } finally {
       if (generation === this.generation) { this.positions = null; this.session = ""; this.requestId = ""; }
     }

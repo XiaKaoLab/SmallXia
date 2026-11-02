@@ -2,6 +2,7 @@
  * Created on 2026-11-02; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
+import { UiMessage } from "./shared/UiMessage";
 import { agentClient } from "./chat/AgentClient";
 
 interface CalibrationResult {
@@ -71,13 +72,14 @@ export class CameraCalibrationDisplay {
   private update(state: CalibrationState): void {
     this.state = state;
     if (state.image) this.image.src = state.image;
-    this.status.textContent = `${state.camera_name} · 内角点 ${state.columns}×${state.rows} · ${state.square_mm} mm · ${state.samples}/${state.minimum_samples} 帧起 · ${state.board_found ? "已找到棋盘格" : "等待完整棋盘格"}`;
+    this.status.textContent = `${state.camera_name} · ${state.samples}/${state.minimum_samples} 帧 · ${state.board_found ? "已识别标定板" : "等待标定板"}`;
     this.capture.disabled = this.busy || !state.board_found || !!state.error;
     this.solve.disabled = this.busy || state.samples < state.minimum_samples;
     this.save.disabled = !state.result;
-    this.message.textContent = this.actionError || state.error || "按实际尺寸打印并核对方格边长，固定焦距/对焦与分辨率；移动或倾斜标定板后采集，建议 20 帧以上。";
+    const failure = this.actionError || state.error;
+    this.message.textContent = failure ? UiMessage.error(failure) : state.result ? "标定已保存" : "请移动标定板并采集";
     const result = state.result;
-    this.result.textContent = result ? `RMS ${result.rms_px.toFixed(3)} px · ${result.image_size.join("×")}\nfx ${result.camera_matrix[0][0].toFixed(2)}  fy ${result.camera_matrix[1][1].toFixed(2)}\ncx ${result.camera_matrix[0][2].toFixed(2)}  cy ${result.camera_matrix[1][2].toFixed(2)}\n畸变 ${result.distortion.map(value => value.toFixed(6)).join(", ")}\n${result.warnings.length ? result.warnings.join("\n") : "已通过当前样本检查，仍需独立图像验证。"}\n预览已按此分辨率去畸变。` : "";
+    this.result.textContent = result ? `误差 ${result.rms_px.toFixed(3)} px · ${result.image_size.join("×")}${result.warnings.length ? `\n${result.warnings.map(value => UiMessage.error(value, "请补充标定样本")).join("；")}` : ""}` : "";
   }
 
   private async act(operation: "capture" | "solve"): Promise<void> {

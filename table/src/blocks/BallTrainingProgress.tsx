@@ -2,6 +2,7 @@
  * Created on 2026-11-02; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
+import { UiMessage } from "../shared/UiMessage";
 import { useEffect, useRef, useState } from "react";
 import { agentClient } from "../chat/AgentClient";
 import "./ball-training.css";
@@ -47,7 +48,7 @@ export function BallTrainingProgress() {
         if (next) {
           selected.current = next; setJob(next); setError("");
         }
-      } catch (failure) { if (!stopped && selected.current) setError(`进度连接中断：${String(failure)}`); }
+      } catch (failure) { if (!stopped && selected.current) setError("进度连接中断"); }
       finally { if (!stopped) timer = setTimeout(() => void poll(), 1500); }
     }
     void poll();
@@ -75,7 +76,7 @@ export function BallTrainingProgress() {
       if (!target && !result.paused) window.dispatchEvent(new CustomEvent("table:inference-playback", { detail: { jobId: job.id, paused: false } }));
     } catch (failure) {
       window.dispatchEvent(new CustomEvent("table:inference-playback", { detail: { jobId: job.id, paused: Boolean(job.paused) } }));
-      setError(String(failure)); setPauseTarget(null);
+      setError(UiMessage.error(failure)); setPauseTarget(null);
     }
   }
 
@@ -85,7 +86,7 @@ export function BallTrainingProgress() {
     try {
       const result = await agentClient.request<TrainingJob>({ action: "reinforcement_stop", job_id: job.id });
       selected.current = result; setJob(result); setError("");
-    } catch (failure) { setError(String(failure)); }
+    } catch (failure) { setError(UiMessage.error(failure)); }
     finally { setStopping(false); }
   }
 
@@ -105,6 +106,6 @@ export function BallTrainingProgress() {
       <span>当前分 <b>{job.current_score == null ? "—" : job.current_score.toFixed(2)}</b></span></div>
     <progress max={1} value={progress} aria-label="训练完成进度" />
     <div className="ball-training-detail"><span>{job.completed_episodes ?? 0} / {job.total_episodes ?? "—"} 回合</span><span>{(progress * 100).toFixed(1)}%</span></div>
-    {(error || job.error) && <p role="alert" className="ball-training-error">{error || job.error}</p>}
+    {(error || job.error) && <p role="alert" className="ball-training-error">{UiMessage.error(error || job.error)}</p>}
   </section>;
 }

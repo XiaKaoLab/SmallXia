@@ -2,6 +2,7 @@
  * Created on 2026-11-01; Updated on 2026-11-02
  * @author: https://github.com/Linmoqian
  */
+import { UiMessage } from "../shared/UiMessage";
 import { useEffect, useRef, useState } from "react";
 import { jointPreview } from "../JointPreview";
 import { LiveJointRunner } from "./LiveJointRunner";
@@ -45,7 +46,7 @@ export function BlocksSidebar() {
     const abort = new AbortController();
     let workspace: Blockly.WorkspaceSvg | undefined;
     let observer: ResizeObserver | undefined;
-    const onLimit = (event: Event) => { setNotice(`已限制：${(event as CustomEvent<string>).detail}`); };
+    const onLimit = () => { setNotice("已到运动边界"); };
     window.addEventListener("table:pose-limit", onLimit);
     const onConfirmed = (event: Event) => {
       const block = workspace?.getBlocksByType(BLOCK_TYPE, false)[0];
@@ -103,7 +104,7 @@ export function BlocksSidebar() {
         const update = () => {
           if (!workspace) return;
           try { setCode(pythonGenerator.workspaceToCode(workspace)); setError(""); setNotice(""); }
-          catch (failure) { setCode(""); setError(String(failure)); }
+          catch (failure) { setCode(""); setError(UiMessage.error(failure)); }
         };
         let edited = false;
         workspace.addChangeListener((event) => {
@@ -133,7 +134,7 @@ export function BlocksSidebar() {
           update();
         } catch { /* 模型服务不在线时仍可编辑和导出。 */ }
       } catch (failure) {
-        if (!abort.signal.aborted) setError(String(failure));
+        if (!abort.signal.aborted) setError(UiMessage.error(failure));
       }
     }
     void initialize();
@@ -144,12 +145,12 @@ export function BlocksSidebar() {
     if (runLock.current) { if (strict) throw new Error("已有程序运行中"); return; }
     const source = workspaceRef.current ? pythonGenerator.workspaceToCode(workspaceRef.current) : code;
     if (!source.trim()) { if (strict) throw new Error("工作区为空"); return; }
-    if (!agentClient.desktop) { setError("运行 Python 需要打开 Tauri 桌面窗口"); if (strict) throw new Error("需要 Tauri 窗口"); return; }
+    if (!agentClient.desktop) { setError("请在桌面应用中运行"); if (strict) throw new Error("需要 Tauri 窗口"); return; }
     runLock.current = true;
     const revision = jointPreview.revision;
     setRunning(true);
     setError("");
-    setNotice("正在运行 Python…");
+    setNotice("运行中…");
     try {
       await liveRef.current?.pause();
       const result = await agentClient.request<{ output: string; exit_code: number }>({ action: "run_program", source });
@@ -168,10 +169,10 @@ export function BlocksSidebar() {
           if (receipt.limited && receipt.applied_joint_positions) jointPreview.confirm(receipt.applied_joint_positions, revision);
         } catch { /* 相机积木等非 JSON 文本不属于关节回执。 */ }
       }
-      setNotice(ballTraining ? "小球任务已启动" : dataRecording ? "录制请求已提交，可查询采集状态或命令回执" : result.output.trim() ? `已运行：${result.output.trim()}` : "Python 运行完成");
+      setNotice(ballTraining ? "任务已启动" : dataRecording ? "录制已提交" : "运行完成");
       return result;
     } catch (failure) {
-      setError(String(failure));
+      setError(UiMessage.error(failure));
       setNotice("");
       if (strict) throw failure;
     } finally {
@@ -184,7 +185,7 @@ export function BlocksSidebar() {
   return <aside className="blocks-sidebar" aria-label="机械臂积木编程">
     <header className="blocks-heading"><h2>积木编程</h2><div className="blocks-heading-actions">
       <button type="button" className="blocks-run" onClick={() => void run()} disabled={!code || running}
-        aria-label={running ? "正在运行 Python" : "运行 Python"} aria-busy={running} title="运行 Python">
+        aria-label={running ? "运行中" : "运行"} aria-busy={running} title="运行">
         <Play size={15} fill="currentColor" /><span>{running ? "运行中" : "运行"}</span>
       </button>
     </div></header>

@@ -24,7 +24,7 @@ export class PolicyBlocks {
         this.appendDummyInput().appendField("每个训练").appendField(new Blockly.FieldNumber(100, 1, 10000, 1), "ROUNDS").appendField("轮");
         this.appendDummyInput().appendField("设备").appendField(new Blockly.FieldDropdown([["CPU", "cpu"], ["CUDA", "cuda"]]), "DEVICE");
         this.setPreviousStatement(true); this.setNextStatement(true); this.setColour("#7d7297");
-        this.setTooltip("启动独立 MuJoCo 抓球环境，共训练 数量×轮数 个回合；实时显示奖励与进度，仅仿真。");
+        this.setTooltip("训练抓球策略。");
       },
     };
     pythonGenerator.forBlock[POLICY_RL_BALL] = block =>
@@ -46,7 +46,7 @@ export class PolicyBlocks {
           this.setColour("#7d7297");
           if (type === POLICY_STOP) { this.setPreviousStatement(true); this.setNextStatement(true); }
           else this.setOutput(true);
-          this.setTooltip(type === POLICY_ROLLOUT ? "启动 table 模型回放任务，动作经过速度和碰撞限制。" : "调用模仿学习 API；任务异步执行，不等待训练完成。");
+          this.setTooltip(type === POLICY_ROLLOUT ? "在仿真中运行策略。" : "启动模仿学习任务。");
         },
       };
       pythonGenerator.forBlock[type] = (block, generator) => {

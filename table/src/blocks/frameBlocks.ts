@@ -18,14 +18,14 @@ export function registerFrameBlocks(): void {
         .appendField("→ 画面变量");
       this.setColour("#587e9d");
       this.setPreviousStatement(true); this.setNextStatement(true);
-      this.setTooltip("从所选摄像头读取画面并保存到对应变量；运行时连接该设备。");
+      this.setTooltip("读取相机画面并保存到变量。");
     },
   };
   Blockly.Blocks[FRAME_VARIABLE] = {
     init(this: Blockly.Block) {
       this.appendDummyInput().appendField("画面变量").appendField(cameraField(), "SOURCE");
       this.setColour("#587e9d"); this.setOutput(true, "CameraFrame");
-      this.setTooltip("读取已获取的画面变量，包含 JPEG 图像、来源、尺寸和时间戳。");
+      this.setTooltip("使用已获取的画面。");
     },
   };
   pythonGenerator.forBlock[FRAME_CAPTURE] = (block) => {

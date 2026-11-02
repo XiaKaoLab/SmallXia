@@ -67,7 +67,7 @@ export class VirtualCameraPreview {
     this.uploading = true;
     void agentClient.request({ action: "publish_camera_frame", image_base64: image })
       .then(() => { if (this.panel) { this.panel.dataset.frameStatus = "ready"; this.panel.title = "虚拟画面 API 已连接"; } })
-      .catch(() => { if (this.panel) { this.panel.dataset.frameStatus = "unavailable"; this.panel.title = "虚拟画面 API 不可用，请检查 core 服务"; } })
+      .catch(() => { if (this.panel) { this.panel.dataset.frameStatus = "unavailable"; this.panel.title = "相机未连接"; } })
       .finally(() => { this.uploading = false; });
   }
 

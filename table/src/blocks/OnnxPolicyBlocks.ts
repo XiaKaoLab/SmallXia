@@ -22,8 +22,8 @@ export class OnnxPolicyBlocks {
           if (type === ONNX_RUN) this.appendDummyInput().appendField("运行")
             .appendField(new Blockly.FieldNumber(1, 1, 1000, 1), "ROUNDS").appendField("轮");
           this.setPreviousStatement(true); this.setNextStatement(true); this.setColour("#7d7297");
-          this.setTooltip(type === ONNX_EXPORT ? "后台导出已完成的训练模型；latest 指最近完成的训练。等待导出完成后再运行推理。"
-            : "仅用 ONNX Runtime 执行 MuJoCo 仿真，不训练、不操作实机。latest 指最近可用的 ONNX 模型。");
+          this.setTooltip(type === ONNX_EXPORT ? "导出训练模型。"
+            : "使用模型进行仿真推理。");
         },
       };
       pythonGenerator.forBlock[type] = block => {

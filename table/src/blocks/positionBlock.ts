@@ -35,13 +35,13 @@ export function registerPositionBlock(limits: Limits, onSlide: (block: Blockly.B
           }), name);
       }
       this.setColour("#638b80");
-      this.setTooltip("选择仿真或发现的 COM 口。仿真滑杆实时控制模型；串口枚举不表示机械臂已连接，未绑定校准的串口不发送动作。");
+      this.setTooltip("选择机械臂，拖动滑杆设置角度。");
       this.setPreviousStatement(true); this.setNextStatement(true);
     },
   };
   pythonGenerator.forBlock[BLOCK_TYPE] = (block) => {
     const target = String(block.getFieldValue("TARGET") ?? "simulation");
-    if (target !== "simulation") return `# 功能：检查机械臂目标绑定。\n# Created on 2026-11-02; Updated on 2026-11-02\n# @author: https://github.com/Linmoqian\nraise RuntimeError(${JSON.stringify(`${target.replace(/^serial:/, "")} 尚未绑定可用的机械臂控制服务和校准，未发送运动指令`)})\n`;
+    if (target !== "simulation") return `# 功能：检查机械臂目标绑定。\n# Created on 2026-11-02; Updated on 2026-11-02\n# @author: https://github.com/Linmoqian\nraise RuntimeError(${JSON.stringify(`${target.replace(/^serial:/, "")} 未连接控制服务`)})\n`;
     const positions = JOINTS.map(([name]) => {
       const value = Number(block.getFieldValue(name));
       if (!Number.isFinite(value) || value < limits[name].lower || value > limits[name].upper) {

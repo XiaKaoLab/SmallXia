@@ -63,7 +63,7 @@ export class DataBlocks {
             if ([DATA_CAPTURE, DATA_RECORD].includes(type)) this.appendValueInput("ACTION").appendField("动作标签");
             if (type === DATA_COMMAND) this.appendValueInput("COMMAND").appendField("命令回执");
           }
-          this.setTooltip(type === DATA_PLAY ? "按录制时间间隔播放到仿真模型，不连接实机。latest_motion 选择最近运动录制；原始编码器按当前仿真姿态作相对显示映射，并受限位和碰撞约束。" : type === DATA_RECORD ? "按会话帧率连续录制，到时自动保存并结束。动作标签会话需显式连接六轴目标；真机入口只读、不执行动作。结束采集可提前保存，停止采集会丢弃完成标记。" : type === DATA_HARDWARE ? "只读编码器采集，不使能力矩；需要本机已确认且校准匹配的设备配置。" : "调用采集 API；启动和记录均异步，使用采集状态/命令状态查询完成结果。");
+          this.setTooltip(type === DATA_PLAY ? "在仿真中播放录制。" : type === DATA_RECORD ? "录制指定时长后自动保存。" : type === DATA_HARDWARE ? "采集实机关节和相机数据。" : "管理数据采集。");
         },
       };
       pythonGenerator.forBlock[type] = (block, generator) => {

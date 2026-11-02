@@ -34,9 +34,9 @@ export class LiveJointRunner {
       if (!this.stopped && receipt.limited && receipt.applied_joint_positions) {
         jointPreview.confirm(receipt.applied_joint_positions, revision);
       }
-      if (!this.stopped && !this.pending) this.status(receipt.limited ? "已停在碰撞边界前" : "角度已同步到模型 API");
+      if (!this.stopped && !this.pending) this.status(receipt.limited ? "已到运动边界" : "已同步");
     } catch (error) {
-      if (!this.stopped) this.status(`当前为本地预览；API 同步失败：${String(error)}`);
+      if (!this.stopped) this.status("同步失败，请重试");
     } finally {
       this.busy = false;
       this.idleWaiters.splice(0).forEach((resolve) => resolve());
