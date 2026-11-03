@@ -1,0 +1,724 @@
+{
+  "source": "https://hugging-face.cn/docs/lerobot/",
+  "downloaded_at": "2026-11-03T04:34:39.017226+00:00",
+  "pages": [
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/act",
+      "title": "ACT (Action Chunking with Transformers)",
+      "file": "act"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/action_representations",
+      "title": "动作表示",
+      "file": "action_representations"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/adding_benchmarks",
+      "title": "添加新基准",
+      "file": "adding_benchmarks"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/async",
+      "title": "异步推理",
+      "file": "async"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/backwardcomp",
+      "title": "向后兼容性",
+      "file": "backwardcomp"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/bring_your_own_policies",
+      "title": "自定策略集成 (Bring Your Own Policies)",
+      "file": "bring_your_own_policies"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/cameras",
+      "title": "摄像头",
+      "file": "cameras"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/contributing",
+      "title": "如何贡献 🤗 LeRobot",
+      "file": "contributing"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/damiao",
+      "title": "大妙电机与 CAN 总线",
+      "file": "damiao"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/dataset_subtask",
+      "title": "在 LeRobot 数据集中使用子任务",
+      "file": "dataset_subtask"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/debug_processor_pipeline",
+      "title": "调试您的处理器流水线",
+      "file": "debug_processor_pipeline"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/earthrover_mini_plus",
+      "title": "EarthRover Mini Plus",
+      "file": "earthrover_mini_plus"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/act",
+      "title": "ACT (Action Chunking with Transformers)",
+      "file": "en__act"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/action_representations",
+      "title": "Action Representations",
+      "file": "en__action_representations"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/adding_benchmarks",
+      "title": "Adding a New Benchmark",
+      "file": "en__adding_benchmarks"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/annotation_pipeline",
+      "title": "Annotation Pipeline",
+      "file": "en__annotation_pipeline"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/async",
+      "title": "Asynchronous Inference",
+      "file": "en__async"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/backwardcomp",
+      "title": "Backward compatibility",
+      "file": "en__backwardcomp"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/bring_your_own_policies",
+      "title": "Adding a Policy",
+      "file": "en__bring_your_own_policies"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/cameras",
+      "title": "Cameras",
+      "file": "en__cameras"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/cheat-sheet",
+      "title": "Cheat sheet",
+      "file": "en__cheat-sheet"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/contributing",
+      "title": "How to contribute to 🤗 LeRobot",
+      "file": "en__contributing"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/damiao",
+      "title": "Damiao Motors and CAN Bus",
+      "file": "en__damiao"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/debug_processor_pipeline",
+      "title": "Debug Your Processor Pipeline",
+      "file": "en__debug_processor_pipeline"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/earthrover_mini_plus",
+      "title": "EarthRover Mini Plus",
+      "file": "en__earthrover_mini_plus"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/env_processor",
+      "title": "Environment Processors",
+      "file": "en__env_processor"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/envhub",
+      "title": "Loading Environments from the Hub",
+      "file": "en__envhub"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/envhub_isaaclab_arena",
+      "title": "NVIDIA IsaacLab Arena & LeRobot",
+      "file": "en__envhub_isaaclab_arena"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/envhub_leisaac",
+      "title": "LeIsaac × LeRobot EnvHub",
+      "file": "en__envhub_leisaac"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/eo1",
+      "title": "EO-1",
+      "file": "en__eo1"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/evo1",
+      "title": "EVO1",
+      "file": "en__evo1"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/fastwam",
+      "title": "FastWAM",
+      "file": "en__fastwam"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/feetech",
+      "title": "Feetech Motor Firmware Update",
+      "file": "en__feetech"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/groot",
+      "title": "GR00T Policy",
+      "file": "en__groot"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/hardware_guide",
+      "title": "Compute HW Guide for LeRobot Training",
+      "file": "en__hardware_guide"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/hil_data_collection",
+      "title": "Human-In-the-Loop Data Collection",
+      "file": "en__hil_data_collection"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/hilserl",
+      "title": "HIL-SERL Real Robot Training Workflow Guide",
+      "file": "en__hilserl"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/hilserl_sim",
+      "title": "Train RL in Simulation",
+      "file": "en__hilserl_sim"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/hope_jr",
+      "title": "HopeJR",
+      "file": "en__hope_jr"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/il_robots",
+      "title": "Imitation Learning on Real-World Robots",
+      "file": "en__il_robots"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/implement_your_own_processor",
+      "title": "Implement your own Robot Processor",
+      "file": "en__implement_your_own_processor"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/index",
+      "title": "LeRobot",
+      "file": "en__index"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/inference",
+      "title": "Policy Deployment (lerobot-rollout)",
+      "file": "en__inference"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/installation",
+      "title": "Installation",
+      "file": "en__installation"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/integrate_hardware",
+      "title": "Bring Your Own Hardware",
+      "file": "en__integrate_hardware"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/introduction_processors",
+      "title": "Introduction to Processors",
+      "file": "en__introduction_processors"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/isaac_teleop",
+      "title": "Isaac Teleop",
+      "file": "en__isaac_teleop"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/koch",
+      "title": "Koch v1.1",
+      "file": "en__koch"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/language_and_recipes",
+      "title": "Language columns and recipes",
+      "file": "en__language_and_recipes"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/lekiwi",
+      "title": "LeKiwi",
+      "file": "en__lekiwi"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/lelab",
+      "title": "LeLab - LeRobot Guide",
+      "file": "en__lelab"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/lerobot-dataset-v3",
+      "title": "LeRobotDataset v3.0",
+      "file": "en__lerobot-dataset-v3"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/libero",
+      "title": "LIBERO",
+      "file": "en__libero"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/libero_plus",
+      "title": "LIBERO-plus",
+      "file": "en__libero_plus"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/lingbot_va",
+      "title": "LingBot-VA",
+      "file": "en__lingbot_va"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/metaworld",
+      "title": "Meta-World",
+      "file": "en__metaworld"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/molmoact2",
+      "title": "MolmoAct2 Policy",
+      "file": "en__molmoact2"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/multi_gpu_training",
+      "title": "Multi-GPU Training",
+      "file": "en__multi_gpu_training"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/multi_task_dit",
+      "title": "Multitask DiT Policy",
+      "file": "en__multi_task_dit"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/notebooks",
+      "title": "🤗 LeRobot Notebooks",
+      "file": "en__notebooks"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/omx",
+      "title": "OMX",
+      "file": "en__omx"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/openarm",
+      "title": "OpenArm",
+      "file": "en__openarm"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/peft_training",
+      "title": "Parameter efficient fine-tuning with 🤗 PEFT",
+      "file": "en__peft_training"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/phone_teleop",
+      "title": "Phone",
+      "file": "en__phone_teleop"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/pi0",
+      "title": "π₀ (Pi0)",
+      "file": "en__pi0"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/pi05",
+      "title": "π₀.₅ (Pi05) Policy",
+      "file": "en__pi05"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/pi0fast",
+      "title": "π₀-FAST (Pi0-FAST)",
+      "file": "en__pi0fast"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/porting_datasets_v3",
+      "title": "Porting Large Datasets to LeRobot Dataset v3.0",
+      "file": "en__porting_datasets_v3"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/processors_robots_teleop",
+      "title": "Processors for Robots and Teleoperators",
+      "file": "en__processors_robots_teleop"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/reachy2",
+      "title": "Reachy 2",
+      "file": "en__reachy2"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/rebot_b601",
+      "title": "reBot B601-DM",
+      "file": "en__rebot_b601"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/rename_map",
+      "title": "Rename Map and Empty Cameras",
+      "file": "en__rename_map"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/robocasa",
+      "title": "RoboCasa365",
+      "file": "en__robocasa"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/robocerebra",
+      "title": "RoboCerebra",
+      "file": "en__robocerebra"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/robometer",
+      "title": "ROBOMETER",
+      "file": "en__robometer"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/robomme",
+      "title": "RoboMME",
+      "file": "en__robomme"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/robotwin",
+      "title": "RoboTwin 2.0",
+      "file": "en__robotwin"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/rtc",
+      "title": "Real-Time Chunking (RTC)",
+      "file": "en__rtc"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/sarm",
+      "title": "SARM: Stage-Aware Reward Modeling",
+      "file": "en__sarm"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/smolvla",
+      "title": "SmolVLA",
+      "file": "en__smolvla"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/so100",
+      "title": "SO-100",
+      "file": "en__so100"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/so101",
+      "title": "SO-101",
+      "file": "en__so101"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/streaming_video_encoding",
+      "title": "Streaming Video Encoding Guide",
+      "file": "en__streaming_video_encoding"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/third_party_robots",
+      "title": "Third-Party Robots & Teleoperators",
+      "file": "en__third_party_robots"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/third_party_sensors",
+      "title": "Third-Party Cameras & Sensors",
+      "file": "en__third_party_sensors"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/tools",
+      "title": "Tools",
+      "file": "en__tools"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/topreward",
+      "title": "TOPReward",
+      "file": "en__topreward"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/torch_accelerators",
+      "title": "PyTorch accelerators",
+      "file": "en__torch_accelerators"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/unitree_g1",
+      "title": "Unitree G1",
+      "file": "en__unitree_g1"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/using_dataset_tools",
+      "title": "Using Dataset Tools",
+      "file": "en__using_dataset_tools"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/video_encoding_parameters",
+      "title": "Video encoding parameters",
+      "file": "en__video_encoding_parameters"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/vla_jepa",
+      "title": "VLA-JEPA",
+      "file": "en__vla_jepa"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/vlabench",
+      "title": "VLABench",
+      "file": "en__vlabench"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/walloss",
+      "title": "WALL-OSS",
+      "file": "en__walloss"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/xvla",
+      "title": "X-VLA: The First Soft-Prompted Robot Foundation Model for Any Robot, Any Task",
+      "file": "en__xvla"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/env_processor",
+      "title": "环境处理器",
+      "file": "env_processor"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/envhub",
+      "title": "从 Hub 加载环境",
+      "file": "envhub"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/envhub_isaaclab_arena",
+      "title": "NVIDIA IsaacLab Arena & LeRobot",
+      "file": "envhub_isaaclab_arena"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/envhub_leisaac",
+      "title": "LeIsaac × LeRobot EnvHub",
+      "file": "envhub_leisaac"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/feetech",
+      "title": "Feetech 电机固件更新",
+      "file": "feetech"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/groot",
+      "title": "GR00T N1.5 策略",
+      "file": "groot"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/hil_data_collection",
+      "title": "人在回路数据收集",
+      "file": "hil_data_collection"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/hilserl",
+      "title": "HIL-SERL 真实机器人训练工作流程指南",
+      "file": "hilserl"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/hilserl_sim",
+      "title": "在仿真中训练 RL",
+      "file": "hilserl_sim"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/hope_jr",
+      "title": "HopeJR",
+      "file": "hope_jr"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/il_robots",
+      "title": "真实世界机器人上的模仿学习",
+      "file": "il_robots"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/implement_your_own_processor",
+      "title": "实现您自己的机器人处理器",
+      "file": "implement_your_own_processor"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/index",
+      "title": "LeRobot",
+      "file": "index"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/installation",
+      "title": "安装",
+      "file": "installation"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/integrate_hardware",
+      "title": "自带硬件",
+      "file": "integrate_hardware"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/introduction_processors",
+      "title": "处理器介绍",
+      "file": "introduction_processors"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/koch",
+      "title": "Koch v1.1",
+      "file": "koch"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/lekiwi",
+      "title": "LeKiwi",
+      "file": "lekiwi"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/lerobot-dataset-v3",
+      "title": "LeRobotDataset v3.0",
+      "file": "lerobot-dataset-v3"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/libero",
+      "title": "LIBERO",
+      "file": "libero"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/metaworld",
+      "title": "Meta-World",
+      "file": "metaworld"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/multi_gpu_training",
+      "title": "多 GPU 训练",
+      "file": "multi_gpu_training"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/multi_task_dit",
+      "title": "Multitask DiT 策略",
+      "file": "multi_task_dit"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/notebooks",
+      "title": "🤗 LeRobot Notebooks",
+      "file": "notebooks"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/openarm",
+      "title": "OpenArm",
+      "file": "openarm"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/peft_training",
+      "title": "使用 🤗 PEFT 进行参数高效微调",
+      "file": "peft_training"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/phone_teleop",
+      "title": "手机",
+      "file": "phone_teleop"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/pi0",
+      "title": "π₀ (Pi0)",
+      "file": "pi0"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/pi05",
+      "title": "π₀.₅ (Pi05) 策略",
+      "file": "pi05"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/pi0fast",
+      "title": "π₀-FAST (Pi0-FAST)",
+      "file": "pi0fast"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/porting_datasets_v3",
+      "title": "将大型数据集迁移到 LeRobot Dataset v3.0",
+      "file": "porting_datasets_v3"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/processors_robots_teleop",
+      "title": "机器人与远程操作员处理器",
+      "file": "processors_robots_teleop"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/reachy2",
+      "title": "Reachy 2",
+      "file": "reachy2"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/rename_map",
+      "title": "重命名映射与空摄像头",
+      "file": "rename_map"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/rtc",
+      "title": "实时分块 (Real-Time Chunking, RTC)",
+      "file": "rtc"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/sarm",
+      "title": "SARM: 阶段感知奖励建模",
+      "file": "sarm"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/smolvla",
+      "title": "SmolVLA",
+      "file": "smolvla"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/so100",
+      "title": "SO-100",
+      "file": "so100"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/so101",
+      "title": "SO-101",
+      "file": "so101"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/streaming_video_encoding",
+      "title": "流式视频编码指南",
+      "file": "streaming_video_encoding"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/torch_accelerators",
+      "title": "PyTorch 加速器",
+      "file": "torch_accelerators"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/unitree_g1",
+      "title": "Unitree G1",
+      "file": "unitree_g1"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/using_dataset_tools",
+      "title": "使用数据集工具",
+      "file": "using_dataset_tools"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/walloss",
+      "title": "WALL-OSS",
+      "file": "walloss"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/xvla",
+      "title": "X-VLA：首个适用于任何机器人、任何任务的软提示（Soft-Prompted）机器人基础模型",
+      "file": "xvla"
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/omx",
+      "error": "未找到文档正文"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/examples/rtc/eval_with_real_robot.py",
+      "error": "未找到文档正文"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/envhub.mdx",
+      "error": "未找到文档正文"
+    },
+    {
+      "url": "https://hugging-face.cn/docs/lerobot/en/envhub.mdx",
+      "error": "未找到文档正文"
+    }
+  ]
+}

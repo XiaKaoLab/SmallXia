@@ -1,0 +1,168 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><style>body{max-width:960px;margin:40px auto;padding:0 24px;font:16px/1.8 system-ui}pre{overflow:auto;background:#f2f5f4;padding:16px}img,video{max-width:100%}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:8px}</style><title>自定策略集成 (Bring Your Own Policies)</title><a href="README.html">文档目录</a><p>来源：<a href="https://hugging-face.cn/docs/lerobot/bring_your_own_policies">https://hugging-face.cn/docs/lerobot/bring_your_own_policies</a></p><div class="prose-doc prose relative mx-auto max-w-4xl break-words"><!-- --> <!-- HEAD_svelte-u9bgzb_START --><meta content='{"title":"Bring Your Own Policies","local":"bring-your-own-policies","sections":[{"title":"Step 1: Create a Policy Package","local":"step-1-create-a-policy-package","sections":[{"title":"Package Structure","local":"package-structure","sections":[],"depth":3},{"title":"Package Configuration","local":"package-configuration","sections":[],"depth":3}],"depth":2},{"title":"Step 2: Define the Policy Configuration","local":"step-2-define-the-policy-configuration","sections":[],"depth":2},{"title":"Step 3: Implement the Policy Class","local":"step-3-implement-the-policy-class","sections":[],"depth":2},{"title":"Step 4: Add Data Processors","local":"step-4-add-data-processors","sections":[],"depth":2},{"title":"Step 5: Package Initialization","local":"step-5-package-initialization","sections":[],"depth":2},{"title":"Step 6: Installation and Usage","local":"step-6-installation-and-usage","sections":[{"title":"Install Your Policy Package","local":"install-your-policy-package","sections":[],"depth":3},{"title":"Use Your Policy","local":"use-your-policy","sections":[],"depth":3}],"depth":2},{"title":"Examples and Community Contributions","local":"examples-and-community-contributions","sections":[],"depth":2}],"depth":1}' name="hf:doc:metadata"/><!-- HEAD_svelte-u9bgzb_END --> <p></p> <div class="items-center shrink-0 min-w-[100px] max-sm:min-w-[50px] justify-end ml-auto flex" style="float: right; margin-left: 10px; display: inline-flex; position: relative; z-index: 10;"><div class="inline-flex rounded-md max-sm:rounded-sm"> </div> </div> <h1 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="bring_your_own_policies.html#bring-your-own-policies" id="bring-your-own-policies"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>自定策略集成 (Bring Your Own Policies)</span></h1> <p data-svelte-h="svelte-1n98dr9">本教程将说明如何将您自定义的策略实现集成到 LeRobot 生态系统中，使您在运行自己的算法时，能够利用 LeRobot 提供的所有训练、评估和部署工具。</p> <h2 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="bring_your_own_policies.html#step-1-create-a-policy-package" id="step-1-create-a-policy-package"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>步骤 1：创建策略包</span></h2> <p data-svelte-h="svelte-fyljci">您的自定义策略应组织为一个可安装的 Python 包，并遵循 LeRobot 的插件约定。</p> <h3 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="bring_your_own_policies.html#package-structure" id="package-structure"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>包结构</span></h3> <p data-svelte-h="svelte-poarhp">创建一个前缀为 <code>lerobot_policy_</code>（重要！）且后接您的策略名称的包</p> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START -->lerobot_policy_my_custom_policy/
+├── pyproject.toml
+└── src/
+    └── lerobot_policy_my_custom_policy/
+        ├── __init__.py
+        ├── configuration_my_custom_policy.py
+        ├── modeling_my_custom_policy.py
+        └── processor_my_custom_policy.py<!-- HTML_TAG_END --></pre></div> <h3 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="bring_your_own_policies.html#package-configuration" id="package-configuration"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>包配置</span></h3> <p data-svelte-h="svelte-1tl7d2l">设置您的 <code>pyproject.toml</code></p> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START --><span class="hljs-section">[project]</span>
+<span class="hljs-attr">name</span> = <span class="hljs-string">"lerobot_policy_my_custom_policy"</span>
+<span class="hljs-attr">version</span> = <span class="hljs-string">"0.1.0"</span>
+<span class="hljs-attr">dependencies</span> = [
+    <span class="hljs-comment"># your policy-specific dependencies</span>
+]
+<span class="hljs-attr">requires-python</span> = <span class="hljs-string">"&gt;= 3.12"</span>
+
+<span class="hljs-section">[build-system]</span>
+build-backend = <span class="hljs-comment"># your-build-backend</span>
+requires = <span class="hljs-comment"># your-build-system</span><!-- HTML_TAG_END --></pre></div> <h2 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="bring_your_own_policies.html#step-2-define-the-policy-configuration" id="step-2-define-the-policy-configuration"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>步骤 2：定义策略配置</span></h2> <p data-svelte-h="svelte-zdwenp">创建一个继承自 <a href="https://github.com/huggingface/lerobot/blob/main/src/lerobot/configs/policies.py" rel="nofollow"><code>PreTrainedConfig</code></a> 并注册您的策略类型的配置类：以下是一个入门模板，请根据您的策略架构和训练需求自定义参数和方法。</p> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START --><span class="hljs-comment"># configuration_my_custom_policy.py</span>
+<span class="hljs-keyword">from</span> dataclasses <span class="hljs-keyword">import</span> dataclass, field
+<span class="hljs-keyword">from</span> lerobot.configs.policies <span class="hljs-keyword">import</span> PreTrainedConfig
+<span class="hljs-keyword">from</span> lerobot.optim.optimizers <span class="hljs-keyword">import</span> AdamWConfig
+<span class="hljs-keyword">from</span> lerobot.optim.schedulers <span class="hljs-keyword">import</span> CosineDecayWithWarmupSchedulerConfig
+
+<span class="hljs-meta">@PreTrainedConfig.register_subclass(<span class="hljs-params"><span class="hljs-string">"my_custom_policy"</span></span>)</span>
+<span class="hljs-meta">@dataclass</span>
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">MyCustomPolicyConfig</span>(<span class="hljs-title class_ inherited__">PreTrainedConfig</span>):
+    <span class="hljs-string">"""Configuration class for MyCustomPolicy.
+
+    Args:
+        n_obs_steps: Number of observation steps to use as input
+        horizon: Action prediction horizon
+        n_action_steps: Number of action steps to execute
+        hidden_dim: Hidden dimension for the policy network
+        # Add your policy-specific parameters here
+    """</span>
+
+    horizon: <span class="hljs-built_in">int</span> = <span class="hljs-number">50</span>
+    n_action_steps: <span class="hljs-built_in">int</span> = <span class="hljs-number">50</span>
+    hidden_dim: <span class="hljs-built_in">int</span> = <span class="hljs-number">256</span>
+
+    optimizer_lr: <span class="hljs-built_in">float</span> = <span class="hljs-number">1e-4</span>
+    optimizer_weight_decay: <span class="hljs-built_in">float</span> = <span class="hljs-number">1e-4</span>
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">__post_init__</span>(<span class="hljs-params">self</span>):
+        <span class="hljs-built_in">super</span>().__post_init__()
+        <span class="hljs-keyword">if</span> self.n_action_steps &gt; self.horizon:
+            <span class="hljs-keyword">raise</span> ValueError(<span class="hljs-string">"n_action_steps cannot exceed horizon"</span>)
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">validate_features</span>(<span class="hljs-params">self</span>) -&gt; <span class="hljs-literal">None</span>:
+        <span class="hljs-string">"""Validate input/output feature compatibility."""</span>
+        <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> self.image_features:
+            <span class="hljs-keyword">raise</span> ValueError(<span class="hljs-string">"MyCustomPolicy requires at least one image feature."</span>)
+        <span class="hljs-keyword">if</span> self.action_feature <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+            <span class="hljs-keyword">raise</span> ValueError(<span class="hljs-string">"MyCustomPolicy requires 'action' in output_features."</span>)
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">get_optimizer_preset</span>(<span class="hljs-params">self</span>) -&gt; AdamWConfig:
+        <span class="hljs-keyword">return</span> AdamWConfig(lr=self.optimizer_lr, weight_decay=self.optimizer_weight_decay)
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">get_scheduler_preset</span>(<span class="hljs-params">self</span>):
+        <span class="hljs-keyword">return</span> <span class="hljs-literal">None</span>
+
+<span class="hljs-meta">    @property</span>
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">observation_delta_indices</span>(<span class="hljs-params">self</span>) -&gt; <span class="hljs-built_in">list</span>[<span class="hljs-built_in">int</span>] | <span class="hljs-literal">None</span>:
+        <span class="hljs-string">"""Relative timestep offsets the dataset loader provides per observation.
+
+        Return `None` for single-frame policies. For temporal policies that consume
+        multiple past or future frames, return a list of offsets, e.g. `[-20, -10, 0, 10]` for
+        3 past frames at stride 10 and 1 future frame at stride 10.
+        """</span>
+        <span class="hljs-keyword">return</span> <span class="hljs-literal">None</span>
+
+<span class="hljs-meta">    @property</span>
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">action_delta_indices</span>(<span class="hljs-params">self</span>) -&gt; <span class="hljs-built_in">list</span>[<span class="hljs-built_in">int</span>]:
+        <span class="hljs-string">"""Relative timestep offsets for the action chunk the dataset loader returns.
+        """</span>
+        <span class="hljs-keyword">return</span> <span class="hljs-built_in">list</span>(<span class="hljs-built_in">range</span>(self.horizon))
+
+<span class="hljs-meta">    @property</span>
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">reward_delta_indices</span>(<span class="hljs-params">self</span>) -&gt; <span class="hljs-literal">None</span>:
+        <span class="hljs-keyword">return</span> <span class="hljs-literal">None</span><!-- HTML_TAG_END --></pre></div> <h2 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="bring_your_own_policies.html#step-3-implement-the-policy-class" id="step-3-implement-the-policy-class"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>步骤 3：实现策略类</span></h2> <p data-svelte-h="svelte-1a24gp9">通过继承 <a href="https://github.com/huggingface/lerobot/blob/main/src/lerobot/policies/pretrained.py" rel="nofollow"><code>PreTrainedPolicy</code></a> 来创建您的策略实现</p> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START --><span class="hljs-comment"># modeling_my_custom_policy.py</span>
+<span class="hljs-keyword">import</span> torch
+<span class="hljs-keyword">import</span> torch.nn <span class="hljs-keyword">as</span> nn
+<span class="hljs-keyword">from</span> typing <span class="hljs-keyword">import</span> <span class="hljs-type">Any</span>
+
+<span class="hljs-keyword">from</span> lerobot.policies.pretrained <span class="hljs-keyword">import</span> PreTrainedPolicy
+<span class="hljs-keyword">from</span> lerobot.utils.constants <span class="hljs-keyword">import</span> ACTION
+<span class="hljs-keyword">from</span> .configuration_my_custom_policy <span class="hljs-keyword">import</span> MyCustomPolicyConfig
+
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">MyCustomPolicy</span>(<span class="hljs-title class_ inherited__">PreTrainedPolicy</span>):
+    config_class = MyCustomPolicyConfig  <span class="hljs-comment"># must match the string in @register_subclass</span>
+    name = <span class="hljs-string">"my_custom_policy"</span>
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">__init__</span>(<span class="hljs-params">self, config: MyCustomPolicyConfig, dataset_stats: <span class="hljs-built_in">dict</span>[<span class="hljs-built_in">str</span>, <span class="hljs-type">Any</span>] = <span class="hljs-literal">None</span></span>):
+        <span class="hljs-built_in">super</span>().__init__(config, dataset_stats)
+        config.validate_features()  <span class="hljs-comment"># not called automatically by the base class</span>
+        self.config = config
+        self.model = ...  <span class="hljs-comment"># your nn.Module here</span>
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">reset</span>(<span class="hljs-params">self</span>):
+        <span class="hljs-string">"""Reset episode state."""</span>
+        ...
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">get_optim_params</span>(<span class="hljs-params">self</span>) -&gt; <span class="hljs-built_in">dict</span>:
+        <span class="hljs-string">"""Return parameters to pass to the optimizer (e.g. with per-group lr/wd)."""</span>
+        <span class="hljs-keyword">return</span> {<span class="hljs-string">"params"</span>: self.parameters()}
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">predict_action_chunk</span>(<span class="hljs-params">self, batch: <span class="hljs-built_in">dict</span>[<span class="hljs-built_in">str</span>, torch.Tensor], **kwargs</span>) -&gt; torch.Tensor:
+        <span class="hljs-string">"""Return the full action chunk (B, chunk_size, action_dim) for the current observation."""</span>
+        ...
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">select_action</span>(<span class="hljs-params">self, batch: <span class="hljs-built_in">dict</span>[<span class="hljs-built_in">str</span>, torch.Tensor], **kwargs</span>) -&gt; torch.Tensor:
+        <span class="hljs-string">"""Return a single action for the current timestep (called at inference)."""</span>
+        ...
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">forward</span>(<span class="hljs-params">self, batch: <span class="hljs-built_in">dict</span>[<span class="hljs-built_in">str</span>, torch.Tensor]</span>) -&gt; <span class="hljs-built_in">dict</span>[<span class="hljs-built_in">str</span>, torch.Tensor]:
+        <span class="hljs-string">"""Compute the training loss.
+
+        `batch["action_is_pad"]` is a bool mask of shape (B, horizon) that marks
+        timesteps padded because the episode ended before `horizon` steps, you
+        can exclude those from your loss.
+        """</span>
+        actions = batch[ACTION]
+        action_is_pad = batch.get(<span class="hljs-string">"action_is_pad"</span>)
+        ...
+        <span class="hljs-keyword">return</span> {<span class="hljs-string">"loss"</span>: ...}<!-- HTML_TAG_END --></pre></div> <h2 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="bring_your_own_policies.html#step-4-add-data-processors" id="step-4-add-data-processors"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>步骤 4：添加数据处理器</span></h2> <p data-svelte-h="svelte-119s15c">创建处理器函数。具体参考请参阅 <a href="https://github.com/huggingface/lerobot/blob/main/src/lerobot/policies/act/processor_act.py" rel="nofollow">processor_act.py</a> 或 <a href="https://github.com/huggingface/lerobot/blob/main/src/lerobot/policies/diffusion/processor_diffusion.py" rel="nofollow">processor_diffusion.py</a>。</p> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START --><span class="hljs-comment"># processor_my_custom_policy.py</span>
+<span class="hljs-keyword">from</span> typing <span class="hljs-keyword">import</span> <span class="hljs-type">Any</span>
+<span class="hljs-keyword">import</span> torch
+
+<span class="hljs-keyword">from</span> lerobot.processor <span class="hljs-keyword">import</span> PolicyAction, PolicyProcessorPipeline
+
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">make_my_custom_policy_pre_post_processors</span>(<span class="hljs-params">
+    config,
+    dataset_stats: <span class="hljs-built_in">dict</span>[<span class="hljs-built_in">str</span>, <span class="hljs-built_in">dict</span>[<span class="hljs-built_in">str</span>, torch.Tensor]] | <span class="hljs-literal">None</span> = <span class="hljs-literal">None</span>,
+</span>) -&gt; <span class="hljs-built_in">tuple</span>[
+    PolicyProcessorPipeline[<span class="hljs-built_in">dict</span>[<span class="hljs-built_in">str</span>, <span class="hljs-type">Any</span>], <span class="hljs-built_in">dict</span>[<span class="hljs-built_in">str</span>, <span class="hljs-type">Any</span>]],
+    PolicyProcessorPipeline[PolicyAction, PolicyAction],
+]:
+    preprocessor = ...   <span class="hljs-comment"># build your PolicyProcessorPipeline for inputs</span>
+    postprocessor = ...  <span class="hljs-comment"># build your PolicyProcessorPipeline for outputs</span>
+    <span class="hljs-keyword">return</span> preprocessor, postprocessor<!-- HTML_TAG_END --></pre></div> <p data-svelte-h="svelte-k47civ"><strong>重要提示 - 函数命名：</strong> LeRobot 通过名称发现您的处理器。该函数 <strong>必须</strong> 命名为 <code>make_{policy_name}_pre_post_processors</code>（与您传递给 <code>@PreTrainedConfig.register_subclass</code> 的字符串相匹配）。</p> <h2 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="bring_your_own_policies.html#step-5-package-initialization" id="step-5-package-initialization"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>步骤 5：包初始化</span></h2> <p data-svelte-h="svelte-1m1en5f">在包的 <code>__init__.py</code> 中公开您的类</p> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START --><span class="hljs-comment"># __init__.py</span>
+<span class="hljs-string">"""Custom policy package for LeRobot."""</span>
+
+<span class="hljs-keyword">try</span>:
+    <span class="hljs-keyword">import</span> lerobot  <span class="hljs-comment"># noqa: F401</span>
+<span class="hljs-keyword">except</span> ImportError:
+    <span class="hljs-keyword">raise</span> ImportError(
+        <span class="hljs-string">"lerobot is not installed. Please install lerobot to use this policy package."</span>
+    )
+
+<span class="hljs-keyword">from</span> .configuration_my_custom_policy <span class="hljs-keyword">import</span> MyCustomPolicyConfig
+<span class="hljs-keyword">from</span> .modeling_my_custom_policy <span class="hljs-keyword">import</span> MyCustomPolicy
+<span class="hljs-keyword">from</span> .processor_my_custom_policy <span class="hljs-keyword">import</span> make_my_custom_policy_pre_post_processors
+
+__all__ = [
+    <span class="hljs-string">"MyCustomPolicyConfig"</span>,
+    <span class="hljs-string">"MyCustomPolicy"</span>,
+    <span class="hljs-string">"make_my_custom_policy_pre_post_processors"</span>,
+]<!-- HTML_TAG_END --></pre></div> <h2 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="bring_your_own_policies.html#step-6-installation-and-usage" id="step-6-installation-and-usage"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>步骤 6：安装与使用</span></h2> <h3 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="bring_your_own_policies.html#install-your-policy-package" id="install-your-policy-package"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>安装您的策略包</span></h3> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START --><span class="hljs-built_in">cd</span> lerobot_policy_my_custom_policy
+pip install -e .
+
+<span class="hljs-comment"># Or install from PyPI if published</span>
+pip install lerobot_policy_my_custom_policy<!-- HTML_TAG_END --></pre></div> <h3 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="bring_your_own_policies.html#use-your-policy" id="use-your-policy"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>使用您的策略</span></h3> <p data-svelte-h="svelte-zi2hd8">安装完成后，您的策略将自动与 LeRobot 的训练和评估工具集成</p> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START -->lerobot-train \
+    --policy.type my_custom_policy \
+    --env.type pusht \
+    --steps 200000<!-- HTML_TAG_END --></pre></div> <h2 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="bring_your_own_policies.html#examples-and-community-contributions" id="examples-and-community-contributions"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>示例与社区贡献</span></h2> <p data-svelte-h="svelte-7eu84c">查看这些策略实现示例</p> <ul data-svelte-h="svelte-1y6jp3"><li><a href="https://github.com/danielsanjosepro/lerobot_policy_ditflow" rel="nofollow">DiTFlow Policy</a> - 采用流匹配（flow-matching）目标的扩散 Transformer 策略。在此示例中尝试：<a href="https://github.com/danielsanjosepro/test_lerobot_policy_ditflow" rel="nofollow">DiTFlow 示例</a></li></ul> <p data-svelte-h="svelte-12scgm3">与社区分享你的策略实现吧！ 🤗</p> <a class="!text-gray-400 !no-underline text-sm flex items-center not-prose mt-4" href="https://github.com/huggingface/lerobot/blob/main/docs/source/bring_your_own_policies.mdx" target="_blank"><svg aria-hidden="true" class="mr-1" fill="currentColor" focusable="false" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 32 32" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M31,16l-7,7l-1.41-1.41L28.17,16l-5.58-5.59L24,9l7,7z"></path><path d="M1,16l7-7l1.41,1.41L3.83,16l5.58,5.59L8,23l-7-7z"></path><path d="M12.419,25.484L17.639,6.552l1.932,0.518L14.351,26.002z"></path></svg> <span data-svelte-h="svelte-zjs2n5"><span class="underline">在 GitHub 上更新</span></span></a> <p></p>
+
+<!-- --></div>

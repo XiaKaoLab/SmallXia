@@ -1,0 +1,209 @@
+# 来源
+
+https://hugging-face.cn/docs/lerobot/en/tools
+
+# Tools
+
+LeRobot v3.1 supports **tool calls** in policies — assistant messages can
+emit structured invocations like `say(text="OK, starting now")` that the
+runtime dispatches to a real implementation (TTS, controller, logger, …).
+
+This page covers:
+
+1. Where the tool catalog lives.
+2. How the annotation pipeline produces tool-call atoms.
+3. How to add your own tool.
+
+## Where tools are declared
+
+Two layers.
+
+**The catalog** — a list of OpenAI-style function schemas — lives at `meta/info.json["tools"]` on each dataset. Example:
+
+```
+{
+  "features": { "...": "..." },
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "say",
+        "description": "Speak a short utterance to the user via the TTS executor.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "The verbatim text to speak."
+            }
+          },
+          "required": ["text"]
+        }
+      }
+    }
+  ]
+}
+```
+
+Read it via the dataset metadata accessor:
+
+```
+from lerobot.datasets.dataset_metadata import LeRobotDatasetMetadata
+
+meta = LeRobotDatasetMetadata(repo_id="pepijn/super_poulain_final_annotations")
+tools = meta.tools     # list[dict] — OpenAI tool schemas
+```
+
+If the dataset’s `info.json` doesn’t declare any tools, `meta.tools` returns `DEFAULT_TOOLS` from `lerobot.datasets.language` — currently a
+single-entry list with the canonical `say` schema. So unannotated
+datasets and chat-template consumers keep working without any
+configuration:
+
+```
+prompt_str = tokenizer.apply_chat_template(
+    sample["messages"],
+    tools=meta.tools,                 # works either way
+    add_generation_prompt=False,
+    tokenize=False,
+)
+```
+
+**The implementations** — runnable Python — will live under `src/lerobot/tools/`, one file per tool. The runtime dispatcher and
+the canonical `say` implementation (wrapping Kyutai’s pocket-tts) are
+not part of the catalog layer described here; today this layer ships
+only the schema storage and the `DEFAULT_TOOLS` fallback constant.
+
+## Per-row tool invocations
+
+The catalog above describes *what can be called*. The actual *call* — the
+function name plus the argument values — is stored per-row, on the
+assistant atoms in `language_events`:
+
+```
+{
+  "role": "assistant",
+  "content": null,
+  "style": null,
+  "timestamp": 12.4,
+  "camera": null,
+  "tool_calls": [
+    { "type": "function",
+      "function": { "name": "say", "arguments": { "text": "On it." } } }
+  ]
+}
+```
+
+Recipes splice these into rendered messages via `tool_calls_from`:
+
+```
+user_interjection_response:
+  bindings:
+    speech: "emitted_at(t, role=assistant, tool_name=say)"
+  messages:
+    - { role: user, content: "${task}", stream: high_level }
+    - {
+        role: assistant,
+        content: "${current_plan}",
+        stream: high_level,
+        target: true,
+        tool_calls_from: speech,
+      }
+```
+
+The model’s training target is one assistant turn that carries both the
+plan text *and* the `say` tool call. At inference, the runtime parses
+the generated text back into structured `tool_calls` and dispatches to
+the matching implementation.
+
+## How to add your own tool
+
+> **Note:** Steps 2 and 3 below describe the runtime layer
+> (`src/lerobot/tools/`, the `Tool` protocol, `TOOL_REGISTRY`, `get_tools(meta)`) which is not part of the catalog layer shipped
+> today — those modules don’t yet exist in the tree. Step 1 alone is
+> enough to make the tool visible to the chat template via `meta.tools` so the model can learn to *generate* the call;
+> executing the call at inference requires the runtime layer.
+
+Three steps. Concrete example: a `record_observation` tool the policy
+can call to capture an extra observation outside the regular control
+loop.
+
+### Step 1 — declare the schema
+
+Add an entry under `meta/info.json["tools"]`. Either edit the file
+directly on disk *before* running the annotation pipeline (it’ll be
+preserved) or hand it to `lerobot-annotate` via a config flag.
+
+```
+{
+  "tools": [
+    { "type": "function", "function": { "name": "say", "...": "..." } },
+    {
+      "type": "function",
+      "function": {
+        "name": "record_observation",
+        "description": "Capture a high-resolution still image for the user.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "description": "Short label for the saved image."
+            }
+          },
+          "required": ["label"]
+        }
+      }
+    }
+  ]
+}
+```
+
+The schema follows OpenAI’s function-calling convention exactly, so the
+chat template can render it natively.
+
+### Step 2 — implement the call
+
+Create `src/lerobot/tools/record_observation.py`:
+
+```
+from .base import Tool
+from typing import Any
+
+RECORD_OBSERVATION_SCHEMA: dict[str, Any] = { "...": "..." }   # mirrors the JSON above
+
+
+class RecordObservationTool:
+    name = "record_observation"
+    schema = RECORD_OBSERVATION_SCHEMA
+
+    def __init__(self, schema: dict | None = None, output_dir: str = "."):
+        self.output_dir = output_dir
+
+    def call(self, arguments: dict) -> str:
+        label = arguments["label"]
+        # ... save the latest camera frame to <output_dir>/<label>.png ...
+        return f"saved {label}.png"
+```
+
+One file per tool keeps dependencies isolated — `record_observation` might pull `pillow`, while `say` pulls `pocket-tts`. Users installing
+only the tools they need avoid heavy transitive deps.
+
+### Step 3 — register it
+
+Add to `src/lerobot/tools/registry.py`:
+
+```
+from .record_observation import RecordObservationTool
+
+TOOL_REGISTRY["record_observation"] = RecordObservationTool
+```
+
+That’s it. At runtime `get_tools(meta)` looks up each schema in `meta.tools`, instantiates the matching registered class, and returns
+a name → instance dict the dispatcher can route into.
+
+If you want to use a tool *without* writing an implementation (e.g. for
+training-time chat-template formatting only), step 1 alone is enough —
+the model still learns to *generate* the call. Steps 2 and 3 are only
+needed to actually *execute* it at inference.
+
+ [Update on GitHub](https://github.com/huggingface/lerobot/blob/main/docs/source/tools.mdx)

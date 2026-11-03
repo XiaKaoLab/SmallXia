@@ -1,0 +1,170 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><style>body{max-width:960px;margin:40px auto;padding:0 24px;font:16px/1.8 system-ui}pre{overflow:auto;background:#f2f5f4;padding:16px}img,video{max-width:100%}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:8px}</style><title>LeIsaac × LeRobot EnvHub</title><a href="README.html">文档目录</a><p>来源：<a href="https://hugging-face.cn/docs/lerobot/envhub_leisaac">https://hugging-face.cn/docs/lerobot/envhub_leisaac</a></p><div class="prose-doc prose relative mx-auto max-w-4xl break-words"><!-- --> <!-- HEAD_svelte-u9bgzb_START --><meta content='{"title":"LeIsaac × LeRobot EnvHub","local":"leisaac--lerobot-envhub","sections":[],"depth":1}' name="hf:doc:metadata"/><!-- HEAD_svelte-u9bgzb_END --> <p></p> <div class="items-center shrink-0 min-w-[100px] max-sm:min-w-[50px] justify-end ml-auto flex" style="float: right; margin-left: 10px; display: inline-flex; position: relative; z-index: 10;"><div class="inline-flex rounded-md max-sm:rounded-sm"> </div> </div> <h1 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="envhub_leisaac.html#leisaac--lerobot-envhub" id="leisaac--lerobot-envhub"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>LeIsaac × LeRobot EnvHub</span></h1> <p data-svelte-h="svelte-s8pu64">LeRobot EnvHub 现在支持通过 LeIsaac 在<strong>仿真环境中进行模仿学习</strong>。您可以启动日常操作任务、遥操作机器人、收集演示数据、将其推送到 Hub，并在 LeRobot 中训练策略 —— 全部在同一个闭环中完成。</p> <p data-svelte-h="svelte-1kl5iei"><a href="https://github.com/LightwheelAI/leisaac" rel="nofollow">LeIsaac</a> 与 IsaacLab 及 SO101 主从架构（Leader/Follower）集成，提供：</p> <ul data-svelte-h="svelte-1pvi1rk"><li>🕹️ <strong>以遥操作为核心的工作流</strong>，用于数据收集</li> <li>📦 <strong>内置数据转换</strong>，可直接用于 LeRobot 训练</li> <li>🤖 <strong>日常技能</strong>，如采摘橙子、举起方块、清理桌面和折叠衣服</li> <li>☁️ <strong>来自 <a href="https://lightwheel.ai/" rel="nofollow">LightWheel</a> 的持续升级</strong>：云端仿真、EnvHub 支持、Sim2Real 工具等</li></ul> <p data-svelte-h="svelte-11vbxnf">以下是目前通过 LeRobot EnvHub 提供的 LeIsaac 支持任务。</p> <h1 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="envhub_leisaac.html#available-environments" id="available-environments"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>可用环境</span></h1> <p data-svelte-h="svelte-ysxdxo">下表列出了 LeIsaac x LeRobot Envhub 中所有可用的任务和环境。您也可以通过运行以下命令获取最新的环境列表</p> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START -->python scripts/environments/list_envs.py<!-- HTML_TAG_END --></pre></div> <table data-svelte-h="svelte-8dz9yy"><thead><tr><th align="left">任务</th> <th align="left">环境 ID</th> <th align="left">任务描述</th> <th align="left">相关机器人</th></tr></thead> <tbody><tr><td align="left"><video autoplay="" loop="" muted="" playsinline="" src="https://github.com/user-attachments/assets/466eddff-f720-4f99-94d5-5e123e4c302c" style="max-width: 300px;"></video></td> <td align="left"><a href="https://github.com/LightwheelAI/leisaac/blob/main/source/leisaac/leisaac/tasks/pick_orange/pick_orange_env_cfg.py" rel="nofollow">LeIsaac-SO101-PickOrange-v0</a><br/><br/><a href="https://github.com/LightwheelAI/leisaac/blob/main/source/leisaac/leisaac/tasks/pick_orange/direct/pick_orange_env.py" rel="nofollow">LeIsaac-SO101-PickOrange-Direct-v0</a></td> <td align="left">采摘三个橙子并放入盘中，然后将机械臂复位到静止状态。</td> <td align="left">单臂 SO101 Follower</td></tr> <tr><td align="left"><video autoplay="" loop="" muted="" playsinline="" src="https://github.com/user-attachments/assets/1e4eb83a-0b38-40fb-a0b2-ddb0fe201e6d" style="max-width: 300px;"></video></td> <td align="left"><a href="https://github.com/LightwheelAI/leisaac/blob/main/source/leisaac/leisaac/tasks/lift_cube/lift_cube_env_cfg.py" rel="nofollow">LeIsaac-SO101-LiftCube-v0</a><br/><br/><a href="https://github.com/LightwheelAI/leisaac/blob/main/source/leisaac/leisaac/tasks/lift_cube/direct/lift_cube_env.py" rel="nofollow">LeIsaac-SO101-LiftCube-Direct-v0</a></td> <td align="left">举起红色方块。</td> <td align="left">单臂 SO101 Follower</td></tr> <tr><td align="left"><video autoplay="" loop="" muted="" playsinline="" src="https://github.com/user-attachments/assets/e49d8f1c-dcc9-412b-a88f-100680d8a45b" style="max-width: 300px;"></video></td> <td align="left"><a href="https://github.com/LightwheelAI/leisaac/blob/main/source/leisaac/leisaac/tasks/clean_toy_table/clean_toy_table_env_cfg.py" rel="nofollow">LeIsaac-SO101-CleanToyTable-v0</a><br/><br/><a href="https://github.com/LightwheelAI/leisaac/blob/main/source/leisaac/leisaac/tasks/clean_toy_table/clean_toy_table_bi_arm_env_cfg.py" rel="nofollow">LeIsaac-SO101-CleanToyTable-BiArm-v0</a><br/><br/><a href="https://github.com/LightwheelAI/leisaac/blob/main/source/leisaac/leisaac/tasks/clean_toy_table/direct/clean_toy_table_bi_arm_env.py" rel="nofollow">LeIsaac-SO101-CleanToyTable-BiArm-Direct-v0</a></td> <td align="left">将两个字母 e 物体放入盒子中，然后将机械臂复位到静止状态。</td> <td align="left">单臂 SO101 Follower<br/><br/>双臂 SO101 Follower</td></tr> <tr><td align="left"><video autoplay="" loop="" muted="" playsinline="" src="https://github.com/user-attachments/assets/e29a0f8a-9286-4ce6-b45d-342c3d3ba754" style="max-width: 300px;"></video></td> <td align="left"><a href="https://github.com/LightwheelAI/leisaac/blob/main/source/leisaac/leisaac/tasks/fold_cloth/fold_cloth_bi_arm_env_cfg.py" rel="nofollow">LeIsaac-SO101-FoldCloth-BiArm-v0</a><br/><br/><a href="https://github.com/LightwheelAI/leisaac/blob/main/source/leisaac/leisaac/tasks/fold_cloth/direct/fold_cloth_bi_arm_env.py" rel="nofollow">LeIsaac-SO101-FoldCloth-BiArm-Direct-v0</a></td> <td align="left">折叠衣服，然后将机械臂复位到静止状态。<br/><br/><em>注意：在该任务中，仅 DirectEnv 支持 check_success。</em></td> <td align="left">双臂 SO101 Follower</td></tr></tbody></table> <h1 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="envhub_leisaac.html#load-leisaac-directly-in-lerobot-with-one-line-of-code" id="load-leisaac-directly-in-lerobot-with-one-line-of-code"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>使用一行代码在 LeRobot 中直接加载 LeIsaac</span></h1> <blockquote data-svelte-h="svelte-a01am5"><p>EnvHub：通过 HuggingFace 分享 LeIsaac 环境</p></blockquote> <p data-svelte-h="svelte-1c2ebfv"><a href="envhub.html" rel="nofollow">EnvHub</a> 是我们的可复现环境中心。您可以用一行代码启动一个打包好的仿真环境，立即进行实验，并为社区发布您自己的任务。</p> <p data-svelte-h="svelte-17f41au">LeIsaac 提供了 EnvHub 支持，因此您只需几个命令即可使用或分享任务。</p> <video controls="" src="https://github.com/user-attachments/assets/687666f5-ebe0-421d-84a0-eb86116ac5f8" style="[object Object]"></video> <h2 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="envhub_leisaac.html#how-to-get-started-environment-setup" id="how-to-get-started-environment-setup"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>如何入门，环境搭建</span></h2> <p data-svelte-h="svelte-1tnp3zj">运行以下命令来搭建您的代码环境</p> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START --><span class="hljs-comment"># Refer to Getting Started/Installation to install leisaac firstly</span>
+conda create -n leisaac_envhub python=3.11
+conda activate leisaac_envhub
+
+conda install -c <span class="hljs-string">"nvidia/label/cuda-12.8.1"</span> cuda-toolkit
+pip install -U torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cu128
+pip install <span class="hljs-string">'leisaac[isaaclab] @ git+https://github.com/LightwheelAI/leisaac.git#subdirectory=source/leisaac'</span> --extra-index-url https://pypi.nvidia.com
+
+<span class="hljs-comment"># Install lerobot</span>
+pip install lerobot==0.4.1
+
+<span class="hljs-comment"># Fix numpy version</span>
+pip install numpy==1.26.0<!-- HTML_TAG_END --></pre></div> <h2 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="envhub_leisaac.html#usage-example" id="usage-example"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>用法示例</span></h2> <p data-svelte-h="svelte-1lz0nok">EnvHub 通过统一的接口公开了所有 LeIsaac 支持的任务。下面的示例加载了 <code>so101_pick_orange</code>，并演示了随机动作滚动（random-action rollout）和交互式遥操作。</p> <h3 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="envhub_leisaac.html#random-action" id="random-action"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>随机动作</span></h3> <details><summary data-svelte-h="svelte-dyfy5e">点击展开代码示例</summary> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START --><span class="hljs-comment"># envhub_random_action.py</span>
+
+<span class="hljs-keyword">import</span> torch
+<span class="hljs-keyword">from</span> lerobot.envs.factory <span class="hljs-keyword">import</span> make_env
+
+<span class="hljs-comment"># Load from the hub</span>
+envs_dict = make_env(<span class="hljs-string">"LightwheelAI/leisaac_env:envs/so101_pick_orange.py"</span>, n_envs=<span class="hljs-number">1</span>, trust_remote_code=<span class="hljs-literal">True</span>)
+
+<span class="hljs-comment"># Access the environment</span>
+suite_name = <span class="hljs-built_in">next</span>(<span class="hljs-built_in">iter</span>(envs_dict))
+sync_vector_env = envs_dict[suite_name][<span class="hljs-number">0</span>]
+<span class="hljs-comment"># retrieve the isaac environment from the sync vector env</span>
+env = sync_vector_env.envs[<span class="hljs-number">0</span>].unwrapped
+
+<span class="hljs-comment"># Use it like any gym environment</span>
+obs, info = env.reset()
+
+<span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:
+    action = torch.tensor(env.action_space.sample())
+    obs, reward, terminated, truncated, info = env.step(action)
+    <span class="hljs-keyword">if</span> terminated <span class="hljs-keyword">or</span> truncated:
+        obs, info = env.reset()
+
+env.close()<!-- HTML_TAG_END --></pre></div></details> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START -->python envhub_random_action.py<!-- HTML_TAG_END --></pre></div> <p data-svelte-h="svelte-f7t3zy">您应该能看到 SO101 机械臂在纯随机命令下摆动。</p> <h3 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="envhub_leisaac.html#teleoperation" id="teleoperation"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>遥操作</span></h3> <p data-svelte-h="svelte-1pl3ov7">LeRobot 的遥操作栈可以驱动仿真机械臂。</p> <p data-svelte-h="svelte-udc9ss">连接 SO101 Leader 控制器，运行下面的校准命令。</p> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START -->lerobot-calibrate \
+    --teleop.type=so101_leader \
+    --teleop.port=/dev/ttyACM0 \
+    --teleop.id=leader<!-- HTML_TAG_END --></pre></div> <p data-svelte-h="svelte-1br77vs">然后启动遥操作脚本。</p> <details><summary data-svelte-h="svelte-dyfy5e">点击展开代码示例</summary> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START --><span class="hljs-comment"># envhub_teleop_example.py</span>
+
+<span class="hljs-keyword">import</span> logging
+<span class="hljs-keyword">import</span> time
+<span class="hljs-keyword">import</span> gymnasium <span class="hljs-keyword">as</span> gym
+
+<span class="hljs-keyword">from</span> dataclasses <span class="hljs-keyword">import</span> asdict, dataclass
+<span class="hljs-keyword">from</span> pprint <span class="hljs-keyword">import</span> pformat
+
+<span class="hljs-keyword">from</span> lerobot.teleoperators <span class="hljs-keyword">import</span> (  <span class="hljs-comment"># noqa: F401</span>
+    Teleoperator,
+    TeleoperatorConfig,
+    make_teleoperator_from_config,
+    so_leader,
+    bi_so_leader,
+)
+<span class="hljs-keyword">from</span> lerobot.utils.robot_utils <span class="hljs-keyword">import</span> precise_sleep
+<span class="hljs-keyword">from</span> lerobot.utils.utils <span class="hljs-keyword">import</span> init_logging
+<span class="hljs-keyword">from</span> lerobot.envs.factory <span class="hljs-keyword">import</span> make_env
+
+
+<span class="hljs-meta">@dataclass</span>
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">TeleoperateConfig</span>:
+    teleop: TeleoperatorConfig
+    env_name: <span class="hljs-built_in">str</span> = <span class="hljs-string">"so101_pick_orange"</span>
+    fps: <span class="hljs-built_in">int</span> = <span class="hljs-number">60</span>
+
+
+<span class="hljs-meta">@dataclass</span>
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">EnvWrap</span>:
+    env: gym.Env
+
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">make_env_from_leisaac</span>(<span class="hljs-params">env_name: <span class="hljs-built_in">str</span> = <span class="hljs-string">"so101_pick_orange"</span></span>):
+    envs_dict = make_env(
+        <span class="hljs-string">f'LightwheelAI/leisaac_env:envs/<span class="hljs-subst">{env_name}</span>.py'</span>,
+        n_envs=<span class="hljs-number">1</span>,
+        trust_remote_code=<span class="hljs-literal">True</span>
+    )
+    suite_name = <span class="hljs-built_in">next</span>(<span class="hljs-built_in">iter</span>(envs_dict))
+    sync_vector_env = envs_dict[suite_name][<span class="hljs-number">0</span>]
+    env = sync_vector_env.envs[<span class="hljs-number">0</span>].unwrapped
+
+    <span class="hljs-keyword">return</span> env
+
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">teleop_loop</span>(<span class="hljs-params">teleop: Teleoperator, env: gym.Env, fps: <span class="hljs-built_in">int</span></span>):
+    <span class="hljs-keyword">from</span> leisaac.devices.action_process <span class="hljs-keyword">import</span> preprocess_device_action
+    <span class="hljs-keyword">from</span> leisaac.assets.robots.lerobot <span class="hljs-keyword">import</span> SO101_FOLLOWER_MOTOR_LIMITS
+    <span class="hljs-keyword">from</span> leisaac.utils.env_utils <span class="hljs-keyword">import</span> dynamic_reset_gripper_effort_limit_sim
+
+    env_wrap = EnvWrap(env=env)
+
+    obs, info = env.reset()
+    <span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:
+        loop_start = time.perf_counter()
+        <span class="hljs-keyword">if</span> env.cfg.dynamic_reset_gripper_effort_limit:
+            dynamic_reset_gripper_effort_limit_sim(env, <span class="hljs-string">'so101leader'</span>)
+
+        raw_action = teleop.get_action()
+        processed_action = preprocess_device_action(
+            <span class="hljs-built_in">dict</span>(
+                so101_leader=<span class="hljs-literal">True</span>,
+                joint_state={
+                    k.removesuffix(<span class="hljs-string">".pos"</span>): v <span class="hljs-keyword">for</span> k, v <span class="hljs-keyword">in</span> raw_action.items()},
+                motor_limits=SO101_FOLLOWER_MOTOR_LIMITS),
+            env_wrap
+        )
+        obs, reward, terminated, truncated, info = env.step(processed_action)
+        <span class="hljs-keyword">if</span> terminated <span class="hljs-keyword">or</span> truncated:
+            obs, info = env.reset()
+
+        dt_s = time.perf_counter() - loop_start
+        precise_sleep(<span class="hljs-built_in">max</span>(<span class="hljs-number">1</span> / fps - dt_s, <span class="hljs-number">0.0</span>))
+        loop_s = time.perf_counter() - loop_start
+        <span class="hljs-built_in">print</span>(<span class="hljs-string">f"\ntime: <span class="hljs-subst">{loop_s * <span class="hljs-number">1e3</span>:<span class="hljs-number">.2</span>f}</span>ms (<span class="hljs-subst">{<span class="hljs-number">1</span> / loop_s:<span class="hljs-number">.0</span>f}</span> Hz)"</span>)
+
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">teleoperate</span>(<span class="hljs-params">cfg: TeleoperateConfig</span>):
+    init_logging()
+    logging.info(pformat(asdict(cfg)))
+
+    teleop = make_teleoperator_from_config(cfg.teleop)
+    env = make_env_from_leisaac(cfg.env_name)
+
+    teleop.connect()
+    <span class="hljs-keyword">if</span> <span class="hljs-built_in">hasattr</span>(env, <span class="hljs-string">'initialize'</span>):
+        env.initialize()
+    <span class="hljs-keyword">try</span>:
+        teleop_loop(teleop=teleop, env=env, fps=cfg.fps)
+    <span class="hljs-keyword">except</span> KeyboardInterrupt:
+        <span class="hljs-keyword">pass</span>
+    <span class="hljs-keyword">finally</span>:
+        teleop.disconnect()
+        env.close()
+
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">main</span>():
+    teleoperate(TeleoperateConfig(
+        teleop=so_leader.SO101LeaderConfig(
+            port=<span class="hljs-string">"/dev/ttyACM0"</span>,
+            <span class="hljs-built_in">id</span>=<span class="hljs-string">'leader'</span>,
+            use_degrees=<span class="hljs-literal">False</span>,
+        ),
+        env_name=<span class="hljs-string">"so101_pick_orange"</span>,
+        fps=<span class="hljs-number">60</span>,
+    ))
+
+
+<span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">"__main__"</span>:
+    main()
+<!-- HTML_TAG_END --></pre></div></details> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START -->python envhub_teleop_example.py<!-- HTML_TAG_END --></pre></div> <p data-svelte-h="svelte-1wj9s2a">运行该脚本后，您可以使用物理 Leader 设备来操作仿真机械臂。</p> <h2 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="envhub_leisaac.html#-cloud-simulation-no-gpu-required" id="-cloud-simulation-no-gpu-required"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>☁️ 云端仿真（无需 GPU）</span></h2> <p data-svelte-h="svelte-1i0ni4s">没有本地 GPU 或正确的驱动程序？没问题！您可以在云端完全运行 LeIsaac，无需任何设置。LeIsaac 在 <strong>NVIDIA Brev</strong> 上开箱即用，直接在浏览器中为您提供完整配置的环境。</p> <p data-svelte-h="svelte-19x4bvy">👉 <strong>由此开始：</strong> <a href="https://lightwheelai.github.io/leisaac/docs/cloud_simulation/nvidia_brev" rel="nofollow">https://lightwheelai.github.io/leisaac/docs/cloud_simulation/nvidia_brev</a></p> <p data-svelte-h="svelte-qykh1k">实例部署后，只需打开 <strong>80 端口 (HTTP)</strong> 的链接即可启动 <strong>Visual Studio Code Server</strong>（默认密码：<code>password</code>）。从此，您可以在 Web 浏览器中运行仿真、编辑代码并可视化 IsaacLab 环境。</p> <p data-svelte-h="svelte-1rbuv2o"><strong>无需 GPU，无需驱动，无需本地安装。只需点击即可运行。</strong></p> <h2 class="relative group"><a class="header-link block pr-1.5 text-lg no-hover:hidden with-hover:absolute with-hover:p-1.5 with-hover:opacity-0 with-hover:group-hover:opacity-100 with-hover:right-full" href="envhub_leisaac.html#additional-notes" id="additional-notes"><span><svg aria-hidden="true" class="" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 256 256" width="1em" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M167.594 88.393a8.001 8.001 0 0 1 0 11.314l-67.882 67.882a8 8 0 1 1-11.314-11.315l67.882-67.881a8.003 8.003 0 0 1 11.314 0zm-28.287 84.86l-28.284 28.284a40 40 0 0 1-56.567-56.567l28.284-28.284a8 8 0 0 0-11.315-11.315l-28.284 28.284a56 56 0 0 0 79.196 79.197l28.285-28.285a8 8 0 1 0-11.315-11.314zM212.852 43.14a56.002 56.002 0 0 0-79.196 0l-28.284 28.284a8 8 0 1 0 11.314 11.314l28.284-28.284a40 40 0 0 1 56.568 56.567l-28.285 28.285a8 8 0 0 0 11.315 11.314l28.284-28.284a56.065 56.065 0 0 0 0-79.196z" fill="currentColor"></path></svg></span></a> <span>补充说明</span></h2> <p data-svelte-h="svelte-p7m3y7">我们使 EnvHub 的覆盖范围与 LeIsaac 任务保持一致。目前支持：</p> <ul data-svelte-h="svelte-10b4249"><li><code>so101_pick_orange</code></li> <li><code>so101_lift_cube</code></li> <li><code>so101_clean_toytable</code></li> <li><code>bi_so101_fold_cloth</code></li></ul> <p data-svelte-h="svelte-x0me1l">在调用 <code>make_env</code> 时指定不同的脚本即可切换任务，例如：</p> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START -->envs_dict_pick_orange = make_env(<span class="hljs-string">"LightwheelAI/leisaac_env:envs/so101_pick_orange.py"</span>, n_envs=<span class="hljs-number">1</span>, trust_remote_code=<span class="hljs-literal">True</span>)
+envs_dict_lift_cube = make_env(<span class="hljs-string">"LightwheelAI/leisaac_env:envs/so101_lift_cube.py"</span>, n_envs=<span class="hljs-number">1</span>, trust_remote_code=<span class="hljs-literal">True</span>)
+envs_dict_clean_toytable = make_env(<span class="hljs-string">"LightwheelAI/leisaac_env:envs/so101_clean_toytable.py"</span>, n_envs=<span class="hljs-number">1</span>, trust_remote_code=<span class="hljs-literal">True</span>)
+envs_dict_fold_cloth = make_env(<span class="hljs-string">"LightwheelAI/leisaac_env:envs/bi_so101_fold_cloth.py"</span>, n_envs=<span class="hljs-number">1</span>, trust_remote_code=<span class="hljs-literal">True</span>)<!-- HTML_TAG_END --></pre></div> <p data-svelte-h="svelte-x5iyro">注意：在使用 <code>bi_so101_fold_cloth</code> 时，请在检索环境后立即调用 <code>initialize()</code>，然后再执行任何其他操作。</p> <details><summary data-svelte-h="svelte-dyfy5e">点击展开代码示例</summary> <div class="code-block relative"><div class="absolute top-2.5 right-4"></div> <pre class=""><!-- HTML_TAG_START --><span class="hljs-keyword">import</span> torch
+<span class="hljs-keyword">from</span> lerobot.envs.factory <span class="hljs-keyword">import</span> make_env
+
+<span class="hljs-comment"># Load from the hub</span>
+envs_dict = make_env(<span class="hljs-string">"LightwheelAI/leisaac_env:envs/bi_so101_fold_cloth.py"</span>, n_envs=<span class="hljs-number">1</span>, trust_remote_code=<span class="hljs-literal">True</span>)
+
+<span class="hljs-comment"># Access the environment</span>
+suite_name = <span class="hljs-built_in">next</span>(<span class="hljs-built_in">iter</span>(envs_dict))
+sync_vector_env = envs_dict[suite_name][<span class="hljs-number">0</span>]
+<span class="hljs-comment"># retrieve the isaac environment from the sync vector env</span>
+env = sync_vector_env.envs[<span class="hljs-number">0</span>].unwrapped
+
+<span class="hljs-comment"># <span class="hljs-doctag">NOTE:</span> initialize() first</span>
+env.initialize()
+
+<span class="hljs-comment"># other operation with env...</span><!-- HTML_TAG_END --></pre></div></details> <a class="!text-gray-400 !no-underline text-sm flex items-center not-prose mt-4" href="https://github.com/huggingface/lerobot/blob/main/docs/source/envhub_leisaac.mdx" target="_blank"><svg aria-hidden="true" class="mr-1" fill="currentColor" focusable="false" height="1em" preserveaspectratio="xMidYMid meet" role="img" viewbox="0 0 32 32" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M31,16l-7,7l-1.41-1.41L28.17,16l-5.58-5.59L24,9l7,7z"></path><path d="M1,16l7-7l1.41,1.41L3.83,16l5.58,5.59L8,23l-7-7z"></path><path d="M12.419,25.484L17.639,6.552l1.932,0.518L14.351,26.002z"></path></svg> <span data-svelte-h="svelte-zjs2n5"><span class="underline">在 GitHub 上更新</span></span></a> <p></p>
+
+<!-- --></div>
