@@ -12,7 +12,8 @@
   "app": {
     "windows": [
       {
-        "title": "table",
+        "title": "小虾台",
+        "decorations": false,
         "width": 1440,
         "height": 900,
         "minWidth": 960,
