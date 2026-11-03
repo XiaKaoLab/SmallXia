@@ -36,12 +36,18 @@ def stream_with_mcp(llm, messages, instructions):
                 "blocks_run 返回 program.id 仅表示程序已提交，使用 blocks_program_status 确认完成，停止使用 blocks_program_stop。"
                 "积木程序可能包含真机控制；只有用户明确请求真机运动时，才创建或运行启用真机控制积木。"
                 "真机控制及只读采集遵守既有身份、校准和已验证坐标配置；不得修改 verified 或身份字段绕过检查。")
-    with TableMCPClient() as mcp:
+    profile = getattr(llm, 'mcp_profile', 'default')
+    extra_guidance = BlockProgrammingGuide.instructions + VisualUnderstandingGuide.instructions
+    if profile == 'qiling':
+        from .qiling_profile import QiLingProfile
+        guidance = QiLingProfile.instructions
+        extra_guidance = ''
+    with TableMCPClient(profile=profile) as mcp:
         for round_index in range(64):
             try:
                 reader = ResponseRound(llm).stream(
                     model=llm.config.model, input=inputs,
-                    instructions=instructions + guidance + BlockProgrammingGuide.instructions + VisualUnderstandingGuide.instructions,
+                    instructions=instructions + guidance + extra_guidance,
                     tools=[*mcp.tools, QuestionTool.definition], parallel_tool_calls=False,
                     include=["reasoning.encrypted_content"],
                     tool_choice="none" if round_index == 63 else "auto",

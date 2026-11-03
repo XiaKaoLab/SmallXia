@@ -15,10 +15,14 @@ from mcp.client.stdio import stdio_client
 
 
 class TableMCPClient:
+    def __init__(self, profile='default'):
+        if profile not in ('default','qiling'):raise ValueError('未知 MCP 配置')
+        self.profile=profile
+
     @asynccontextmanager
     async def _session(self):
         params = StdioServerParameters(command=sys.executable,
-                                      args=["-m", "xiaoxia_core.mcp.server"], env=dict(os.environ))
+                                      args=["-m", "xiaoxia_core.mcp.server"], env={**os.environ, "XIAOXIA_MCP_PROFILE": self.profile})
         async with stdio_client(params) as (read, write):
             async with ClientSession(read, write, read_timeout_seconds=timedelta(seconds=30)) as session:
                 await session.initialize()
@@ -30,6 +34,9 @@ class TableMCPClient:
             self.portal = self._stack.enter_context(start_blocking_portal())
             self.session = self._stack.enter_context(self.portal.wrap_async_context_manager(self._session()))
             listed = self.portal.call(self.session.list_tools)
+            if self.profile == 'qiling':
+                from .qiling_profile import QiLingProfile
+                listed.tools = [tool for tool in listed.tools if tool.name in QiLingProfile.tools]
             self.names = {tool.name for tool in listed.tools}
             self.tools = [{"type": "function", "name": tool.name,
                            "description": tool.description or "", "parameters": tool.inputSchema,

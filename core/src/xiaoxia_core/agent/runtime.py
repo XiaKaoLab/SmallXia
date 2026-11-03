@@ -42,11 +42,13 @@ class SimpleAgent:
         instructions: str = "你是小虾台助手。使用简体中文，明确区分建议、仿真和实机事实。",
         max_context_turns: int = 20,
         max_skill_characters: int = 65_536,
+        persona: str | None = None,
     ) -> None:
         if max_context_turns < 1 or max_skill_characters < 1:
             raise ValueError("上下文轮数和技能长度上限必须为正数")
         self.llm, self.sessions, self.skills = llm, sessions, skills
         self.instructions = instructions
+        self.persona = ConversationPersona.instructions if persona is None else persona
         self.max_context_turns = max_context_turns
         self.max_skill_characters = max_skill_characters
         self._busy = Lock()
@@ -86,7 +88,7 @@ class SimpleAgent:
                 logging.getLogger(__name__).exception('本地知识库检索失败，本轮继续普通对话')
                 knowledge = ''
             instructions = "\n\n".join([
-                self.instructions, memory, knowledge, *sections, ConversationPersona.instructions,
+                self.instructions, memory, knowledge, *sections, self.persona,
             ])
             messages = [*history, LLMMessage('user', AgentCommands.prompt(text))]
             transcript = AgentTranscript()

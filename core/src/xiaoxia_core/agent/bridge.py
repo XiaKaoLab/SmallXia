@@ -30,7 +30,10 @@ class DesktopBridge:
 
     def handle(self, request: dict) -> None:
         action = request.get("action")
-        if action == "bootstrap":
+        if action == "qiling_models":
+            from .qiling import QiLingModels
+            self.emit({"type":"data","data":QiLingModels.list()})
+        elif action == "bootstrap":
             sessions = []
             for session_id in self.sessions.list_sessions():
                 messages = self.sessions.read(session_id).messages

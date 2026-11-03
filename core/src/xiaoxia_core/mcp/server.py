@@ -55,15 +55,17 @@ class TableModelTools:
 def main() -> None:
     tools = TableModelTools()
     server = FastMCP("xiaoxia-table-model")
-    server.tool()(EnvironmentTools().robot_get_environment)
-    server.tool()(ObservationTools().robot_observe)
-    server.tool()(ObservationTools().robot_list_cameras)
-    for method in (tools.table_get_state, tools.table_get_limits, tools.table_move_joints):
+    from .qiling_profile import QiLingProfile
+    profile = os.environ.get('XIAOXIA_MCP_PROFILE', 'default')
+    if profile not in ('default','qiling'):raise ValueError('未知 MCP 配置')
+    methods = [EnvironmentTools().robot_get_environment, ObservationTools().robot_observe,
+        ObservationTools().robot_list_cameras, tools.table_get_state, tools.table_get_limits, tools.table_move_joints]
+    if profile == 'default':
+        for provider,prefix in ((RLTools(),'rl_'),(BlocksTools(),'blocks_')):
+            methods.extend(getattr(provider,name) for name in dir(provider) if name.startswith(prefix))
+    for method in methods:
+        if profile == 'qiling' and method.__name__ not in QiLingProfile.tools:continue
         server.tool()(method)
-    for provider, prefix in ((RLTools(), "rl_"), (BlocksTools(), "blocks_")):
-        for name in dir(provider):
-            if name.startswith(prefix):
-                server.tool()(getattr(provider, name))
     server.run(transport="stdio")
 
 
