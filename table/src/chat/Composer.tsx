@@ -36,9 +36,10 @@ export function Composer({ value, onChange, onSend, onStop, busy, disabled }: Pr
   }}>
     {commands.length > 0 && <div id={menuId} className="slash-menu" role="listbox" aria-label="快捷命令">
       {commands.map((command, index) => <button key={command.name} id={`${menuId}-${index}`} type="button" role="option"
+        title={command.description} aria-label={command.name}
         aria-selected={index === choice} className={`menu-row ${index === choice ? "selected" : ""}`}
         onMouseEnter={() => setSelected(index)} onMouseDown={event => event.preventDefault()} onClick={() => choose(command.name)}>
-        <span className="slash-command-name">/{command.name}</span><span className="slash-command-description">{command.description}</span>
+        <command.icon size={17} className="slash-command-icon" aria-hidden="true" /><span className="slash-command-name">{command.name}</span>
       </button>)}
     </div>}
     <textarea id="chat-message-input" ref={input} value={value} rows={1} aria-label="发送消息给小虾" placeholder="有什么想法？" onChange={(event) => onChange(event.target.value)}
