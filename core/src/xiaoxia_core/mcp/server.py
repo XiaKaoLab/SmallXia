@@ -1,5 +1,5 @@
 """通过标准 MCP stdio 提供 table 模型、RL 与当前 WebView 积木工具。
-Created on 2026-11-01; Updated on 2026-11-02
+Created on 2026-11-01; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 
@@ -15,6 +15,7 @@ from ..contracts import Action
 from ..safety import JointLimits
 from .blocks_tools import BlocksTools
 from .rl_tools import RLTools
+from .environment_tools import EnvironmentTools
 
 
 class TableModelTools:
@@ -23,7 +24,7 @@ class TableModelTools:
         self.limits = JointLimits.from_urdf(root / "table/public/robots/so100/so100_mid_calib.urdf")
 
     def table_get_state(self) -> dict:
-        """读取 table 的六轴显示目标，单位 rad；不是实机或实际渲染反馈。"""
+        """查询仿真机械臂 table 的六轴目标角度，单位 rad。source=display_target，不是物理真机或渲染到位反馈。"""
         with urlopen("http://127.0.0.1:8766/api/v1/robots/table/state", timeout=1) as response:
             result = json.loads(response.read(65536))
         if result.get("physical") is not False or result.get("source") != "display_target" or result.get("unit") != "rad":
@@ -53,6 +54,7 @@ class TableModelTools:
 def main() -> None:
     tools = TableModelTools()
     server = FastMCP("xiaoxia-table-model")
+    server.tool()(EnvironmentTools().robot_get_environment)
     for method in (tools.table_get_state, tools.table_get_limits, tools.table_move_joints):
         server.tool()(method)
     for provider, prefix in ((RLTools(), "rl_"), (BlocksTools(), "blocks_")):

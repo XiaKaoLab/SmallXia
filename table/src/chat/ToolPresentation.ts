@@ -3,6 +3,7 @@
  * @author: https://github.com/Linmoqian
  */
 const tools: Record<string, [string, string]> = {
+  robot_get_environment: ["查看仿真与真机", "区分仿真服务、串口发现和真机控制连接"],
   table_get_state: ["读取机械臂状态", "查看仿真模型当前的六轴角度"],
   table_get_limits: ["读取关节限位", "查看各关节允许的角度范围"],
   table_move_joints: ["设置机械臂姿态", "向仿真模型发送六轴目标角度"],
@@ -48,6 +49,8 @@ export const jointNames: Record<string, string> = {
   wrist_flex: "腕部弯曲", wrist_roll: "腕部旋转", gripper: "夹爪",
 };
 const labels: Record<string, string> = {
+  simulation: "仿真机械臂", hardware: "真机机械臂", serial_ports: "检测到的串口",
+  serial_discovery: "串口查询", sessions: "控制连接", port: "串口", description: "设备说明", note: "说明",
   ...jointNames, status: "状态", id: "编号", request_id: "请求编号", robot_id: "机械臂", unit: "单位",
   joint_positions: "关节角度", applied_joint_positions: "应用角度", physical: "实机", source: "来源",
   camera: "相机", playback: "回放", limited: "到达边界", limit_reason: "边界原因", lower: "下限", upper: "上限",
@@ -58,6 +61,7 @@ const labels: Record<string, string> = {
   visible: "显示", parent_link: "安装位置", fov: "视场角", num_envs: "并行数量", rounds: "训练轮数",
 };
 const values: Record<string, string> = {
+  unknown: "未知", available: "可用", queried: "已查询", unavailable: "不可用", ok: "正常",
   accepted: "目标已接收", queued: "等待执行", running: "执行中", succeeded: "已完成", completed: "已完成",
   failed: "失败", cancelled: "已停止", interrupted: "已中断", paused: "已暂停", rad: "弧度",
   display_target: "仿真显示目标", table: "仿真机械臂",
@@ -65,7 +69,7 @@ const values: Record<string, string> = {
 
 export class ToolPresentation {
   static category(name: string): "查询" | "修改" | "运行" {
-    if (["table_get_state", "table_get_limits", "blocks_catalog", "blocks_list", "blocks_export",
+    if (["robot_get_environment", "table_get_state", "table_get_limits", "blocks_catalog", "blocks_list", "blocks_export",
       "blocks_command_status", "blocks_programs", "blocks_program_status", "rl_capabilities",
       "rl_get_session", "rl_list_sessions", "rl_get_job"].includes(name)) return "查询";
     if (["table_move_joints", "blocks_create", "blocks_set_fields", "blocks_move", "blocks_connect",

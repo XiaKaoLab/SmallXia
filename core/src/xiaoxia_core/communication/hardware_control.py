@@ -23,6 +23,11 @@ class HardwareControlAPI:
 
     def handle(self, method, path, body=None):
         body = body or {}
+        if method == 'GET' and path == self.prefix + '/arms':
+            with self.lock:
+                return 200, {'physical': True, 'sessions': [
+                    session.snapshot() for session in self.sessions.values()
+                ]}
         parts = path.removeprefix(self.prefix).strip('/').split('/')
         try:
             if len(parts) not in (2, 3) or parts[0] != 'arms' or not re.fullmatch(r'COM[1-9][0-9]*', parts[1]):
