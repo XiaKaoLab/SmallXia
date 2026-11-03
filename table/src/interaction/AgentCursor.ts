@@ -1,5 +1,5 @@
-/** 功能：展示 Agent 工具操作的虚拟鼠标；动画不发送输入事件，也不阻塞命令。
- * Created on 2026-11-02; Updated on 2026-11-02
+/** 功能：展示 Agent 工具操作的虚拟鼠标；动画不发送输入事件，积木桥协调执行时序。
+ * Created on 2026-11-02; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 import "./agent-cursor.css";
@@ -73,12 +73,14 @@ export class AgentCursor {
   }
 
   toolStarted(id: string, name: string): void {
+    if (name.startsWith("blocks_") && !["blocks_program_status", "blocks_programs", "blocks_program_stop", "blocks_command_status"].includes(name)) return;
     const owner = `tool:${id}`;
-    this.begin(owner, name.startsWith("rl_") ? "强化学习工具" : "调用工具");
+    this.begin(owner, name.startsWith("rl_") ? "运行策略" : name === "table_move_joints" ? "调整姿态" : "查询机械臂");
     requestAnimationFrame(() => {
       const card = Array.from(document.querySelectorAll<HTMLElement>("[data-tool-call-id]"))
         .find(element => element.dataset.toolCallId === id);
-      const rect = (card ?? document.querySelector(".chat-sidebar"))?.getBoundingClientRect();
+      const scene = name.startsWith("table_") ? document.querySelector("canvas") : null;
+      const rect = (scene ?? card ?? document.querySelector(".chat-sidebar"))?.getBoundingClientRect();
       this.move(owner, rect ? { x: rect.left + 24, y: rect.top + 22 } : { x: innerWidth - 90, y: 100 });
       this.click(owner);
     });

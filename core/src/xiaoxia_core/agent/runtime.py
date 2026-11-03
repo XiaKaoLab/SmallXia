@@ -13,6 +13,7 @@ from ..llm import LLM, LLMMessage, LLMResult
 from .sessions import SessionStore
 from .skills import SkillRegistry
 from .transcript import AgentTranscript
+from .memory import AgentMemory
 
 
 @dataclass(frozen=True)
@@ -42,6 +43,7 @@ class SimpleAgent:
         self.max_context_turns = max_context_turns
         self.max_skill_characters = max_skill_characters
         self._busy = Lock()
+        self.memory = AgentMemory(sessions, llm)
 
     def stream(
         self, session_id: str, text: str, *, skill_names: Sequence[str] = ()
@@ -55,10 +57,12 @@ class SimpleAgent:
             sections = [f"## Skill: {name}\n{self.skills.load(name)}" for name in names]
             if sum(map(len, sections)) > self.max_skill_characters:
                 raise ValueError("所选技能指令过长，请减少技能数量")
-            instructions = "\n\n".join([self.instructions, *sections])
-            messages = [*snapshot.messages[-self.max_context_turns * 2:], user]
-            transcript = AgentTranscript()
             yield AgentEvent("started", session_id)
+            self.memory.remember(text)
+            memory, history = self.memory.context(snapshot, self.max_context_turns)
+            instructions = "\n\n".join([self.instructions, memory, *sections])
+            messages = [*history, user]
+            transcript = AgentTranscript()
             for name in names:
                 transcript.activity(f'skill-{name}', name, 'skill', 'completed', '技能指令已加载')
                 yield AgentEvent("skill_loaded", session_id, skill=name)

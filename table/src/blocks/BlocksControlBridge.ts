@@ -1,5 +1,5 @@
 /** 功能：通过受限命令桥将 MCP 积木操作投递到当前 WebView 并确认实际结果。
- * Created on 2026-11-02; Updated on 2026-11-02
+ * Created on 2026-11-02; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 import { agentClient } from "../chat/AgentClient";
@@ -42,10 +42,14 @@ export class BlocksControlBridge {
         let result: unknown = null, error: string | undefined;
         try {
           if (this.stopped) throw new Error("工作区已关闭，未执行命令");
-          this.cursor.begin(command);
+          await this.cursor.begin(command);
+          if (this.stopped) throw new Error("工作区已关闭，未执行命令");
           result = await this.execute(command);
         } catch (failure) { error = String(failure); }
-        if (!this.stopped) this.cursor.complete(command, result, error !== undefined);
+        if (!this.stopped) {
+          this.cursor.complete(command, result, error !== undefined);
+          await new Promise(resolve => setTimeout(resolve, matchMedia("(prefers-reduced-motion: reduce)").matches ? 20 : 420));
+        }
         await agentClient.request({ action: "blocks_reply", client_id: this.clientId, command_id: command.id,
           ok: error === undefined, result, error });
       } catch { if (!this.stopped) await new Promise(resolve => setTimeout(resolve, 1000)); }

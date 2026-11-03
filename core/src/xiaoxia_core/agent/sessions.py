@@ -38,6 +38,9 @@ class SessionStore:
                     content TEXT NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS messages_session ON messages(session_id, id);
+                CREATE TABLE IF NOT EXISTS agent_memory (
+                    key TEXT PRIMARY KEY, value TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS message_presentations (
                     message_id INTEGER PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
                     presentation TEXT NOT NULL
@@ -53,6 +56,16 @@ class SessionStore:
                 yield db
         finally:
             db.close()
+
+    def memory(self, key: str) -> str:
+        with self._connection() as db:
+            row = db.execute("SELECT value FROM agent_memory WHERE key = ?", (key,)).fetchone()
+        return row[0] if row else ""
+
+    def save_memory(self, key: str, value: str) -> None:
+        with self._connection() as db:
+            db.execute("INSERT INTO agent_memory(key, value) VALUES (?, ?) "
+                       "ON CONFLICT(key) DO UPDATE SET value = excluded.value", (key, value))
 
     def create(self) -> str:
         session_id = uuid4().hex
@@ -112,3 +125,4 @@ class SessionStore:
             if changed != 1:
                 raise KeyError(f"会话不存在: {session_id}")
             db.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+            db.execute("DELETE FROM agent_memory WHERE key = ?", (f"summary:{session_id}",))

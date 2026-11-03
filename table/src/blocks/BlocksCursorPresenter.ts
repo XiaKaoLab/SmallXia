@@ -1,5 +1,5 @@
 /** 功能：把 MCP 积木操作映射为虚拟鼠标的点击和拖动动画。
- * Created on 2026-11-02; Updated on 2026-11-02
+ * Created on 2026-11-02; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 import { agentCursor } from "../interaction/AgentCursor";
@@ -14,7 +14,7 @@ export class BlocksCursorPresenter {
   private timer?: ReturnType<typeof setTimeout>;
   private frame = 0;
 
-  begin(command: VisualCommand): void {
+  async begin(command: VisualCommand): Promise<void> {
     this.stop();
     this.owner = `blocks:${command.id}`;
     const args = command.arguments;
@@ -23,7 +23,9 @@ export class BlocksCursorPresenter {
     const target = button ? { x: button.left + button.width / 2, y: button.top + button.height / 2 }
       : blocksDebug.visualTarget(id ? String(id) : undefined, Object.keys(args.fields ?? {})[0]);
     agentCursor.begin(this.owner, labels[command.operation] ?? "操作积木", target);
+    await new Promise(resolve => setTimeout(resolve, matchMedia("(prefers-reduced-motion: reduce)").matches ? 20 : 280));
     agentCursor.click(this.owner);
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
 
   complete(command: VisualCommand, result: unknown, failed: boolean): void {

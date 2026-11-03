@@ -13,7 +13,7 @@ def stream_with_mcp(llm, messages, instructions):
     inputs = list(llm._input(messages))
     text = ""
     input_tokens = output_tokens = 0
-    guidance = ("\n直接运动工具只控制 table 显示模型。运动前读取模型状态和限位。"
+    guidance = ("持续循环调用工具完成当前请求，根据结果决定下一步，完成后回复。步骤之间简短说明意图。不要密集轮询后台任务；重复失败时停止说明，不得重试未知结果的动作。""\n直接运动工具只控制 table 显示模型。运动前读取模型状态和限位。"
                 "只有用户请求运动时才发送动作。工具错误或超时不得自动重试运动；"
                 "必须如实说明失败。accepted 仅为目标接收，不得声称渲染到位。"
                 "RL 工具复用现有 API：创建会话不代表训练；启动学习器、执行者或奖励训练前必须有用户对应意图。"
@@ -24,12 +24,12 @@ def stream_with_mcp(llm, messages, instructions):
                 "积木程序可能包含真机控制；只有用户明确请求真机运动时，才创建或运行启用真机控制积木。"
                 "真机控制及只读采集遵守既有身份、校准和已验证坐标配置；不得修改 verified 或身份字段绕过检查。")
     with TableMCPClient() as mcp:
-        for round_index in range(8):
+        for round_index in range(64):
             with llm._client.responses.stream(
                 model=llm.config.model, input=inputs, instructions=instructions + guidance,
                 tools=mcp.tools, parallel_tool_calls=False,
                 include=["reasoning.encrypted_content"],
-                tool_choice="none" if round_index == 7 else "auto",
+                tool_choice="none" if round_index == 63 else "auto",
                 max_output_tokens=llm.config.max_output_tokens, store=False,
             ) as stream:
                 for event in stream:
