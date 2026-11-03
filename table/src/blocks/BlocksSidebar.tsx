@@ -1,7 +1,8 @@
-/** 功能：左侧六分类 Blockly 工作区与 Python 后台运行。
+/** 功能：左侧分类 Blockly 工作区与 Python 后台运行。
  * Created on 2026-11-01; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
+import { QiLingBlocks, qiLingCatalog } from "./QiLingBlocks";
 import { UiMessage } from "../shared/UiMessage";
 import { useEffect, useRef, useState } from "react";
 import { jointPreview } from "../JointPreview";
@@ -37,6 +38,7 @@ import "./blocks.css";
 
 export function BlocksSidebar() {
   const host = useRef<HTMLDivElement>(null);
+  const qiling = useRef(new QiLingBlocks());
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -69,6 +71,7 @@ export function BlocksSidebar() {
     liveRef.current = live;
     let detachDebug: (() => void) | undefined;
     let detachCameras: (() => void) | undefined;
+    let detachQiLing: (() => void) | undefined;
     let detachModels: (() => void) | undefined;
     let detachWorkflow: (() => void) | undefined;
     let detachArmTargets: (() => void) | undefined;
@@ -90,6 +93,7 @@ export function BlocksSidebar() {
         registerCameraCalibrationBlock();
         registerFrameBlocks();
         new PolicyBlocks().register();
+        qiling.current.register();
         new DataBlocks().register();
         new WorkflowBlocks().register();
         new HardwareBlocks().register();
@@ -107,6 +111,7 @@ export function BlocksSidebar() {
         detachCameras = cameraCatalog.attach(workspace);
         detachArmTargets = armTargetCatalog.attach(workspace);
         detachModels = onnxModelCatalog.attach(workspace);
+        detachQiLing = qiLingCatalog.attach(workspace);
         detachWorkflow = workflowCatalog.attach(workspace);
         new WorkflowTemplate().attach(workspace);
         workspace.registerButtonCallback("CREATE_VARIABLE", () => {
@@ -170,10 +175,11 @@ export function BlocksSidebar() {
       }
     }
     void initialize();
-    return () => { abort.abort(); programRef.current?.dispose(); programRef.current = null; window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; controlBridge?.stop(); detachDebug?.(); detachCameras?.(); detachArmTargets?.(); detachModels?.(); detachWorkflow?.(); observer?.disconnect(); workspace?.dispose(); };
+    return () => { abort.abort(); programRef.current?.dispose(); qiling.current.finish(); programRef.current = null; window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; controlBridge?.stop(); detachDebug?.(); detachCameras?.(); detachArmTargets?.(); detachModels?.(); detachQiLing?.(); detachWorkflow?.(); observer?.disconnect(); workspace?.dispose(); };
   }, []);
 
   function receiveReceipt(receipt: ProgramReceipt) {
+    if (receipt.qiling) qiling.current.receive(workspaceRef.current ?? undefined, receipt.qiling);
     if (receipt.ball_training && ["ball_pickup", "ball_onnx_rollout"].includes(receipt.ball_training.kind)) window.dispatchEvent(new CustomEvent("table:ball-training-started", { detail: receipt.ball_training }));
     if (receipt.camera_calibration?.id) window.dispatchEvent(new CustomEvent("table:camera-calibration-start", { detail: receipt.camera_calibration }));
     if (receipt.display_alignment?.id) window.dispatchEvent(new CustomEvent("table:alignment-start", { detail: receipt.display_alignment }));
@@ -198,7 +204,7 @@ export function BlocksSidebar() {
       catch (failure) { program.dispose(); programRef.current = null; throw failure; }
       // 调试接口立即获得可查询任务回执；UI 继续等待真实完成。
       const completion = program.observe(job).catch(failure => { setError(UiMessage.error(failure)); setNotice(""); })
-        .finally(() => { program.dispose(); programRef.current = null; liveRef.current?.resume(); runLock.current = false; setRunning(false); void workflowCatalog.refresh(); });
+        .finally(() => { qiling.current.finish(); program.dispose(); programRef.current = null; liveRef.current?.resume(); runLock.current = false; setRunning(false); void workflowCatalog.refresh(); });
       void completion;
       return { program: job };
     } catch (failure) {
@@ -228,7 +234,7 @@ export function BlocksSidebar() {
       </button>
       {running && <button type="button" className="blocks-run blocks-stop" onClick={() => void programRef.current?.stop().catch(failure => setError(UiMessage.error(failure)))} aria-label="停止程序"><Square size={14} fill="currentColor" /><span>停止</span></button>}
     </div></header>
-    <div ref={host} className="blocks-workspace" aria-label="机械臂、相机、逻辑、变量、策略和数据积木工作区" />
+    <div ref={host} className="blocks-workspace" aria-label="器灵、机械臂、相机、逻辑、变量、策略和数据积木工作区" />
     {(error || notice) && <p className="blocks-status" role="status">{error || notice}</p>}
   </aside>;
 }

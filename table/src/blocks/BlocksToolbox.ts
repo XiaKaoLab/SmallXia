@@ -1,7 +1,8 @@
-/** 功能：统一六类 Blockly 工具箱及允许使用的积木目录。
+/** 功能：统一 Blockly 工具箱及允许使用的积木目录。
  * Created on 2026-11-02; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
+import { QILING_AGENT } from "./QiLingBlocks";
 import { TEXT_READ, TEXT_PICK, TEXT_VISION_TYPES } from "./TextVisionBlocks";
 import { CAMERA_CALIBRATION_BLOCK } from "./cameraCalibrationBlock";
 import { ARM_MAPPING_BLOCK } from "./armMappingBlock";
@@ -18,7 +19,7 @@ import { DEMO_PLAY, DEMO_HARDWARE, DEMO_BEGIN, DEMO_RECORD, DEMO_FINISH, DEMO_TR
 
 export const LOGIC_TYPES = ["controls_if", "controls_repeat_ext", "controls_whileUntil", "controls_flow_statements", "logic_compare", "logic_operation", "logic_negate", "logic_boolean", "logic_ternary", "math_arithmetic", "procedures_defnoreturn", "procedures_defreturn", "procedures_callnoreturn", "procedures_callreturn", "procedures_ifreturn"];
 export const VARIABLE_TYPES = ["variables_get", "variables_set", "text", "math_number"];
-export const TOOLBOX_TYPES = [...HARDWARE_TYPES, ...TEXT_VISION_TYPES, ...WORKFLOW_TYPES, ARM_MAPPING_BLOCK, CAMERA_CALIBRATION_BLOCK, CALIBRATION_BLOCK, BLOCK_TYPE, CAMERA_BLOCK_TYPE, FRAME_CAPTURE, FRAME_VARIABLE,
+export const TOOLBOX_TYPES = [QILING_AGENT, ...HARDWARE_TYPES, ...TEXT_VISION_TYPES, ...WORKFLOW_TYPES, ARM_MAPPING_BLOCK, CAMERA_CALIBRATION_BLOCK, CALIBRATION_BLOCK, BLOCK_TYPE, CAMERA_BLOCK_TYPE, FRAME_CAPTURE, FRAME_VARIABLE,
   ...LOGIC_TYPES, ...VARIABLE_TYPES, ...DATA_TYPES, ...ONNX_TYPES, POLICY_TRAIN, POLICY_PREDICT, POLICY_ROLLOUT, POLICY_JOB, POLICY_STOP, POLICY_RL_BALL];
 export const BLOCK_LIMITS: Record<string, number> = { [ARM_MAPPING_BLOCK]: 1, [CAMERA_CALIBRATION_BLOCK]: 1, [CALIBRATION_BLOCK]: 1, [CAMERA_BLOCK_TYPE]: 1 };
 const block = (type: string) => ({ kind: "block", type,
@@ -28,6 +29,10 @@ const policy = (type: string) => ({ kind: "block", type, inputs: { ID: { shadow:
 export class BlocksToolbox {
   definition(): Blockly.utils.toolbox.ToolboxInfo {
     return { kind: "categoryToolbox", contents: [
+      { kind: "category", name: "器灵", colour: "#5d758e", contents: [
+        { kind: "button", text: "刷新模型", callbackkey: "REFRESH_QILING_MODELS" },
+        { kind: "block", type: QILING_AGENT, inputs: { MESSAGE: { shadow: { type: "text", fields: { TEXT: "读取仿真机械臂状态" } } } } },
+      ] },
       { kind: "category", name: "机械臂", colour: "#638b80", contents: [{ kind: "button", text: "刷新串口", callbackkey: "REFRESH_ARM_PORTS" }, block(BLOCK_TYPE), block(CALIBRATION_BLOCK), block(ARM_MAPPING_BLOCK), ...HARDWARE_TYPES.map(block)] },
       { kind: "category", name: "相机", colour: "#587e9d", contents: [{ kind: "button", text: "刷新相机", callbackkey: "REFRESH_CAMERAS" }, block(CAMERA_BLOCK_TYPE), block(FRAME_CAPTURE), block(RED_DETECT), block(RED_VALUE), block(TEXT_READ), block(CAMERA_CALIBRATION_BLOCK)] },
       { kind: "category", name: "逻辑", colour: "#687f9b", contents: [block(WAIT), block(WAIT_RESULT), ...LOGIC_TYPES.filter(type => !type.startsWith('procedures_call')).map(block)] },
