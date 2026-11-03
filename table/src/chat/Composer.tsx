@@ -1,16 +1,16 @@
 /** 功能：自适应消息输入框、中文输入保护与发送/停止交互。
- * Created on 2026-11-01; Updated on 2026-11-01
+ * Created on 2026-11-01; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 import { useLayoutEffect, useRef } from "react";
-import { ArrowUp, Square, WandSparkles } from "lucide-react";
+import { ArrowUp, Square } from "lucide-react";
 
 interface Props {
   value: string; onChange: (value: string) => void; onSend: () => void; onStop: () => void;
-  busy: boolean; disabled: boolean; skillCount: number; onSkills: () => void;
+  busy: boolean; disabled: boolean;
 }
 
-export function Composer({ value, onChange, onSend, onStop, busy, disabled, skillCount, onSkills }: Props) {
+export function Composer({ value, onChange, onSend, onStop, busy, disabled }: Props) {
   const input = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     if (!input.current) return;
@@ -25,8 +25,6 @@ export function Composer({ value, onChange, onSend, onStop, busy, disabled, skil
       }
     }} />
     <div className="composer-tools">
-      <button type="button" className={`skill-trigger ${skillCount ? "is-selected" : ""}`} onClick={onSkills} disabled={busy} aria-label="选择技能"><WandSparkles size={15} /><span>技能{skillCount ? ` ${skillCount}` : ""}</span></button>
-      <span className="composer-hint">Shift ↵ 换行</span>
       {busy ? <button type="button" className="send-button" aria-label="停止生成" onClick={onStop}><Square size={13} fill="currentColor" /></button> : <button type="submit" className="send-button" aria-label="发送消息" disabled={disabled || !value.trim()}><ArrowUp size={18} /></button>}
     </div>
   </form>;

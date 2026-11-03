@@ -1,5 +1,5 @@
 /** 功能：四分之一宽度的聊天侧栏，整合会话、技能和流式消息。
- * Created on 2026-11-01; Updated on 2026-11-02
+ * Created on 2026-11-01; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 import { UiMessage } from "../shared/UiMessage";
@@ -33,7 +33,7 @@ export function ChatSidebar() {
   const notice = chat.error || refreshError ? UiMessage.error(chat.error || refreshError) : "";
   return <aside ref={panel} className="chat-sidebar" aria-label="小虾聊天侧栏">
     <header className="chat-header">
-      <div className="chat-heading"><button className="heading-trigger" onClick={() => toggle("sessions")} disabled={chat.busy} aria-expanded={menu === "sessions"}>小虾<ChevronDown size={14} /></button><span className="model-label"><i className={chat.data.configured ? "connected" : ""} />{chat.data.model || "你的机械臂助手"}</span></div>
+      <div className="chat-heading"><button className="heading-trigger" onClick={() => toggle("sessions")} disabled={chat.busy} aria-expanded={menu === "sessions"}>小虾<ChevronDown size={14} /></button></div>
       <IconButton label="历史对话" onClick={() => toggle("sessions")} disabled={chat.busy}><History size={17} /></IconButton>
       <IconButton label="新建对话" disabled={chat.busy || chat.loading} onClick={() => { setMenu(null); navigate("/"); }}><Plus size={19} /></IconButton>
     </header>
@@ -51,9 +51,9 @@ export function ChatSidebar() {
     <MessageList messages={chat.messages} busy={chat.busy} />
     <footer className="chat-footer">
       {notice && <div className="chat-notice error" role="alert"><CircleAlert size={14} /><span>{notice}</span><IconButton label="重新连接" onClick={() => { setRefreshError(""); void chat.refresh().catch((failure: unknown) => setRefreshError(String(failure))); }}><RefreshCw size={14} /></IconButton></div>}
-      {!chat.desktop ? <p className="chat-notice">请打开桌面应用</p> : !chat.loading && !chat.error && !chat.data.configured ? <p className="chat-notice">请配置模型和密钥</p> : null}
+      {!chat.desktop && <p className="chat-notice">请打开桌面应用</p>}
       {chat.skills.length > 0 && <div className="selected-skills">{chat.skills.map((skill) => <button key={skill} disabled={chat.busy} onClick={() => chat.setSkills((values) => values.filter((value) => value !== skill))}><WandSparkles size={11} />{skill}<X size={11} /></button>)}</div>}
-      <Composer value={draft} onChange={setDraft} onSend={send} onStop={() => { void chat.stop(); }} busy={chat.busy} disabled={!chat.desktop || !chat.data.configured || chat.loading} skillCount={chat.skills.length} onSkills={() => toggle("skills")} />
+      <Composer value={draft} onChange={setDraft} onSend={send} onStop={() => { void chat.stop(); }} busy={chat.busy} disabled={!chat.desktop || !chat.data.configured || chat.loading} />
     </footer>
   </aside>;
 }

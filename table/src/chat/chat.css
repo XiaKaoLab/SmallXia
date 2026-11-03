@@ -64,10 +64,7 @@
 .composer:focus-within { box-shadow: 0 3px 20px #33424b0b, 0 0 0 1px #c2cdca; }
 .composer textarea { display: block; width: 100%; min-height: 40px; max-height: 150px; resize: none; overflow-y: auto; border: 0; outline: none; color: #424a50; background: none; font-size: 12px; line-height: 1.7; padding: 2px 1px 8px; }
 .composer textarea::placeholder { color: #a6adb3; }
-.composer-tools { display: flex; align-items: center; gap: 6px; }
-.skill-trigger { display: flex; align-items: center; gap: 5px; min-height: 30px; background: none; color: #9aa3aa; border: 0; padding: 3px; font-size: 10px; border-radius: 5px; }
-.skill-trigger.is-selected { color: #5d7f70; }
-.composer-hint { margin-left: auto; font-size: 9px; color: #bdc3c7; }
+.composer-tools { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .send-button { display: grid; place-items: center; height: 30px; width: 30px; margin-left: 3px; border: 0; border-radius: 50%; background: #29332f; color: #fff; transition: background .15s; }
 .send-button:hover:not(:disabled) { background: #486154; }
 .send-button:disabled { background: #e3e8e8; color: #a9b2b4; opacity: 1; }
