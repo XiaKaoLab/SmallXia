@@ -1,5 +1,5 @@
 """向 Agent 暴露现有 RL 会话、人工反馈、学习器/执行者和任务 API。
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 from ..reinforcement.client import ReinforcementClient
@@ -9,9 +9,20 @@ class RLTools:
     def __init__(self):
         self.client = ReinforcementClient()
 
-    def rl_train_ball(self, num_envs: int = 4, rounds: int = 100, device: str = 'cpu') -> dict:
-        """启动拿取小球的 MuJoCo SAC 训练。num_envs=独立环境数量(1–16)，rounds=每环境回合数；仅仿真。"""
-        return self.client.train_ball(num_envs=num_envs, rounds=rounds, device=device)
+    def rl_train_ball(self, num_envs: int = 4, rounds: int = 100, device: str = 'cpu',
+                      seed: int = 42, demonstration_episodes: int = 8,
+                      pretraining_updates: int = 200, corrective_demonstrations: bool = False,
+                      stop_on_success: bool = False, minimum_online_updates: int = 2000,
+                      warm_start_job_id: str | None = None,
+                      demonstration_job_id: str | None = None) -> dict:
+        """仿真抓球：采集成功示教并保存归档，预训练、SAC 在线采集训练和 ONNX 导出。num_envs=环境数(1–16)，rounds=每环境回合数。优化可用 warm_start_job_id 接续权重、demonstration_job_id 复用数据；corrective_demonstrations 配合 stop_on_success 启用阶段评估和纠正标签采集。stop_on_success 是训练达到课程评估门槛后提前结束整个训练，不是抓到球就截断单个回合；成功还需持续夹持抬升。seed 控制随机种子，任务完成不代表成功率达标。"""
+        return self.client.train_ball(
+            num_envs=num_envs, rounds=rounds, device=device, seed=seed,
+            demonstration_episodes=demonstration_episodes, pretraining_updates=pretraining_updates,
+            corrective_demonstrations=corrective_demonstrations, stop_on_success=stop_on_success,
+            minimum_online_updates=minimum_online_updates, warm_start_job_id=warm_start_job_id,
+            demonstration_job_id=demonstration_job_id,
+        )
 
     def rl_capabilities(self) -> dict:
         """读取 RL 后端与执行范围，当前是 table 的关节增量 SAC，非实机。"""
@@ -26,9 +37,11 @@ class RLTools:
         """ONNX推理六轴增量，states维度按模型manifest（新版31维）；视觉策略同时需要 images=[batch,3,64,64] RGB，范围[0,1]，不发送运动。"""
         return self.client.predict_onnx(model_job_id, states, images)
 
-    def rl_rollout_onnx(self, model_job_id: str, rounds: int = 1) -> dict:
-        """用已完成的 ONNX 模型执行独立 MuJoCo 抓球仿真，不训练、不操作实机。"""
-        return self.client.rollout_onnx(model_job_id, rounds=rounds)
+    def rl_rollout_onnx(self, model_job_id: str, rounds: int = 1, seed: int = 42,
+                        suite: str = 'clean', playback_speed: float = 1.0) -> dict:
+        """独立 MuJoCo ONNX 抓球评估，不训练、不操作真机。suite 为 clean/noisy/grid（grid 固定35轮）；seed 应与训练不同。playback_speed=0 批量评估，默认1正常速度。返回任务ID，需查询成功率等实际结果。失败终态如 recover 只说明终止时阶段，不能据此断定唯一失败根因。"""
+        return self.client.rollout_onnx(model_job_id, rounds=rounds, seed=seed,
+                                        suite=suite, playback_speed=playback_speed)
 
     def rl_create_session(self, task: str, fps: int = 2, cameras: list[str] | None = None,
                           roi: dict | None = None, max_joint_step_rad: float = 0.02, max_episode_steps: int = 40) -> dict:
