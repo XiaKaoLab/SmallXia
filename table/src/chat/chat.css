@@ -71,7 +71,11 @@
 .activity-card pre { max-height: 130px; overflow: auto; margin: 0; padding: 9px 10px; border-top: 1px solid #dce5eb; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 10px; line-height: 1.6; }
 .activity-failed { border-color: #e6d1ca; color: #a07869; background: #faf0ec85; }
 .chat-footer { flex-shrink: 0; padding: 8px 15px 11px; }
-.composer { padding: 12px 12px 9px; background: #ffffffbd; border: 1px solid #fff; border-radius: 18px; box-shadow: 0 3px 18px #33424b07, 0 0 0 1px #25323c07; transition: box-shadow .18s; }
+.composer { position: relative; padding: 12px 12px 9px; background: #ffffffbd; border: 1px solid #fff; border-radius: 18px; box-shadow: 0 3px 18px #33424b07, 0 0 0 1px #25323c07; transition: box-shadow .18s; }
+.slash-menu { position: absolute; bottom: calc(100% + 8px); left: 0; right: 0; z-index: 30; padding: 5px; border: 1px solid #d4e0da; border-radius: 12px; background: #f5faf7; box-shadow: 0 6px 24px #253d3212; }
+.slash-menu .menu-row { width: 100%; min-height: 44px; border: 0; border-radius: 8px; text-align: left; }
+.slash-command-name { flex: 0 0 54px; font-weight: 550; }
+.slash-command-description { color: #84948b; font-size: 11px; }
 .composer:focus-within { box-shadow: 0 3px 20px #33424b0b, 0 0 0 1px #c2cdca; }
 .composer textarea { display: block; width: 100%; min-height: 40px; max-height: 150px; resize: none; overflow-y: auto; border: 0; outline: none; color: #424a50; background: none; font-size: 12px; line-height: 1.7; padding: 2px 1px 8px; }
 .composer textarea::placeholder { color: #a6adb3; }

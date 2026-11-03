@@ -10,6 +10,7 @@ from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
+from uuid import uuid4
 from typing import Literal
 
 from ..llm import LLM, LLMMessage, LLMResult
@@ -19,6 +20,7 @@ from .transcript import AgentTranscript
 from .memory import AgentMemory
 from .knowledge import KnowledgeBase
 from .persona import ConversationPersona
+from .commands import AgentCommands
 
 
 @dataclass(frozen=True)
@@ -67,6 +69,15 @@ class SimpleAgent:
             if sum(map(len, sections)) > self.max_skill_characters:
                 raise ValueError("所选技能指令过长，请减少技能数量")
             yield AgentEvent("started", session_id)
+            if AgentCommands.is_compact(text):
+                archived = self.memory.compress(snapshot)
+                reply = ('工程师，上下文已压缩，原始聊天记录仍保留。' if archived
+                         else '工程师，当前对话较短，暂不需要压缩。')
+                result = LLMResult(reply, uuid4().hex, 'local-command', None, None)
+                self.sessions.append_turn(snapshot, user, LLMMessage('assistant', reply))
+                yield AgentEvent('delta', session_id, delta=reply)
+                yield AgentEvent('completed', session_id, result=result)
+                return
             self.memory.remember(text)
             memory, history = self.memory.context(snapshot, self.max_context_turns)
             try:
@@ -77,7 +88,7 @@ class SimpleAgent:
             instructions = "\n\n".join([
                 self.instructions, memory, knowledge, *sections, ConversationPersona.instructions,
             ])
-            messages = [*history, user]
+            messages = [*history, LLMMessage('user', AgentCommands.prompt(text))]
             transcript = AgentTranscript()
             for name in names:
                 transcript.activity(f'skill-{name}', name, 'skill', 'completed', '技能指令已加载')
