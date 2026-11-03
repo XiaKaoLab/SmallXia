@@ -27,12 +27,13 @@ class LLM(ABC):
 
 
 class OpenAILLM(LLM):
-    def __init__(self, config: LLMConfig, *, api_key: str | None = None, enable_mcp: bool = False, mcp_profile: str = "default") -> None:
+    def __init__(self, config: LLMConfig, *, api_key: str | None = None, enable_mcp: bool = False, mcp_profile: str = "default", mcp_context: dict | None = None) -> None:
         from ..environment import EnvironmentSettings
         EnvironmentSettings.load()
         self.config = config
         self.enable_mcp = enable_mcp
         self.mcp_profile = mcp_profile
+        self.mcp_context = mcp_context or {}
         # SDK 默认读取 OPENAI_API_KEY。构造客户端不会发送模型请求。
         self._client = OpenAI(
             api_key=api_key,

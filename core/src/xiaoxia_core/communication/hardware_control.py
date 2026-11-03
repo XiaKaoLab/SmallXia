@@ -6,7 +6,7 @@ from copy import deepcopy
 from pathlib import Path
 import re
 from threading import Event, RLock, Thread
-from time import monotonic
+from time import monotonic,time_ns
 
 from ..contracts import Action
 from ..imitation.workflows import HardwareWorkflow
@@ -50,6 +50,8 @@ class HardwareControlAPI:
                     if arm.port != port:
                         raise ValueError('配置中的从臂端口不匹配')
                     session = HardwareControlSession(arm, ModelPoseGuard(workflow.path(workflow.config['urdf'])))
+                    from ..sim2real.service import CoordinateIdentity
+                    session.state.update(profile=profile,urdf=str(expected.resolve()),coordinate_fingerprint=CoordinateIdentity.fingerprint(workflow))
                     self.sessions[port] = session
                     session.start()
                     return 202, session.snapshot()
@@ -80,6 +82,7 @@ class HardwareControlSession:
         self.stop, self.lock = Event(), RLock()
         self.lease = monotonic()
         self.target = None
+        self.feedback_at = None
         self.state = {'status': 'connecting', 'port': arm.port, 'physical': True, 'unit': 'rad'}
         self.thread = Thread(target=self.run, daemon=True)
 
@@ -94,7 +97,9 @@ class HardwareControlSession:
         with self.lock:
             if heartbeat:
                 self.lease = monotonic()
-            return deepcopy(self.state)
+            state=deepcopy(self.state)
+            state['feedback_age_ms']=None if self.feedback_at is None else round((monotonic()-self.feedback_at)*1000)
+            return state
 
     def move(self, body):
         with self.lock:
@@ -120,7 +125,8 @@ class HardwareControlSession:
             self.arm.arm()
             with self.lock:
                 self.target = current
-                self.state.update(status='ready', joint_positions=current)
+                self.feedback_at=monotonic()
+                self.state.update(status='ready', joint_positions=current,observed_at_ns=time_ns())
                 self.lease = monotonic()
             while not self.stop.wait(1 / 30):
                 with self.lock:
@@ -131,7 +137,8 @@ class HardwareControlSession:
                 measured = self.arm.read_observation().joint_positions
                 reached = max(abs(measured[name] - target[name]) for name in target) < .025
                 with self.lock:
-                    self.state.update(joint_positions=measured, status='ready' if reached else 'moving')
+                    self.feedback_at=monotonic()
+                    self.state.update(joint_positions=measured, status='ready' if reached else 'moving',observed_at_ns=time_ns())
         except Exception as error:
             with self.lock:
                 self.state.update(status='failed', error=str(error))

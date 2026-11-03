@@ -2,7 +2,7 @@
  * Created on 2026-11-02; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
-import { QILING_LOAD, QILING_SEND, QILING_TYPES } from "./QiLingBlocks";
+import { QILING_LOAD, QILING_SEND, QILING_TYPES, SIM2REAL_CHECK } from "./QiLingBlocks";
 import { TEXT_READ, TEXT_PICK, TEXT_VISION_TYPES } from "./TextVisionBlocks";
 import { CAMERA_CALIBRATION_BLOCK } from "./cameraCalibrationBlock";
 import { ARM_MAPPING_BLOCK } from "./armMappingBlock";
@@ -31,7 +31,7 @@ export class BlocksToolbox {
     return { kind: "categoryToolbox", contents: [
       { kind: "category", name: "器灵", colour: "#5d758e", contents: [
         { kind: "button", text: "刷新模型", callbackkey: "REFRESH_QILING_MODELS" },
-        block(QILING_LOAD),
+        block(SIM2REAL_CHECK), block(QILING_LOAD),
         { kind: "block", type: QILING_SEND, inputs: { MESSAGE: { shadow: { type: "text", fields: { TEXT: "你好" } } } } },
       ] },
       { kind: "category", name: "机械臂", colour: "#638b80", contents: [{ kind: "button", text: "刷新串口", callbackkey: "REFRESH_ARM_PORTS" }, block(BLOCK_TYPE), block(CALIBRATION_BLOCK), block(ARM_MAPPING_BLOCK), ...HARDWARE_TYPES.map(block)] },

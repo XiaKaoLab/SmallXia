@@ -17,16 +17,17 @@ export class QiLingSpeechBubble {
   private node="";
   private readonly receive=(raw:Event)=>{
     const event=(raw as CustomEvent<QiLingReceipt>).detail;
-    if(!event || (event.target&&event.target!=="simulation"))return;
-    if(["loaded","started"].includes(event.type)) {this.node=event.node_id;this.text="";}
+    if(!event)return;
+    if(["loaded","started","preflight"].includes(event.type)) {this.node=event.node_id;this.text="";}
     else if(this.node && event.node_id!==this.node)return;
-    if(!["loaded","started","delta","tool_started","tool_completed","completed","error","stopped"].includes(event.type))return;
+    if(!["preflight","loaded","started","delta","tool_started","tool_completed","completed","error","stopped"].includes(event.type))return;
     clearTimeout(this.timer);this.timer=undefined;
-    this.name.textContent=event.spirit??"器灵";
+    this.name.textContent=(event.spirit??"器灵")+(event.target?.startsWith("serial:")?` · ${event.target.slice(7)}`:"");
     this.panel.hidden=false;
     this.panel.classList.toggle("is-thinking",["started","tool_started","tool_completed"].includes(event.type)&&!this.text);
-    this.panel.setAttribute("aria-busy",String(!["loaded","completed","error","stopped"].includes(event.type)));
-    if(event.type==="loaded"){this.content.textContent="我来了。";this.dismissAfter(3000);}
+    this.panel.setAttribute("aria-busy",String(!["preflight","loaded","completed","error","stopped"].includes(event.type)));
+    if(event.type==="loaded"){this.content.textContent=event.text||"我来了。";this.dismissAfter(event.text?8000:3000);}
+    if(event.type==="preflight"){this.content.textContent=event.text??"预检完成";this.dismissAfter(15000);}
     if(event.type==="started")this.content.textContent="…";
     if(event.type==="delta"){this.text+=event.delta??"";this.content.textContent=this.text;this.panel.classList.remove("is-thinking");}
     if(event.type==="tool_started"&&!this.text)this.content.textContent=ToolPresentation.describe(event.name??"")[0];

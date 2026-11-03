@@ -4,14 +4,16 @@
  */
 import * as Blockly from "blockly/core";
 import { pythonGenerator, Order } from "blockly/python";
+import { armTargetCatalog } from "./ArmTargetCatalog";
 import { agentClient } from "../chat/AgentClient";
 import { agentCursor } from "../interaction/AgentCursor";
 import { ToolPresentation } from "../chat/ToolPresentation";
 export const QILING_AGENT="table_qiling_agent";
 export const QILING_LOAD="table_qiling_load";
 export const QILING_SEND="table_qiling_send";
-export const QILING_TYPES=[QILING_AGENT,QILING_LOAD,QILING_SEND];
-export interface QiLingReceipt { type: string; node_id: string; spirit?: string; target?: string; agent_id?: string; delta?: string; name?: string; call_id?: string; failed?: boolean; text?: string; result?: { text: string; model: string } }
+export const SIM2REAL_CHECK="table_sim2real_check";
+export const QILING_TYPES=[QILING_AGENT,QILING_LOAD,QILING_SEND,SIM2REAL_CHECK];
+export interface QiLingReceipt { type: string; node_id: string; spirit?: string; target?: string; agent_id?: string; ready?: boolean; physical?: boolean; source?: string; unit?: string; joint_positions?: Record<string,number>; observed_at_ns?: number; feedback_age_ms?: number; delta?: string; name?: string; call_id?: string; failed?: boolean; text?: string; result?: { text: string; model: string } }
 
 class QiLingCatalog {
   private models: string[]=[];
@@ -48,19 +50,27 @@ export const qiLingCatalog=new QiLingCatalog();
 export class QiLingBlocks {
   private readonly replies=new Map<string,string>();
   private readonly calls=new Set<string>();
+  private readonly realTargets=new Set<string>();
   private readonly speaking=new Map<string,QiLingReceipt>();
-  finish():void {
+  finish(releaseControl=true):void {
+    if(releaseControl){for(const target of this.realTargets)window.dispatchEvent(new CustomEvent("table:hardware-control-ended",{detail:{target}}));this.realTargets.clear();}
     for(const id of this.calls)agentCursor.hide(`tool:${id}`);this.calls.clear();
     for(const event of this.speaking.values())window.dispatchEvent(new CustomEvent("table:qiling-speech",{detail:{...event,type:"stopped"}}));
     this.speaking.clear();
   }
   register():void {
     Blockly.Blocks[QILING_LOAD]={init(this:Blockly.Block) {
-      this.appendDummyInput().appendField("向").appendField(new Blockly.FieldDropdown([["机械臂","simulation"]]),"TARGET")
+      this.appendDummyInput().appendField("向机械臂").appendField(new Blockly.FieldDropdown(function(){return armTargetCatalog.options(this.getValue());}),"TARGET")
         .appendField("载入").appendField(new Blockly.FieldTextInput("器灵"),"SPIRIT");
       this.appendDummyInput().appendField("模型").appendField(new Blockly.FieldDropdown(function(){return qiLingCatalog.options(this.getValue());}),"MODEL");
       this.setPreviousStatement(true);this.setNextStatement(true);this.setColour("#5d758e");
-      this.setTooltip("向当前仿真机械臂载入独立器灵，选择模型并命名。载入后连接发送消息积木。");
+      this.appendDummyInput("REAL_PROFILE").appendField("真机配置").appendField(new Blockly.FieldTextInput("so100.local.yaml"),"PROFILE");
+      this.appendDummyInput("REAL_ENABLE").appendField("启用真机运动").appendField(new Blockly.FieldCheckbox("FALSE"),"ENABLE");
+      this.getInput("REAL_PROFILE")!.setVisible(false);this.getInput("REAL_ENABLE")!.setVisible(false);
+      this.setOnChange(()=>{const visible=String(this.getFieldValue("TARGET")).startsWith("serial:");
+        for(const name of ["REAL_PROFILE","REAL_ENABLE"]){const input=this.getInput(name);if(input&&input.isVisible()!==visible)input.setVisible(visible);}
+      });
+      this.setTooltip("绑定仿真或真机。真机默认仅预检，坐标确认后才可显式启用小幅限速运动。");
     }};
     Blockly.Blocks[QILING_SEND]={init(this:Blockly.Block) {
       this.appendValueInput("MESSAGE").setCheck("String").appendField("向").appendField(new Blockly.FieldDropdown(function(){
@@ -74,8 +84,16 @@ export class QiLingBlocks {
       });
       this.setTooltip("向已载入的器灵发送消息；器灵会在机械臂旁冒泡回复。");
     }};
+    Blockly.Blocks[SIM2REAL_CHECK]={init(this:Blockly.Block){
+      this.appendDummyInput().appendField("Sim2Real 预检").appendField(new Blockly.FieldDropdown(function(){
+        const options=armTargetCatalog.options(this.getValue()).filter(([,value])=>value!=="simulation");return options.length?options:[["未发现串口","unavailable"]];
+      }),"TARGET");
+      this.appendDummyInput().appendField("配置").appendField(new Blockly.FieldTextInput("so100.local.yaml"),"PROFILE");
+      this.setPreviousStatement(true);this.setNextStatement(true);this.setColour("#5d758e");this.setTooltip("只读检查校准、运动坐标和限速配置，不打开设备、不启用电机。");
+    }};
     const client="__import__('xiaoxia_core.blocks.qiling', fromlist=['QiLingBlock']).QiLingBlock()";
-    pythonGenerator.forBlock[QILING_LOAD]=block=>`${client}.load(node_id=${JSON.stringify(block.id)}, name=${JSON.stringify(block.getFieldValue("SPIRIT"))}, target=${JSON.stringify(block.getFieldValue("TARGET"))}, model=${JSON.stringify(block.getFieldValue("MODEL"))})\n`;
+    pythonGenerator.forBlock[QILING_LOAD]=block=>`${client}.load(node_id=${JSON.stringify(block.id)}, name=${JSON.stringify(block.getFieldValue("SPIRIT"))}, target=${JSON.stringify(block.getFieldValue("TARGET"))}, model=${JSON.stringify(block.getFieldValue("MODEL"))}, profile=${JSON.stringify(block.getFieldValue("PROFILE")||"so100.local.yaml")}, enable_motion=${block.getFieldValue("ENABLE")==="TRUE"?"True":"False"})\n`;
+    pythonGenerator.forBlock[SIM2REAL_CHECK]=block=>`${client}.check(target=${JSON.stringify(block.getFieldValue("TARGET"))}, profile=${JSON.stringify(block.getFieldValue("PROFILE"))}, node_id=${JSON.stringify(block.id)})\n`;
     pythonGenerator.forBlock[QILING_SEND]=(block,generator)=>`${client}.send(node_id=${JSON.stringify(block.id)}, name=${JSON.stringify(block.getFieldValue("SPIRIT"))}, message=${generator.valueToCode(block,"MESSAGE",Order.NONE)||"''"})\n`;
     Blockly.Blocks[QILING_AGENT]={init(this:Blockly.Block) {
       this.appendDummyInput().appendField("器灵").appendField("模型").appendField(new Blockly.FieldDropdown(function(){return qiLingCatalog.options(this.getValue());}),"MODEL");
@@ -90,12 +108,16 @@ export class QiLingBlocks {
     };
   }
   receive(workspace:Blockly.WorkspaceSvg|undefined,event:QiLingReceipt):void {
+    if(event.type==="hardware_feedback"){
+      if(event.target)this.realTargets.add(event.target);
+      window.dispatchEvent(new CustomEvent("table:hardware-control-feedback",{detail:event}));return;
+    }
     if(event.type==="started")this.speaking.set(event.node_id,event);
     if(event.type==="completed"||event.type==="error")this.speaking.delete(event.node_id);
     window.dispatchEvent(new CustomEvent("table:qiling-speech",{detail:event}));
     if(event.type==="tool_started"&&event.call_id){this.calls.add(event.call_id);agentCursor.toolStarted(event.call_id,event.name??"");}
     if(event.type==="tool_completed"&&event.call_id){this.calls.delete(event.call_id);agentCursor.finish(`tool:${event.call_id}`,event.failed);}
-    if(event.type==="completed"||event.type==="error")this.finish();
+    if(event.type==="completed"||event.type==="error")this.finish(false);
     const block=workspace?.getBlockById(event.node_id);if(!block||!QILING_TYPES.includes(block.type))return;
     let text=this.replies.get(event.node_id)??"";
     if(event.type==="started"){text="";this.replies.set(event.node_id,"");}

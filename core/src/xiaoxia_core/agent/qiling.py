@@ -43,15 +43,16 @@ class QiLingAgent:
         sessions=self.store.list_sessions()
         return sessions[0] if sessions else self.store.create()
 
-    def run(self,node_id,message,model='default'):
+    def run(self,node_id,message,model='default',target='simulation',profile='so100.local.yaml',enable_motion=False):
         if not isinstance(message,str) or not message.strip() or len(message)>8000:raise ValueError('器灵消息需要1–8000字')
         config=LLMConfig.from_env()
         if model!='default':
             if not isinstance(model,str) or not model.strip() or len(model)>200:raise ValueError('模型名称无效')
             config=replace(config,model=model.strip())
         session=self.session(node_id)
-        with OpenAILLM(config,enable_mcp=True,mcp_profile='qiling') as llm:
-            agent=SimpleAgent(llm,self.store,self.skills,instructions=QiLingProfile.instructions,persona='')
+        context={'target':target,'profile':profile,'enable_motion':enable_motion is True}
+        with OpenAILLM(config,enable_mcp=True,mcp_profile='qiling',mcp_context=context) as llm:
+            agent=SimpleAgent(llm,self.store,self.skills,instructions=QiLingProfile.instructions_for(context),persona='')
             with closing(agent.stream(session,message)) as events:
                 for event in events:
                     value=asdict(event);value['node_id']=node_id
@@ -61,7 +62,7 @@ class QiLingAgent:
 def main():
     sys.stdin.reconfigure(encoding='utf-8');sys.stdout.reconfigure(encoding='utf-8')
     request=json.loads(sys.stdin.readline())
-    try:QiLingAgent().run(request['node_id'],request['message'],request.get('model','default'))
+    try:QiLingAgent().run(request['node_id'],request['message'],request.get('model','default'),request.get('target','simulation'),request.get('profile','so100.local.yaml'),request.get('enable_motion',False))
     except Exception:
         print(json.dumps({'qiling':{'type':'error','node_id':request.get('node_id'),'text':'器灵本轮未完成，请检查模型配置或服务状态。'}},ensure_ascii=False),flush=True)
         raise

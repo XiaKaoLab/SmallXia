@@ -14,3 +14,6 @@
 @keyframes qiling-appear { from { opacity:0; transform:translate(-50%,-95%) scale(.96); } to { opacity:1; transform:translate(-50%,-100%) scale(1); } }
 @keyframes qiling-thinking { 50% { opacity:.45; } }
 @media(prefers-reduced-motion:reduce) { .qiling-speech-bubble,.qiling-speech-bubble.is-thinking .qiling-speech-content { animation:none; } }
+
+.hardware-control-preview-label { position:absolute; top:14px; right:18px; padding:7px 12px; border:1px solid #ffffffb0; border-radius:999px; background:#f4faf5e6; color:#557061; font-size:11px; pointer-events:none; }
+.hardware-control-preview-label[hidden] { display:none; }

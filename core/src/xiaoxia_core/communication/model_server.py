@@ -74,6 +74,8 @@ class ModelHTTPServer(ThreadingHTTPServer):
         self.vision = TextVisionAPI(self.frames, self.reinforcement.jobs, self.reinforcement.onnx)
         core = Path(__file__).resolve().parents[3]
         self.hardware = HardwareControlAPI(core)
+        from ..sim2real.service import Sim2RealAPI
+        self.sim2real = Sim2RealAPI(core,self.hardware)
         from ..collection.playback import RecordingPlaybackAPI
         self.playback = RecordingPlaybackAPI(core / 'data/recordings', core / 'data/playbacks', limits,
             self.playback_reference, self.playback_apply)
@@ -125,7 +127,7 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _learning(self, method, body=None):
-        for service in (self.server.hardware, self.server.programs, self.server.imitation, self.server.reinforcement, self.server.collection, self.server.blocks, self.server.vision):
+        for service in (self.server.hardware, self.server.programs, self.server.imitation, self.server.reinforcement, self.server.collection, self.server.blocks, self.server.vision, self.server.sim2real):
             if not self.path.startswith(service.prefix + '/'):
                 continue
             if not compare_digest(self.headers.get('Authorization', '').encode(), self.server.read_authorization.encode()):

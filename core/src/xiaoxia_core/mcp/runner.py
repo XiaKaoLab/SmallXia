@@ -37,12 +37,13 @@ def stream_with_mcp(llm, messages, instructions):
                 "积木程序可能包含真机控制；只有用户明确请求真机运动时，才创建或运行启用真机控制积木。"
                 "真机控制及只读采集遵守既有身份、校准和已验证坐标配置；不得修改 verified 或身份字段绕过检查。")
     profile = getattr(llm, 'mcp_profile', 'default')
+    context = getattr(llm,'mcp_context',{})
     extra_guidance = BlockProgrammingGuide.instructions + VisualUnderstandingGuide.instructions
     if profile == 'qiling':
         from .qiling_profile import QiLingProfile
-        guidance = QiLingProfile.instructions
+        guidance = QiLingProfile.instructions_for(context)
         extra_guidance = ''
-    with TableMCPClient(profile=profile) as mcp:
+    with TableMCPClient(profile=profile,context=context) as mcp:
         for round_index in range(64):
             try:
                 reader = ResponseRound(llm).stream(

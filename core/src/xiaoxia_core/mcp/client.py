@@ -15,14 +15,18 @@ from mcp.client.stdio import stdio_client
 
 
 class TableMCPClient:
-    def __init__(self, profile='default'):
+    def __init__(self, profile='default', context=None):
         if profile not in ('default','qiling'):raise ValueError('未知 MCP 配置')
         self.profile=profile
+        self.context=context or {}
 
     @asynccontextmanager
     async def _session(self):
         params = StdioServerParameters(command=sys.executable,
-                                      args=["-m", "xiaoxia_core.mcp.server"], env={**os.environ, "XIAOXIA_MCP_PROFILE": self.profile})
+                                      args=["-m", "xiaoxia_core.mcp.server"], env={**os.environ, "XIAOXIA_MCP_PROFILE": self.profile,
+                                          "XIAOXIA_QILING_TARGET":self.context.get('target','simulation'),
+                                          "XIAOXIA_QILING_PROFILE":self.context.get('profile','so100.local.yaml'),
+                                          "XIAOXIA_QILING_MOTION":'true' if self.context.get('enable_motion') is True else 'false'})
         async with stdio_client(params) as (read, write):
             async with ClientSession(read, write, read_timeout_seconds=timedelta(seconds=30)) as session:
                 await session.initialize()
@@ -36,7 +40,7 @@ class TableMCPClient:
             listed = self.portal.call(self.session.list_tools)
             if self.profile == 'qiling':
                 from .qiling_profile import QiLingProfile
-                listed.tools = [tool for tool in listed.tools if tool.name in QiLingProfile.tools]
+                listed.tools = [tool for tool in listed.tools if tool.name in QiLingProfile.tools_for(self.context)]
             self.names = {tool.name for tool in listed.tools}
             self.tools = [{"type": "function", "name": tool.name,
                            "description": tool.description or "", "parameters": tool.inputSchema,

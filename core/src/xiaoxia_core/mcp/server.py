@@ -60,11 +60,18 @@ def main() -> None:
     if profile not in ('default','qiling'):raise ValueError('未知 MCP 配置')
     methods = [EnvironmentTools().robot_get_environment, ObservationTools().robot_observe,
         ObservationTools().robot_list_cameras, tools.table_get_state, tools.table_get_limits, tools.table_move_joints]
+    context={'target':os.environ.get('XIAOXIA_QILING_TARGET','simulation'),
+        'profile':os.environ.get('XIAOXIA_QILING_PROFILE','so100.local.yaml'),
+        'enable_motion':os.environ.get('XIAOXIA_QILING_MOTION')=='true'}
+    if profile=='qiling' and context['target']!='simulation':
+        from .sim2real_tools import Sim2RealTools
+        bound=Sim2RealTools(context['target'],context['profile'],context['enable_motion'])
+        methods=methods[:3]+[bound.arm_get_state,bound.arm_get_limits,bound.arm_move_joints]
     if profile == 'default':
         for provider,prefix in ((RLTools(),'rl_'),(BlocksTools(),'blocks_')):
             methods.extend(getattr(provider,name) for name in dir(provider) if name.startswith(prefix))
     for method in methods:
-        if profile == 'qiling' and method.__name__ not in QiLingProfile.tools:continue
+        if profile == 'qiling' and method.__name__ not in QiLingProfile.tools_for(context):continue
         server.tool()(method)
     server.run(transport="stdio")
 

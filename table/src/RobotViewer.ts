@@ -2,6 +2,7 @@
  * Created on 2026-11-01; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
+import { HardwareControlPreview } from "./HardwareControlPreview";
 import { QiLingSpeechBubble } from "./QiLingSpeechBubble";
 import { RobotObservation } from "./RobotObservation";
 import { CameraCalibrationDisplay } from "./CameraCalibrationDisplay";
@@ -36,6 +37,7 @@ export class RobotViewer {
   private readonly observation: RobotObservation;
   private readonly cameraCalibration: CameraCalibrationDisplay;
   private readonly spiritSpeech: QiLingSpeechBubble;
+  private readonly controlFeedback: HardwareControlPreview;
   private alignmentVisible = false;
   private playbackId = "";
   private playbackPaused = false;
@@ -48,15 +50,16 @@ export class RobotViewer {
       window.dispatchEvent(new CustomEvent("table:ball-training", { detail: null }));
     }
     this.modelCamera = camera;
-    if (this.training.active || this.alignment?.positions) return;
+    if (this.training.active || this.alignment?.positions || this.controlFeedback?.positions) return;
     this.setJointTargets(jointPreview.reconcile(positions));
     if (this.robot) this.cameraRig.configure(this.robot, camera);
   });
 
   constructor(private readonly host: HTMLElement) {
+    this.controlFeedback = new HardwareControlPreview(host);
     this.observation = new RobotObservation(this.renderer, this.scene, () => ({
-      robot: this.training.active && !this.alignment.positions ? this.training.cameraRobot ?? undefined : this.robot,
-      source: this.alignment.positions ? "hardware_mapped_render" : this.training.active ? "training_render_first_environment" : "simulation_render",
+      robot: this.training.active && !this.alignment.positions && !this.controlFeedback.positions ? this.training.cameraRobot ?? undefined : this.robot,
+      source: this.alignment.positions || this.controlFeedback.positions ? "hardware_mapped_render" : this.training.active ? "training_render_first_environment" : "simulation_render",
       ready: this.modelReady,
     }));
     this.alignment = new HardwareAlignmentDisplay(host);
@@ -93,7 +96,7 @@ export class RobotViewer {
       this.cameraRig.update();
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
-      const speakingRobot = this.training.active ? this.training.cameraRobot : this.robot;
+      const speakingRobot = this.training.active && !this.controlFeedback.positions && !this.alignment.positions ? this.training.cameraRobot : this.robot;
       this.spiritSpeech.update(speakingRobot?.links.gripper_link ?? speakingRobot, this.camera);
       this.cameraRig.renderPreview();
     });
@@ -166,11 +169,12 @@ export class RobotViewer {
 
   private updateJoints(dt: number): void {
     if (!this.robot || !this.modelReady) return;
-    this.training.setHidden(this.alignment.positions !== null);
+    const hardwarePositions=this.controlFeedback.positions??this.alignment.positions;
+    this.training.setHidden(hardwarePositions !== null);
     this.robot.visible = true;
-    if (this.alignment.positions && this.poseGuard) {
+    if (hardwarePositions && this.poseGuard) {
       if (!this.alignmentVisible) { this.fitTraining(1); this.alignmentVisible = true; }
-      const desired = Object.fromEntries(Object.entries(this.alignment.positions).map(([name, angle]) => {
+      const desired = Object.fromEntries(Object.entries(hardwarePositions).map(([name, angle]) => {
         const joint = this.robot!.joints[name];
         return [name, joint ? Math.max(joint.limit.lower, Math.min(joint.limit.upper, angle)) : angle];
       }));
@@ -230,6 +234,7 @@ export class RobotViewer {
     this.motion.dispose();
     this.cameraCalibration.dispose();
     this.spiritSpeech.dispose();
+    this.controlFeedback.dispose();
     this.alignment.dispose();
     this.training.dispose();
     this.stopPreview();
