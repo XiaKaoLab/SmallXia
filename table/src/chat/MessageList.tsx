@@ -1,10 +1,10 @@
 /** 功能：聊天气泡、Markdown、活动堆栈与流式滚动。
- * Created on 2026-11-01; Updated on 2026-11-01
+ * Created on 2026-11-01; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { ArrowDown, Check, Copy, Sparkles } from "lucide-react";
+import { ArrowDown, Check, Copy } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { IconButton } from "../shared/IconButton";
@@ -38,7 +38,6 @@ export function MessageList({ messages, busy }: { messages: ChatMessage[]; busy:
       {messages.length > 0 && <div className="message-list">
         {messages.map((message) => <motion.article key={message.id} className={`message message-${message.role}`} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}>
           {message.role === "user" ? <div className="user-bubble">{message.content}</div> : <>
-            <div className="assistant-label"><Sparkles size={13} /><span>小虾</span>{message.status === "streaming" && <span className="live-dot" />}</div>
             {message.activities.length > 0 && <div className="activity-stack" aria-label="技能与工具活动" tabIndex={0}>{message.activities.map((activity) => <ActivityCard key={activity.id} activity={activity} />)}</div>}
             {message.content ? <div className="markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({ children, href, title }) => <a href={href} title={title} target="_blank" rel="noreferrer">{children}</a> }}>{message.content}</ReactMarkdown></div> : message.status === "streaming" ? <div className="thinking" role="status" aria-label="正在生成"><i /><i /><i /></div> : null}
             {message.status === "streaming" && message.content && <span className="stream-caret" />}
