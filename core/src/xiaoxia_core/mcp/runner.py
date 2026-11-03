@@ -8,6 +8,7 @@ import json
 from ..llm.messages import LLMStreamEvent
 from .client import TableMCPClient
 from .question_tool import QuestionTool
+from .block_programming import BlockProgrammingGuide
 
 
 def stream_with_mcp(llm, messages, instructions):
@@ -35,7 +36,7 @@ def stream_with_mcp(llm, messages, instructions):
     with TableMCPClient() as mcp:
         for round_index in range(64):
             with llm._client.responses.stream(
-                model=llm.config.model, input=inputs, instructions=instructions + guidance,
+                model=llm.config.model, input=inputs, instructions=instructions + guidance + BlockProgrammingGuide.instructions,
                 tools=[*mcp.tools, QuestionTool.definition], parallel_tool_calls=False,
                 include=["reasoning.encrypted_content"],
                 tool_choice="none" if round_index == 63 else "auto",

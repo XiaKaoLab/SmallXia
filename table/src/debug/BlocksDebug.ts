@@ -19,7 +19,8 @@ import { onnxModelCatalog } from "../blocks/OnnxModelCatalog";
 import { armTargetCatalog } from "../blocks/ArmTargetCatalog";
 import { BlockMetadata } from "./BlockMetadata";
 
-export interface BlockSnapshot { id: string; type: string; fields: Record<string, number | string>; x: number; y: number }
+export interface BlockSnapshot { id: string; type: string; fields: Record<string, number | string>; x: number; y: number;
+  previous_id?: string | null; next_id?: string | null; parent_id?: string | null; inputs?: Record<string, string | null> }
 export interface BlocksSnapshot { version: 2; state: Record<string, unknown> }
 
 class WorkspaceManager {
@@ -72,7 +73,8 @@ class WorkspaceManager {
       [FRAME_CAPTURE]: "获取画面", [FRAME_VARIABLE]: "画面变量", [POLICY_RL_BALL]: "强化学习 · 拿取小球",
       [ONNX_EXPORT]: "导出抓球模型 ONNX", [ONNX_RUN]: "ONNX 推理 · 拿取小球" };
     const metadata = new BlockMetadata();
-    return TOOLBOX_TYPES.map(type => ({ type, label: labels[type] || metadata.describe(type).label, maxInstances: BLOCK_LIMITS[type] ?? 100,
+    return TOOLBOX_TYPES.map(type => { const description = metadata.describe(type); return { type, label: labels[type] || description.label, maxInstances: BLOCK_LIMITS[type] ?? 100,
+      connections: description.connections,
       fields: type === ARM_MAPPING_BLOCK ? [{ name: "TARGET", label: "真机串口", options: armTargetCatalog.options().filter(([, value]) => value !== "simulation").map(([, id]) => id) }] : type === DATA_PLAY ? [{ name: "RECORDING_ID", label: "录制 ID" }, { name: "SPEED", label: "播放速度", lower: .1, upper: 4 }] : type === DATA_RECORD ? [{ name: "DURATION", label: "录制时长", unit: "s", lower: 1, upper: 3600 }] : type === CAMERA_CALIBRATION_BLOCK ? [{ name: "SOURCE", label: "真实相机", options: cameraCatalog.realOptions().map(([, id]) => id) },
         { name: "COLUMNS", label: "内角点列数", lower: 3, upper: 20 }, { name: "ROWS", label: "内角点行数", lower: 3, upper: 20 }, { name: "SQUARE_MM", label: "方格边长", unit: "mm", lower: 1, upper: 200 }] : type === CALIBRATION_BLOCK ? [{ name: "TARGET", label: "机械臂", options: armTargetCatalog.options().filter(([, value]) => value !== "simulation").map(([, id]) => id) }, { name: "MODE", label: "校准方式", options: ["reuse", "recalibrate"] }] : type === BLOCK_TYPE ? [{ name: "TARGET", label: "机械臂", options: armTargetCatalog.options().map(([, id]) => id) },
         ...JOINTS.map(([name, label]) => ({ name, label, unit: "rad", ...this.limits[name] }))]
@@ -80,12 +82,17 @@ class WorkspaceManager {
           { name: "ROUNDS", label: "每环境训练轮数", lower: 1, upper: 10000 }, { name: "DEVICE", label: "设备", options: ["cpu", "cuda"] }]
         : ONNX_TYPES.includes(type) ? [{ name: "MODEL_ID", label: "模型", options: onnxModelCatalog.options(type === ONNX_RUN).map(([, id]) => id) },
           ...(type === ONNX_RUN ? [{ name: "ROUNDS", label: "推理回合数", lower: 1, upper: 1000 }] : [])]
-        : [FRAME_CAPTURE, FRAME_VARIABLE].includes(type) ? [{ name: "SOURCE", label: "来源", options: cameraCatalog.options().map(([, id]) => id) }] : metadata.describe(type).fields }));
+        : [FRAME_CAPTURE, FRAME_VARIABLE].includes(type) ? [{ name: "SOURCE", label: "来源", options: cameraCatalog.options().map(([, id]) => id) }] : description.fields }; });
   }
   list(): BlockSnapshot[] {
     return this.workspace.getAllBlocks(false).map(block => {
       const p = block.getRelativeToSurfaceXY();
-      return { id: block.id, type: block.type, fields: this.fields(block), x: p.x, y: p.y };
+      return { id: block.id, type: block.type, fields: this.fields(block), x: p.x, y: p.y,
+        previous_id: block.getPreviousBlock()?.id ?? null, next_id: block.getNextBlock()?.id ?? null,
+        parent_id: block.getParent()?.id ?? null,
+        inputs: Object.fromEntries(block.inputList.filter(input => input.connection)
+          .map(input => [input.name, input.connection!.targetBlock()?.id ?? null])),
+      };
     });
   }
   create(fields: Record<string, number | string> = {}, x = 16, y = 24, type = BLOCK_TYPE): BlockSnapshot {
@@ -111,11 +118,14 @@ class WorkspaceManager {
   connect(parentId: string, childId: string, inputName = ""): BlockSnapshot[] {
     const parent = this.get(parentId), child = this.get(childId);
     if (parent === child) throw new Error("不能连接积木自身");
+    if (child.getDescendants(false).includes(parent)) throw new Error("连接会形成循环，请使用循环积木而非环形连线");
     const target = inputName ? parent.getInput(inputName)?.connection : parent.nextConnection;
     if (!target) throw new Error("父积木没有该连接口");
     const source = target.type === Blockly.ConnectionType.INPUT_VALUE ? child.outputConnection : child.previousConnection;
     if (!source) throw new Error("子积木类型与连接口不匹配");
-    target.connect(source); this.changed(); return this.list();
+    target.connect(source);
+    if (target.targetBlock()?.id !== child.id) throw new Error("积木连接未生效，请检查连接口类型");
+    this.changed(); return this.list();
   }
   remove(id: string): void { this.get(id).dispose(false); this.changed(); }
   clear(): void { this.workspace.clear(); this.changed(); }

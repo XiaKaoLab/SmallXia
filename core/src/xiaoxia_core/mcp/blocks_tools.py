@@ -31,11 +31,11 @@ class BlocksTools:
         raise TimeoutError(f"积木命令 {command['id']} 未收到回执，操作可能已生效；先查询状态，不自动重试")
 
     def blocks_catalog(self) -> dict:
-        """读取当前 WebView 的积木分类、类型与字段；创建积木前查询。"""
+        """读取积木类型、字段和 connections 连接口；previous/next 可串接语句，inputs 给出循环体、条件和值的命名接口。创建/拼接前查询。"""
         return self.execute('catalog')
 
     def blocks_list(self) -> dict:
-        """读取当前工作区的积木 ID、类型、字段与坐标，不执行程序。"""
+        """读取当前积木和真实连接图：next_id 是下一句，previous_id 是上一句，parent_id 是父块，inputs 是命名输入口到子块ID的映射。用于确认整段程序已接好；坐标相邻不等于连接。不执行。"""
         return self.execute('list')
 
     def blocks_create(self, block_type: str, fields: dict | None = None, x: float = 16, y: float = 24) -> dict:
@@ -51,7 +51,7 @@ class BlocksTools:
         return self.execute('move', {'id': block_id, 'x': x, 'y': y})
 
     def blocks_connect(self, parent_id: str, child_id: str, input_name: str = '') -> dict:
-        """连接积木：input_name 指定命名输入；留空连接下一条语句。类型不匹配则报错。"""
+        """拼接程序。input_name 留空把 child 接到 parent 的下一句；指定目录中的命名输入可接循环/条件子语句或数值/变量块。返回真实连接图，应检查 next_id 或 inputs 确认。不执行。"""
         return self.execute('connect', {'parent_id': parent_id, 'child_id': child_id, 'input_name': input_name})
 
     def blocks_remove(self, block_id: str) -> dict:
