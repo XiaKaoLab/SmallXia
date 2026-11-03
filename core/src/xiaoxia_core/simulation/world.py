@@ -1,5 +1,5 @@
 """加载 URDF 并提供显式步进和关节位置控制，仅作用于仿真。
-Created on 2026-11-01; Updated on 2026-11-02
+Created on 2026-11-01; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 
@@ -102,6 +102,7 @@ class MujocoSimulation(RobotTransport):
                 if mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, first) > 0 and mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, second) > 0:
                     ElementTree.SubElement(contact, "exclude", {"body1": first, "body2": second})
         self.extend_scene(mjcf)
+        assets.update(getattr(self, "scene_assets", {}))
         model = mujoco.MjModel.from_xml_string(ElementTree.tostring(mjcf, encoding="unicode"), assets=assets)
         model.opt.timestep = self.config.timestep
         model.opt.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST

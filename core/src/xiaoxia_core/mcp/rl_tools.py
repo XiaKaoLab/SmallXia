@@ -9,6 +9,18 @@ class RLTools:
     def __init__(self):
         self.client = ReinforcementClient()
 
+    def rl_read_text(self, camera_id: str = 'virtual', target_text: str = '') -> dict:
+        """从指定真实/虚拟相机进行通用 OCR，返回文字框、置信度及来源身份；不运动、不限制为ABC。"""
+        from ..blocks.workflow import BlockWorkflow
+        return BlockWorkflow.http('vision/text-recognitions', {'camera_id':camera_id,'target_text':target_text})
+
+    def rl_pick_text_simulation(self, target_text: str, model_job_id: str = 'latest',
+            texts: list[str] | None = None, rounds: int = 1, seed: int = 42) -> dict:
+        """仿真：OCR读取文字，唯一匹配后定位，再运行已有ONNX抓取策略。texts为三个任意文字方块，默认自动包含目标。不是每种文字重训动作；需查询后台任务的识别和抓取结果。现有控制器仍使用仿真辅助状态；不操作实机。"""
+        from ..blocks.workflow import BlockWorkflow
+        return BlockWorkflow.http('vision/text-picks', {'target_text':target_text,'model_job_id':model_job_id,
+            'rounds':rounds,'seed':seed,**({'texts':texts} if texts is not None else {})})
+
     def rl_train_ball(self, num_envs: int = 4, rounds: int = 100, device: str = 'cpu',
                       seed: int = 42, demonstration_episodes: int = 8,
                       pretraining_updates: int = 200, corrective_demonstrations: bool = False,

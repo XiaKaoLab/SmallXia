@@ -1,5 +1,5 @@
 """通过现有任务宿主运行独立 SAC 学习器、table 执行者及视觉奖励训练。
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 import json
@@ -160,6 +160,11 @@ class ReinforcementWorker(ImitationWorker):
         Thread(target=self.watch_parent, daemon=True).start()
         self.progress(status='running', started_at_ns=time_ns())
         try:
+            if self.request.get('task_type') == 'text_pick':
+                from ..vision.text_pick import TextPickSimulation
+                result = TextPickSimulation(self).run()
+                self.progress(status='succeeded', phase='completed', progress=1, result=result, finished_at_ns=time_ns())
+                return
             if self.request['kind'] in ('ball_onnx_export', 'ball_onnx_rollout'):
                 from .onnx_tasks import BallOnnxTasks
                 tasks = BallOnnxTasks(self)

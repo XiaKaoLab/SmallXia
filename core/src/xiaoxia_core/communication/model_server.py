@@ -70,6 +70,8 @@ class ModelHTTPServer(ThreadingHTTPServer):
             limits, self.frames, lambda: self.routes.handle('GET', '/api/v1/robots/table/state', self.read_authorization)[1]['joint_positions'])
         self.reinforcement = ReinforcementAPI(Path(__file__).resolve().parents[3] / 'data/reinforcement_api',
             limits, self.frames, self.routes, self.read_authorization)
+        from ..vision.api import TextVisionAPI
+        self.vision = TextVisionAPI(self.frames, self.reinforcement.jobs, self.reinforcement.onnx)
         core = Path(__file__).resolve().parents[3]
         self.hardware = HardwareControlAPI(core)
         from ..collection.playback import RecordingPlaybackAPI
@@ -123,7 +125,7 @@ class ModelRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _learning(self, method, body=None):
-        for service in (self.server.hardware, self.server.programs, self.server.imitation, self.server.reinforcement, self.server.collection, self.server.blocks):
+        for service in (self.server.hardware, self.server.programs, self.server.imitation, self.server.reinforcement, self.server.collection, self.server.blocks, self.server.vision):
             if not self.path.startswith(service.prefix + '/'):
                 continue
             if not compare_digest(self.headers.get('Authorization', '').encode(), self.server.read_authorization.encode()):

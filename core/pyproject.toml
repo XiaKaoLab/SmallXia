@@ -1,5 +1,5 @@
 # Python 核心包配置
-# Created on 2026-11-01; Updated on 2026-11-02
+# Created on 2026-11-01; Updated on 2026-11-03
 # @author: https://github.com/Linmoqian
 [project]
 name = "xiaoxia-core"
@@ -25,6 +25,7 @@ requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
 [project.optional-dependencies]
+text-vision = ["rapidocr_onnxruntime==1.2.3"]
 physics-tools = ["coacd==1.0.14", "trimesh>=4.6,<5", "scipy>=1.14,<2"]
 
 [tool.hatch.build.targets.wheel]

@@ -1,5 +1,5 @@
 """发布各独立仿真环境的轻量预览，通过持久桌面流读取真实训练状态。
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 import json
@@ -16,14 +16,14 @@ class TrainingPreviewPublisher:
         self.directory = directory
         self.last_publish = 0
 
-    def set_camera_frame(self, image, simulation_time):
+    def set_camera_frame(self, image, simulation_time, *, camera="wrist", source="policy_input"):
         import base64
         from io import BytesIO
         from PIL import Image
         buffer = BytesIO()
         Image.fromarray(image.transpose(1, 2, 0)).save(buffer, format='PNG')
         self.camera_frame = {'data_url': 'data:image/png;base64,' + base64.b64encode(buffer.getvalue()).decode('ascii'),
-            'camera': 'wrist', 'source': 'policy_input', 'simulation_time': simulation_time}
+            'camera': camera, 'source': source, 'width': int(image.shape[2]), 'height': int(image.shape[1]), 'simulation_time': simulation_time}
 
     def publish(self, environments, *, force=False):
         if not force and monotonic() - self.last_publish < .08:
