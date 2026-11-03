@@ -7,7 +7,19 @@ import type { BlocksSnapshot } from "../debug/BlocksDebug";
 export interface SavedProgram { id: string; name: string; updatedAt: number; snapshot: BlocksSnapshot }
 
 export class ProgramStore {
+  static readonly limit = 3;
   constructor(private readonly key = "xiaoxia.blocks.programs.v1") {}
+
+  activeId(): string {
+    const raw = localStorage.getItem(this.key);
+    return raw ? JSON.parse(raw).activeId ?? "" : "";
+  }
+
+  select(id: string): void {
+    const programs = this.list();
+    if (!programs.some(program => program.id === id)) throw new Error("程序不存在");
+    this.write(programs, id);
+  }
 
   list(): SavedProgram[] {
     const raw = localStorage.getItem(this.key);
@@ -19,8 +31,8 @@ export class ProgramStore {
     return data.programs.sort((a: SavedProgram, b: SavedProgram) => b.updatedAt - a.updatedAt);
   }
 
-  private write(programs: SavedProgram[]): void {
-    try { localStorage.setItem(this.key, JSON.stringify({ version: 1, programs })); }
+  private write(programs: SavedProgram[], activeId: string): void {
+    try { localStorage.setItem(this.key, JSON.stringify({ version: 1, programs, activeId })); }
     catch { throw new Error("本地保存失败，请检查存储空间"); }
   }
 
@@ -30,10 +42,11 @@ export class ProgramStore {
     if (snapshot.version !== 2 || !snapshot.state || JSON.stringify(snapshot).length > 1000000) throw new Error("程序内容无效或过大");
     const programs = this.list();
     const previous = programs.find(program => program.name === title);
+    if (!previous && programs.length >= ProgramStore.limit) throw new Error("最多保存三份程序，请更新或删除已有程序");
     const saved = { id: previous?.id ?? crypto.randomUUID(), name: title, updatedAt: Date.now(), snapshot };
-    this.write([saved, ...programs.filter(program => program.id !== saved.id)]);
+    this.write([saved, ...programs.filter(program => program.id !== saved.id)], saved.id);
     return saved;
   }
 
-  remove(id: string): void { this.write(this.list().filter(program => program.id !== id)); }
+  remove(id: string): void { this.write(this.list().filter(program => program.id !== id), this.activeId() === id ? "" : this.activeId()); }
 }
