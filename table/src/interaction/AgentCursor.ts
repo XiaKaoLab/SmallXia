@@ -3,6 +3,7 @@
  * @author: https://github.com/Linmoqian
  */
 import "./agent-cursor.css";
+import { ToolPresentation } from "../chat/ToolPresentation";
 
 export interface CursorPoint { x: number; y: number }
 
@@ -30,8 +31,8 @@ export class AgentCursor {
     this.revision++;
     const element = this.view();
     element.classList.remove("is-failed", "is-dragging");
-    element.classList.add("is-visible");
-    element.querySelector("span")!.textContent = `小虾 · ${label}`;
+    element.classList.add("is-visible", "is-working");
+    element.querySelector("span")!.textContent = label;
     if (point) this.move(owner, point);
   }
 
@@ -56,8 +57,8 @@ export class AgentCursor {
   finish(owner: string, failed = false): void {
     if (this.owner !== owner) return;
     this.view().classList.toggle("is-failed", failed);
-    this.view().classList.remove("is-dragging");
-    this.click(owner);
+    this.view().classList.remove("is-dragging", "is-working");
+    if (failed) this.view().querySelector("span")!.textContent = "这一步没完成";
     const revision = this.revision;
     this.timer = setTimeout(() => {
       if (revision === this.revision) this.hide(owner);
@@ -75,14 +76,15 @@ export class AgentCursor {
   toolStarted(id: string, name: string): void {
     if (name.startsWith("blocks_") && !["blocks_program_status", "blocks_programs", "blocks_program_stop", "blocks_command_status"].includes(name)) return;
     const owner = `tool:${id}`;
-    this.begin(owner, name.startsWith("rl_") ? "运行策略" : name === "table_move_joints" ? "调整姿态" : "查询机械臂");
+    this.begin(owner, ToolPresentation.describe(name)[0]);
     requestAnimationFrame(() => {
       const card = Array.from(document.querySelectorAll<HTMLElement>("[data-tool-call-id]"))
         .find(element => element.dataset.toolCallId === id);
       const scene = name.startsWith("table_") ? document.querySelector("canvas") : null;
       const rect = (scene ?? card ?? document.querySelector(".chat-sidebar"))?.getBoundingClientRect();
       this.move(owner, rect ? { x: rect.left + 24, y: rect.top + 22 } : { x: innerWidth - 90, y: 100 });
-      this.click(owner);
+      // 查询是观察而非点击控制按钮；修改和运行动作才显示点击。
+      if (ToolPresentation.category(name) !== "查询") this.click(owner);
     });
   }
 }

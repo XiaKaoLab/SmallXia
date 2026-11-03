@@ -18,6 +18,7 @@ from .skills import SkillRegistry
 from .transcript import AgentTranscript
 from .memory import AgentMemory
 from .knowledge import KnowledgeBase
+from .persona import ConversationPersona
 
 
 @dataclass(frozen=True)
@@ -73,7 +74,9 @@ class SimpleAgent:
             except (OSError, ValueError, sqlite3.Error):
                 logging.getLogger(__name__).exception('本地知识库检索失败，本轮继续普通对话')
                 knowledge = ''
-            instructions = "\n\n".join([self.instructions, memory, knowledge, *sections])
+            instructions = "\n\n".join([
+                self.instructions, memory, knowledge, *sections, ConversationPersona.instructions,
+            ])
             messages = [*history, user]
             transcript = AgentTranscript()
             for name in names:

@@ -24,14 +24,14 @@ export class BlocksCursorPresenter {
       : blocksDebug.visualTarget(id ? String(id) : undefined, Object.keys(args.fields ?? {})[0]);
     agentCursor.begin(this.owner, labels[command.operation] ?? "操作积木", target);
     await new Promise(resolve => setTimeout(resolve, matchMedia("(prefers-reduced-motion: reduce)").matches ? 20 : 280));
-    agentCursor.click(this.owner);
+    if (!["catalog", "list", "export"].includes(command.operation)) agentCursor.click(this.owner);
     await new Promise(resolve => setTimeout(resolve, 100));
   }
 
   complete(command: VisualCommand, result: unknown, failed: boolean): void {
     const owner = this.owner;
     if (!owner) return;
-    // 先保留起点一帧，再跟随已直接执行的命令移动；动画不会延迟 API 确认。
+    // 先保留起点一帧，再跟随实际结果移动，最后结束等待反馈。
     this.frame = requestAnimationFrame(() => {
       this.timer = setTimeout(() => {
         if (this.owner !== owner) return;
