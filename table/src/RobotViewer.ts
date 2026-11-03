@@ -183,7 +183,7 @@ export class RobotViewer {
       const trainingRobot = this.training.cameraRobot;
       if (!trainingRobot) return;
       this.cameraRig.configure(trainingRobot, this.training.cameraVisible ? SO101_WRIST_CAMERA_PRESET : this.modelCamera);
-      this.cameraRig.setInferenceFrame(this.training.cameraFrame, this.training.cameraFrame !== null, this.training.inferenceCamera ? "推理输入" : "训练输入");
+      this.cameraRig.setInferenceFrame(this.training.cameraFrame, this.training.cameraFrame !== null, this.training.cameraTitle, this.training.cameraSource);
       return;
     }
     this.cameraRig.configure(this.robot, this.modelCamera);

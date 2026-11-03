@@ -1,14 +1,15 @@
 /** 功能：按真实环境数量同台渲染机械臂与小球，逐帧插值并独立订阅训练预览。
- * Created on 2026-11-02; Updated on 2026-11-02
+ * Created on 2026-11-02; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
+import { TextCubeObjects } from "./TextCubeObjects";
 import * as THREE from "three";
 import { RobotAssetLoader } from "./RobotAssetLoader";
 import { WristCameraMount } from "./WristCameraMount";
 import type { URDFRobot } from "urdf-loader";
 import { TrainingPreviewClient, type TrainingPreview, type TrainingSnapshot } from "./TrainingPreviewClient";
 
-interface Instance { robot: URDFRobot; ball: THREE.Mesh; offset: THREE.Vector3; episode?: number }
+interface Instance { robot: URDFRobot; ball: THREE.Mesh; offset: THREE.Vector3; episode?: number; cubes?: TextCubeObjects }
 export class BallTrainingScene {
   private readonly group = new THREE.Group();
   private readonly sphere = new THREE.SphereGeometry(1, 20, 12);
@@ -34,6 +35,8 @@ export class BallTrainingScene {
   };
   private previewKind = "";
   private inputFrame: string | null = null;
+  cameraTitle = "腕部相机";
+  cameraSource = "policy_input";
   private readonly client = new TrainingPreviewClient(frame => this.receiveFrame(frame));
   private readonly close = (event: Event) => {
     if ((event as CustomEvent).detail === null) { this.snapshots = []; this.clear(); }
@@ -56,7 +59,13 @@ export class BallTrainingScene {
     this.jobId = frame.job_id;
     this.previewKind = frame.kind ?? "";
     const image = frame.camera_frame?.data_url;
-    this.inputFrame = image?.startsWith("data:image/png;base64,") && image.length < 200000 ? image : null;
+    this.inputFrame = image?.startsWith("data:image/png;base64,") && image.length < 2000000 ? image : null;
+    const camera = frame.camera_frame;
+    this.cameraSource = camera?.source ?? "policy_input";
+    const name = camera?.camera === "letter_overhead" ? "俯视相机" : "腕部相机";
+    const purpose = camera?.source === "ocr_observation" ? "OCR 画面" : (this.inferenceCamera ? "推理输入" : "训练输入");
+    const resolution = camera?.width && camera?.height ? ` · ${camera.width}×${camera.height}` : "";
+    this.cameraTitle = `${name} · ${purpose}${resolution}`;
     this.snapshots = frame.snapshots.filter(item => item.ball_position?.length === 3
       && item.ball_position.every(Number.isFinite) && Number.isFinite(item.ball_radius)
       && Object.values(item.joint_positions).every(Number.isFinite));
@@ -78,6 +87,7 @@ export class BallTrainingScene {
   private clear(): void {
     this.brackets.forEach(bracket => bracket.dispose()); this.brackets = [];
     for (const instance of this.instances) {
+      instance.cubes?.dispose();
       if (instance.robot !== this.source) instance.robot.removeFromParent();
     }
     this.group.clear(); this.instances = [];
@@ -107,7 +117,9 @@ export class BallTrainingScene {
       const floor = new THREE.Mesh(this.floorGeometry, this.floorMaterial);
       floor.position.copy(offset); floor.position.z = this.snapshots[index].floor_z ?? -.004;
       this.group.add(ball, floor);
-      this.instances.push({ robot: arm, ball, offset, episode: this.snapshots[index].episode_index });
+      const cubes = this.snapshots[index].objects?.length ? new TextCubeObjects() : undefined;
+      if (cubes) { this.group.add(cubes.group); cubes.update(this.snapshots[index].objects!, offset); ball.visible=false; }
+      this.instances.push({ robot: arm, ball, offset, cubes, episode: this.snapshots[index].episode_index });
     }
     this.fit(count); this.changed = false;
   }
@@ -138,6 +150,7 @@ export class BallTrainingScene {
         const joint = instance.robot.joints[name];
         if (joint) joint.setJointValue(THREE.MathUtils.lerp(joint.jointValue[0], target, blend));
       }
+      if (snapshot.objects && instance.cubes) instance.cubes.update(snapshot.objects, instance.offset);
       instance.ball.position.lerp(new THREE.Vector3().fromArray(snapshot.ball_position).add(instance.offset), blend);
       instance.ball.scale.setScalar(snapshot.ball_radius);
     });

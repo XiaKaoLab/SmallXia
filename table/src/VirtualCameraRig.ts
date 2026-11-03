@@ -1,5 +1,5 @@
 /** 功能：将虚拟相机及视锥附着到 URDF 连杆并管理资源生命周期。
- * Created on 2026-11-01; Updated on 2026-11-02
+ * Created on 2026-11-01; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 import * as THREE from "three";
@@ -67,7 +67,7 @@ export class VirtualCameraRig {
     this.signature = signature;
   }
 
-  setInferenceFrame(source: string | null, active: boolean, label = "推理输入"): void { this.preview.setInputFrame(source, active, label); }
+  setInferenceFrame(source: string | null, active: boolean, label = "腕部相机 · 推理输入", identity = "policy_input"): void { this.preview.setInputFrame(source, active, label, identity); }
 
   update(): void { if (this.helper.visible) { this.mount.updateWorldMatrix(true, true); this.helper.update(); } }
 

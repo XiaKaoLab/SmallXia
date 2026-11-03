@@ -1,5 +1,5 @@
 /* 功能：机械臂与四分之一聊天栏的应用布局。
- * Created on 2026-11-01; Updated on 2026-11-02
+ * Created on 2026-11-01; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 * { box-sizing: border-box; }
@@ -46,7 +46,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
 .camera-calibration pre { font: inherit; font-variant-numeric: tabular-nums; white-space: pre-wrap; line-height: 1.7; }
 
 /* 六轴同时校准：滑杆显示实时读数，色带标出采集范围，竖线为中值。
-   Created on 2026-11-02; Updated on 2026-11-02
+   Created on 2026-11-02; Updated on 2026-11-03
    @author: https://github.com/Linmoqian */
 .hardware-alignment.is-calibrating { background: #588575ed; color: #e4f5ed; }
 .hardware-alignment.is-calibrating p { color: #dfede6; }
@@ -64,12 +64,12 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
 
 .hardware-alignment.is-calibrating button { background: #e0f2e9; color: #35574b; }
 
-/* 校准成功提示，独立于自动关闭的面板。Updated on 2026-11-02 */
+/* 校准成功提示，独立于自动关闭的面板。Updated on 2026-11-03 */
 .calibration-saved-notice { position: absolute; z-index: 12; top: 24px; left: 50%; transform: translateX(-50%); padding: 10px 18px; border: 1px solid #b9d9c8; border-radius: 10px; background: #e5f5ecf2; color: #35574b; box-shadow: 0 6px 24px #35574b18; font-size: 13px; pointer-events: none; }
 .calibration-saved-notice[hidden] { display: none; }
 
 /* 顶部映射胶囊，按需展开六轴角度。
-   Created on 2026-11-02; Updated on 2026-11-02
+   Created on 2026-11-02; Updated on 2026-11-03
    @author: https://github.com/Linmoqian */
 .hardware-alignment.is-mapping { width: max-content; max-width: calc(100% - 24px); padding: 6px 10px 6px 16px; border-radius: 999px; box-shadow: 0 4px 18px #29473712; }
 .hardware-alignment.is-mapping > div:first-child { gap: 10px; white-space: nowrap; }
@@ -81,3 +81,9 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
 .hardware-alignment .mapping-boundary { color: #856b44; font-size: 10px; }
 .hardware-alignment .mapping-boundary[hidden] { display: none; }
 @media (max-width: 900px) { .hardware-alignment.is-mapping > div:first-child { gap: 6px; } .hardware-alignment.is-mapping button { padding: 0 7px; } }
+
+/* 高清相机仍使用单个窗口，可按需展开查看文字细节。 */
+.virtual-camera-preview { pointer-events: auto; }
+.virtual-camera-preview-title { padding-right: 62px; }
+.virtual-camera-preview-resize { position: absolute; right: 8px; top: 4px; border: 0; background: transparent; color: #526b7a; padding: 5px 8px; cursor: pointer; }
+.virtual-camera-preview.is-expanded { width: min(640px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow: auto; }

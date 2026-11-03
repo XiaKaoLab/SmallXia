@@ -24,6 +24,8 @@ const tools: Record<string, [string, string]> = {
   blocks_programs: ["查看后台程序", "查看积木程序的运行情况"],
   blocks_program_status: ["查询程序进度", "读取程序的状态和输出"],
   blocks_program_stop: ["停止积木程序", "停止程序并清理它启动的任务"],
+  rl_read_text: ["识别相机文字", "读取文字、位置与置信度，保留相机来源"],
+  rl_pick_text_simulation: ["按文字抓取方块", "识别和定位目标文字，再运行已有抓取模型"],
   rl_train_ball: ["训练抓球策略", "在物理仿真中训练机械臂拿取小球"],
   rl_capabilities: ["查看训练能力", "读取训练环境支持的功能"],
   rl_export_onnx: ["导出 ONNX 模型", "将已训练策略导出为推理模型"],
@@ -86,7 +88,7 @@ export class ToolPresentation {
   static category(name: string): "查询" | "修改" | "运行" {
     if (["robot_list_cameras", "robot_observe", "robot_get_environment", "table_get_state", "table_get_limits", "blocks_catalog", "blocks_list", "blocks_export",
       "blocks_command_status", "blocks_programs", "blocks_program_status", "rl_capabilities",
-      "rl_get_session", "rl_list_sessions", "rl_get_job"].includes(name)) return "查询";
+      "rl_get_session", "rl_list_sessions", "rl_get_job", "rl_read_text"].includes(name)) return "查询";
     if (["table_move_joints", "blocks_create", "blocks_set_fields", "blocks_move", "blocks_connect",
       "blocks_remove", "blocks_clear", "blocks_import", "rl_create_session", "rl_intervene",
       "rl_feedback", "rl_label_reward", "rl_reset"].includes(name)) return "修改";

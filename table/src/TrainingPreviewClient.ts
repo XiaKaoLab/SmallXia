@@ -1,14 +1,15 @@
 /** 功能：通过单个持久 Tauri Channel 订阅各训练环境真实姿态，不依赖面板轮询。
- * Created on 2026-11-02; Updated on 2026-11-02
+ * Created on 2026-11-02; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
+import type { TextCubeSnapshot } from "./TextCubeObjects";
 import { agentClient } from "./chat/AgentClient";
 
 export interface TrainingSnapshot {
   env_index: number; joint_positions: Record<string, number>; ball_position: number[]; ball_radius: number;
-  episode_index?: number; floor_z?: number;
+  episode_index?: number; floor_z?: number; objects?: TextCubeSnapshot[];
 }
-export interface TrainingPreview { kind?: string; camera_frame?: { data_url: string; source: string }; job_id: string; timestamp_ns: number; snapshots: TrainingSnapshot[]; physical: false }
+export interface TrainingPreview { kind?: string; camera_frame?: { data_url: string; source: string; camera?: string; width?: number; height?: number }; job_id: string; timestamp_ns: number; snapshots: TrainingSnapshot[]; physical: false }
 
 export class TrainingPreviewClient {
   private stopped = false;

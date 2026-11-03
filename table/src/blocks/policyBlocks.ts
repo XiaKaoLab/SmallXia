@@ -4,6 +4,7 @@
  */
 import * as Blockly from "blockly/core";
 import { pythonGenerator, Order } from "blockly/python";
+import { TextVisionBlocks } from "./TextVisionBlocks";
 import { OnnxPolicyBlocks } from "./OnnxPolicyBlocks";
 
 export const POLICY_TRAIN = "table_policy_train";
@@ -17,6 +18,7 @@ export const POLICY_TYPES = [POLICY_TRAIN, POLICY_PREDICT, POLICY_ROLLOUT, POLIC
 export class PolicyBlocks {
   register(): void {
     new OnnxPolicyBlocks().register();
+    new TextVisionBlocks().register();
     Blockly.Blocks[POLICY_RL_BALL] = {
       init(this: Blockly.Block) {
         this.appendDummyInput().appendField("强化学习 · 拿取小球");

@@ -1,5 +1,5 @@
 /** 功能：发现小球训练任务并显示真实分数、回合进度和仿真预览。
- * Created on 2026-11-02; Updated on 2026-11-02
+ * Created on 2026-11-02; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 import { UiMessage } from "../shared/UiMessage";
@@ -8,14 +8,14 @@ import { agentClient } from "../chat/AgentClient";
 import "./ball-training.css";
 
 interface TrainingJob {
-  id: string; kind: string; status: string; phase?: string; error?: string;
+  id: string; task?: string; kind: string; status: string; phase?: string; error?: string;
   paused?: boolean;
   created_at_ns?: number;
   num_envs?: number; rounds?: number; completed_episodes?: number; total_episodes?: number;
   progress?: number; score?: number | null; current_score?: number; successes?: number;
   snapshot?: { joint_positions: Record<string, number>; ball_position: number[]; ball_radius: number };
 }
-const phases: Record<string, string> = { queued: "准备启动", initializing: "初始化仿真", collecting: "采集经验", learning: "训练策略", exporting: "导出 ONNX", inferencing: "ONNX 推理", paused: "已暂停",
+const phases: Record<string, string> = { queued: "准备启动", recognizing: "识别文字", initializing: "初始化仿真", collecting: "采集经验", learning: "训练策略", exporting: "导出 ONNX", inferencing: "ONNX 推理", paused: "已暂停",
   completed: "训练完成", succeeded: "训练完成", failed: "训练失败", cancelled: "已停止", interrupted: "训练已中断" };
 const active = (job: TrainingJob) => ["queued", "running"].includes(job.status);
 
@@ -93,8 +93,8 @@ export function BallTrainingProgress() {
   if (!job) return null;
   const running = active(job);
   const progress = Math.max(0, Math.min(1, job.progress ?? 0));
-  return <section className="ball-training" aria-label="拿取小球训练进度">
-    <div className="ball-training-heading"><strong>{job.kind === "ball_onnx_rollout" ? "拿取小球 · ONNX" : "拿取小球"}</strong><span role="status">{!running && job.status === "succeeded" && job.kind === "ball_onnx_rollout" ? "推理完成" : phases[running ? job.phase ?? job.status : job.status] ?? "运行中"}</span>
+  return <section className="ball-training" aria-label="仿真任务进度">
+    <div className="ball-training-heading"><strong>{job.task || (job.kind === "ball_onnx_rollout" ? "拿取小球 · ONNX" : "拿取小球")}</strong><span role="status">{!running && job.status === "succeeded" && job.kind === "ball_onnx_rollout" ? "推理完成" : phases[running ? job.phase ?? job.status : job.status] ?? "运行中"}</span>
       {running && job.kind === "ball_onnx_rollout" && <button type="button" onClick={() => void togglePause()}
         disabled={pauseTarget !== null || stopping} aria-label={job.paused ? "继续推理" : "暂停推理"}>
         {pauseTarget !== null ? (pauseTarget ? "暂停中…" : "继续中…") : job.paused ? "继续" : "暂停"}
