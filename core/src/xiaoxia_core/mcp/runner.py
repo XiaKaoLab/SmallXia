@@ -6,6 +6,7 @@ Created on 2026-11-01; Updated on 2026-11-03
 import json
 
 from ..llm.messages import LLMStreamEvent
+from ..llm.response_round import ResponseRound
 from .client import TableMCPClient
 from .question_tool import QuestionTool
 from .block_programming import BlockProgrammingGuide
@@ -38,20 +39,21 @@ def stream_with_mcp(llm, messages, instructions):
     with TableMCPClient() as mcp:
         for round_index in range(64):
             try:
-                with llm._client.responses.stream(
-                    model=llm.config.model, input=inputs, instructions=instructions + guidance + BlockProgrammingGuide.instructions + VisualUnderstandingGuide.instructions,
+                reader = ResponseRound(llm).stream(
+                    model=llm.config.model, input=inputs,
+                    instructions=instructions + guidance + BlockProgrammingGuide.instructions + VisualUnderstandingGuide.instructions,
                     tools=[*mcp.tools, QuestionTool.definition], parallel_tool_calls=False,
                     include=["reasoning.encrypted_content"],
                     tool_choice="none" if round_index == 63 else "auto",
-                    max_output_tokens=llm.config.max_output_tokens, store=False,
-                ) as stream:
-                    for event in stream:
-                        if event.type == "response.output_text.delta":
-                            text += event.delta
-                            yield LLMStreamEvent("delta", delta=event.delta)
-                        elif event.type == "error":
-                            raise RuntimeError("LLM 工具流错误")
-                    response = stream.get_final_response()
+                )
+                while True:
+                    try:
+                        event = next(reader)
+                    except StopIteration as completed:
+                        response = completed.value
+                        break
+                    text += event.delta
+                    yield event
             except Exception as error:
                 if any(isinstance(item, dict) and isinstance(item.get("content"), list) and
                        any(part.get("type") == "input_image" for part in item["content"] if isinstance(part, dict))

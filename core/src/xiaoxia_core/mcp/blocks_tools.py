@@ -20,7 +20,7 @@ class BlocksTools:
 
     def execute(self, operation, arguments=None):
         command = self.request('commands', {'operation': operation, 'arguments': arguments or {}})
-        deadline = monotonic() + 9
+        deadline = monotonic() + 16
         while monotonic() < deadline:
             result = self.request('commands/' + command['id'])
             if result['status'] == 'succeeded':

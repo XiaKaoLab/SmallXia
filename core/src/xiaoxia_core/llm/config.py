@@ -1,5 +1,5 @@
 """从环境变量读取 LLM 配置，不在源码中保存密钥。
-Created on 2026-11-01; Updated on 2026-11-02
+Created on 2026-11-01; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 
@@ -16,6 +16,7 @@ class LLMConfig:
     timeout: float = 60.0
     max_retries: int = 2
     max_output_tokens: int = 2048
+    stream_responses: bool = True
 
     def __post_init__(self) -> None:
         if not self.model.strip():
@@ -30,5 +31,6 @@ class LLMConfig:
         EnvironmentSettings.load()
         return cls(
             model=os.environ.get("OPENAI_MODEL", "").strip(),
+            stream_responses=os.environ.get("OPENAI_RESPONSES_STREAM", "true").strip().lower() not in ("0", "false", "off"),
             base_url=os.environ.get("OPENAI_BASE_URL", "").strip() or None,
         )

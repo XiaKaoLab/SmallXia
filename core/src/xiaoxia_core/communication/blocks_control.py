@@ -48,7 +48,7 @@ class BlocksControlAPI:
                     if sum(item['status'] in ('queued', 'dispatched') for item in self._commands.values()) >= 32:
                         raise ValueError('积木命令队列已满')
                     command = {'id': uuid4().hex, 'operation': operation, 'arguments': arguments,
-                               'status': 'queued', 'expires_at_ms': time_ns() // 1000000 + 8000}
+                               'status': 'queued', 'expires_at_ms': time_ns() // 1000000 + 15000}
                     self._commands[command['id']] = command
                     self._condition.notify_all()
                     return 202, deepcopy(command)

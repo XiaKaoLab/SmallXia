@@ -1,5 +1,5 @@
 """通过 OpenAI Responses API 实现可替换的 LLM 文本生成接口。
-Created on 2026-11-01; Updated on 2026-11-01
+Created on 2026-11-01; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 
@@ -86,19 +86,13 @@ class OpenAILLM(LLM):
             from ..mcp.runner import stream_with_mcp
             yield from stream_with_mcp(self, messages, instructions)
             return
-        with self._client.responses.stream(
-            model=self.config.model,
-            input=self._input(messages),
-            instructions=instructions,
-            max_output_tokens=self.config.max_output_tokens,
-            store=False,
-        ) as stream:
-            for event in stream:
-                if event.type == "response.output_text.delta":
-                    yield LLMStreamEvent("delta", delta=event.delta)
-                elif event.type == "error":
-                    raise RuntimeError(f"LLM 流错误: {event.code or 'unknown'}")
-            result = self._result(stream.get_final_response())
+        from .response_round import ResponseRound
+        response = yield from ResponseRound(self).stream(
+            model=self.config.model, input=self._input(messages), instructions=instructions,
+        )
+        if response.status != 'completed':
+            raise RuntimeError(f"模型回复未完成: {response.status}")
+        result = self._result(response)
         yield LLMStreamEvent("completed", result=result)
 
     def close(self) -> None:
