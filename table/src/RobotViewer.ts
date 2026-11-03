@@ -2,6 +2,7 @@
  * Created on 2026-11-01; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
+import { QiLingSpeechBubble } from "./QiLingSpeechBubble";
 import { RobotObservation } from "./RobotObservation";
 import { CameraCalibrationDisplay } from "./CameraCalibrationDisplay";
 import { HardwareAlignmentDisplay } from "./HardwareAlignmentDisplay";
@@ -34,6 +35,7 @@ export class RobotViewer {
   private readonly alignment: HardwareAlignmentDisplay;
   private readonly observation: RobotObservation;
   private readonly cameraCalibration: CameraCalibrationDisplay;
+  private readonly spiritSpeech: QiLingSpeechBubble;
   private alignmentVisible = false;
   private playbackId = "";
   private playbackPaused = false;
@@ -59,6 +61,7 @@ export class RobotViewer {
     }));
     this.alignment = new HardwareAlignmentDisplay(host);
     this.cameraCalibration = new CameraCalibrationDisplay(host);
+    this.spiritSpeech = new QiLingSpeechBubble(host);
     this.cameraRig = new VirtualCameraRig(this.scene, host);
     this.stopPreview = jointPreview.subscribe((name, angle) => {
       const joint = this.robot?.joints[name];
@@ -90,6 +93,8 @@ export class RobotViewer {
       this.cameraRig.update();
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
+      const speakingRobot = this.training.active ? this.training.cameraRobot : this.robot;
+      this.spiritSpeech.update(speakingRobot?.links.gripper_link ?? speakingRobot, this.camera);
       this.cameraRig.renderPreview();
     });
     const manager = new THREE.LoadingManager();
@@ -224,6 +229,7 @@ export class RobotViewer {
     this.observation.dispose();
     this.motion.dispose();
     this.cameraCalibration.dispose();
+    this.spiritSpeech.dispose();
     this.alignment.dispose();
     this.training.dispose();
     this.stopPreview();
