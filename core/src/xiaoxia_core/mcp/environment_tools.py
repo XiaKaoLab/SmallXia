@@ -5,23 +5,27 @@ Created on 2026-11-03; Updated on 2026-11-03
 
 import json
 import os
+from pathlib import Path
 from urllib.error import URLError
 from urllib.request import Request, urlopen
+from ..communication.arm_discovery import ArmPortDiscovery
 
 
 class EnvironmentTools:
     def robot_get_environment(self) -> dict:
-        """查询仿真服务、检测到的 COM 口及已有真机控制会话；不打开串口、不使能、不运动。串口存在不代表机械臂已连接，查询失败表示未知。"""
+        """查询仿真/真机状态并判断机械臂串口候选。综合 USB 名称、VID/PID、已有配置及连接会话，返回推荐端口、置信级别和依据；不打开串口、不使能、不运动。"""
         result = {
             'simulation': {'target': 'table', 'physical': False, 'status': 'unknown'},
             'hardware': {'physical': True, 'status': 'unknown', 'sessions': []},
             'serial_ports': [],
             'note': '仿真状态是显示目标；真机状态来自已有控制会话。检测到串口不等于机械臂连接成功。',
         }
+        devices = []
         try:
             from serial.tools.list_ports import comports
+            devices = list(comports())
             result['serial_ports'] = [{'port': p.device, 'description': p.description}
-                                      for p in comports()]
+                                      for p in devices]
             result['serial_discovery'] = 'ok'
         except (ImportError, OSError):
             result['serial_discovery'] = 'unavailable'
@@ -40,4 +44,7 @@ class EnvironmentTools:
                     result[key].update(status='queried', sessions=state['sessions'])
             except (URLError, OSError, ValueError, KeyError):
                 result[key]['status'] = 'unknown'
+        result['arm_discovery'] = ArmPortDiscovery(
+            Path(__file__).resolve().parents[3] / 'configs',
+        ).identify(devices, result['hardware']['sessions'])
         return result

@@ -3,7 +3,7 @@
  * @author: https://github.com/Linmoqian
  */
 const tools: Record<string, [string, string]> = {
-  robot_get_environment: ["查看仿真与真机", "区分仿真服务、串口发现和真机控制连接"],
+  robot_get_environment: ["查看仿真与真机", "识别机械臂串口候选并查看连接状态"],
   table_get_state: ["读取机械臂状态", "查看仿真模型当前的六轴角度"],
   table_get_limits: ["读取关节限位", "查看各关节允许的角度范围"],
   table_move_joints: ["设置机械臂姿态", "向仿真模型发送六轴目标角度"],
@@ -50,6 +50,10 @@ export const jointNames: Record<string, string> = {
 };
 const labels: Record<string, string> = {
   simulation: "仿真机械臂", hardware: "真机机械臂", serial_ports: "检测到的串口",
+  arm_discovery: "机械臂串口判断", candidates: "候选设备", recommended_port: "推荐串口",
+  confidence: "判断", evidence: "依据", manufacturer: "厂商", product: "产品",
+  vid: "USB 厂商标识", pid: "USB 产品标识", serial_number: "USB 序列号",
+  method: "识别方式", opened_ports: "已打开串口",
   serial_discovery: "串口查询", sessions: "控制连接", port: "串口", description: "设备说明", note: "说明",
   ...jointNames, status: "状态", id: "编号", request_id: "请求编号", robot_id: "机械臂", unit: "单位",
   joint_positions: "关节角度", applied_joint_positions: "应用角度", physical: "实机", source: "来源",
@@ -62,6 +66,7 @@ const labels: Record<string, string> = {
 };
 const values: Record<string, string> = {
   unknown: "未知", available: "可用", queried: "已查询", unavailable: "不可用", ok: "正常",
+  connected: "已有控制连接", likely: "较可能", possible: "可能", metadata_and_existing_configuration: "设备信息与已有配置",
   accepted: "目标已接收", queued: "等待执行", running: "执行中", succeeded: "已完成", completed: "已完成",
   failed: "失败", cancelled: "已停止", interrupted: "已中断", paused: "已暂停", rad: "弧度",
   display_target: "仿真显示目标", table: "仿真机械臂",
