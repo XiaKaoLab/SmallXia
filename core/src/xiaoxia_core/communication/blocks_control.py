@@ -1,5 +1,5 @@
 """为 MCP 与当前 WebView 提供一次投递的受限积木命令及真实回执。
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 from collections import OrderedDict
@@ -13,7 +13,7 @@ from ..imitation.api_jobs import identifier
 
 class BlocksControlAPI:
     prefix = '/api/v1/blocks'
-    operations = {'catalog', 'list', 'create', 'set_fields', 'move', 'connect', 'remove', 'clear', 'export', 'import', 'run'}
+    operations = {'observe', 'catalog', 'list', 'create', 'set_fields', 'move', 'connect', 'remove', 'clear', 'export', 'import', 'run'}
 
     def __init__(self):
         self._condition = Condition()

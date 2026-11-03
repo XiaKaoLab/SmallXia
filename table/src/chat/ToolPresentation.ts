@@ -3,6 +3,7 @@
  * @author: https://github.com/Linmoqian
  */
 const tools: Record<string, [string, string]> = {
+  robot_observe: ["观察机械臂", "多视角截图，结合时间与关节CSV分析动作"],
   robot_get_environment: ["查看仿真与真机", "识别机械臂串口候选并查看连接状态"],
   table_get_state: ["读取机械臂状态", "查看仿真模型当前的六轴角度"],
   table_get_limits: ["读取关节限位", "查看各关节允许的角度范围"],
@@ -74,7 +75,7 @@ const values: Record<string, string> = {
 
 export class ToolPresentation {
   static category(name: string): "查询" | "修改" | "运行" {
-    if (["robot_get_environment", "table_get_state", "table_get_limits", "blocks_catalog", "blocks_list", "blocks_export",
+    if (["robot_observe", "robot_get_environment", "table_get_state", "table_get_limits", "blocks_catalog", "blocks_list", "blocks_export",
       "blocks_command_status", "blocks_programs", "blocks_program_status", "rl_capabilities",
       "rl_get_session", "rl_list_sessions", "rl_get_job"].includes(name)) return "查询";
     if (["table_move_joints", "blocks_create", "blocks_set_fields", "blocks_move", "blocks_connect",

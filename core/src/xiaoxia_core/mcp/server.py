@@ -13,6 +13,7 @@ from mcp.server.fastmcp import FastMCP
 from ..communication.motion_routes import MotionRouteClient
 from ..contracts import Action
 from ..safety import JointLimits
+from .observation_tools import ObservationTools
 from .blocks_tools import BlocksTools
 from .rl_tools import RLTools
 from .environment_tools import EnvironmentTools
@@ -55,6 +56,7 @@ def main() -> None:
     tools = TableModelTools()
     server = FastMCP("xiaoxia-table-model")
     server.tool()(EnvironmentTools().robot_get_environment)
+    server.tool()(ObservationTools().robot_observe)
     for method in (tools.table_get_state, tools.table_get_limits, tools.table_move_joints):
         server.tool()(method)
     for provider, prefix in ((RLTools(), "rl_"), (BlocksTools(), "blocks_")):

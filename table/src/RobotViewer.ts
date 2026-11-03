@@ -1,7 +1,8 @@
 /** 功能：管理机械臂 URDF、场景和交互生命周期。
- * Created on 2026-11-01; Updated on 2026-11-02
+ * Created on 2026-11-01; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
+import { RobotObservation } from "./RobotObservation";
 import { CameraCalibrationDisplay } from "./CameraCalibrationDisplay";
 import { HardwareAlignmentDisplay } from "./HardwareAlignmentDisplay";
 import * as THREE from "three";
@@ -31,6 +32,7 @@ export class RobotViewer {
   private readonly clock = new THREE.Clock();
   private readonly cameraRig: VirtualCameraRig;
   private readonly alignment: HardwareAlignmentDisplay;
+  private readonly observation: RobotObservation;
   private readonly cameraCalibration: CameraCalibrationDisplay;
   private alignmentVisible = false;
   private playbackId = "";
@@ -50,6 +52,11 @@ export class RobotViewer {
   });
 
   constructor(private readonly host: HTMLElement) {
+    this.observation = new RobotObservation(this.renderer, this.scene, () => ({
+      robot: this.training.active && !this.alignment.positions ? this.training.cameraRobot ?? undefined : this.robot,
+      source: this.alignment.positions ? "hardware_mapped_render" : this.training.active ? "training_render_first_environment" : "simulation_render",
+      ready: this.modelReady,
+    }));
     this.alignment = new HardwareAlignmentDisplay(host);
     this.cameraCalibration = new CameraCalibrationDisplay(host);
     this.cameraRig = new VirtualCameraRig(this.scene, host);
@@ -214,6 +221,7 @@ export class RobotViewer {
 
   dispose(): void {
     this.disposed = true;
+    this.observation.dispose();
     this.motion.dispose();
     this.cameraCalibration.dispose();
     this.alignment.dispose();

@@ -2,6 +2,7 @@
  * Created on 2026-11-02; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
+import { RobotObservation } from "../RobotObservation";
 import { agentClient } from "../chat/AgentClient";
 import { blocksDebug } from "../debug/BlocksDebug";
 import { BlocksCursorPresenter } from "./BlocksCursorPresenter";
@@ -16,8 +17,12 @@ export class BlocksControlBridge {
   private async execute(command: Command): Promise<unknown> {
     if (Date.now() > command.expires_at_ms) throw new Error("积木命令已过期，未执行");
     const args = command.arguments;
-    if (this.busy() && !["catalog", "list", "export"].includes(command.operation)) throw new Error("程序运行中，请结束后再修改积木");
+    if (this.busy() && !["catalog", "list", "export", "observe"].includes(command.operation)) throw new Error("程序运行中，请结束后再修改积木");
     switch (command.operation) {
+      case "observe": {
+        if (!RobotObservation.current) throw new Error("机械臂视图未打开");
+        return RobotObservation.current.capture((args.views ?? ["front", "side", "top"]) as string[]);
+      }
       case "catalog": return blocksDebug.catalog();
       case "list": return { blocks: blocksDebug.list() };
       case "create": return blocksDebug.create(args.fields as Record<string, string | number> ?? {}, Number(args.x ?? 16), Number(args.y ?? 24), String(args.type));
@@ -42,12 +47,12 @@ export class BlocksControlBridge {
         let result: unknown = null, error: string | undefined;
         try {
           if (this.stopped) throw new Error("工作区已关闭，未执行命令");
-          await this.cursor.begin(command);
+          if (command.operation !== "observe") await this.cursor.begin(command);
           if (this.stopped) throw new Error("工作区已关闭，未执行命令");
           result = await this.execute(command);
         } catch (failure) { error = String(failure); }
         if (!this.stopped) {
-          this.cursor.complete(command, result, error !== undefined);
+          if (command.operation !== "observe") this.cursor.complete(command, result, error !== undefined);
           await new Promise(resolve => setTimeout(resolve, matchMedia("(prefers-reduced-motion: reduce)").matches ? 20 : 420));
         }
         await agentClient.request({ action: "blocks_reply", client_id: this.clientId, command_id: command.id,

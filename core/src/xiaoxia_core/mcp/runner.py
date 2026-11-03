@@ -23,6 +23,7 @@ def stream_with_mcp(llm, messages, instructions):
                 "用户问哪个串口是机械臂时主动使用 robot_get_environment 的 arm_discovery：有唯一推荐则先说最可能的 COM 口并简述依据，不要只列串口让用户猜。"
                 "likely/possible 仅表示候选，不声称已验证；recommended_port 为空时说明并列或证据不足，可让用户拔插后再次查询比较，不能随意选择或试发运动指令。"
                 "目标不明确的查询可同时区分两者；目标不明确的运动先确认仿真还是真机，不得擅自选择真机。"
+                "理解姿态或动作时使用robot_observe，从多视角、不同时刻截图并结合CSV判断。仿真截图不是真机相机；模型不支持视觉时明确说明，不得假装看图。"
                 "\n直接运动工具 table_move_joints 只控制仿真显示目标。运动前读取模型状态和限位。"
                 "只有用户请求运动时才发送动作。工具错误或超时不得自动重试运动；"
                 "必须如实说明失败。accepted 仅为目标接收，不得声称渲染到位。"
@@ -35,20 +36,27 @@ def stream_with_mcp(llm, messages, instructions):
                 "真机控制及只读采集遵守既有身份、校准和已验证坐标配置；不得修改 verified 或身份字段绕过检查。")
     with TableMCPClient() as mcp:
         for round_index in range(64):
-            with llm._client.responses.stream(
-                model=llm.config.model, input=inputs, instructions=instructions + guidance + BlockProgrammingGuide.instructions,
-                tools=[*mcp.tools, QuestionTool.definition], parallel_tool_calls=False,
-                include=["reasoning.encrypted_content"],
-                tool_choice="none" if round_index == 63 else "auto",
-                max_output_tokens=llm.config.max_output_tokens, store=False,
-            ) as stream:
-                for event in stream:
-                    if event.type == "response.output_text.delta":
-                        text += event.delta
-                        yield LLMStreamEvent("delta", delta=event.delta)
-                    elif event.type == "error":
-                        raise RuntimeError("LLM 工具流错误")
-                response = stream.get_final_response()
+            try:
+                with llm._client.responses.stream(
+                    model=llm.config.model, input=inputs, instructions=instructions + guidance + BlockProgrammingGuide.instructions,
+                    tools=[*mcp.tools, QuestionTool.definition], parallel_tool_calls=False,
+                    include=["reasoning.encrypted_content"],
+                    tool_choice="none" if round_index == 63 else "auto",
+                    max_output_tokens=llm.config.max_output_tokens, store=False,
+                ) as stream:
+                    for event in stream:
+                        if event.type == "response.output_text.delta":
+                            text += event.delta
+                            yield LLMStreamEvent("delta", delta=event.delta)
+                        elif event.type == "error":
+                            raise RuntimeError("LLM 工具流错误")
+                    response = stream.get_final_response()
+            except Exception as error:
+                if any(isinstance(item, dict) and isinstance(item.get("content"), list) and
+                       any(part.get("type") == "input_image" for part in item["content"] if isinstance(part, dict))
+                       for item in inputs):
+                    raise RuntimeError("截图与CSV已采集，但当前模型未完成图像分析；请检查视觉支持与服务状态，不能视为已看图") from error
+                raise
             if response.status != "completed":
                 raise RuntimeError(f"LLM 工具轮次未完成: {response.status}")
             if response.usage:
@@ -94,8 +102,21 @@ def stream_with_mcp(llm, messages, instructions):
                     failed = True
                     result = {"isError": True, "error": type(error).__name__,
                               "message": "工具调用失败；如为运动请求，结果可能未知，请先读取状态，勿自动重试"}
+                images = []
+                if isinstance(result.get("content"), list):
+                    cleaned = []
+                    for part in result["content"]:
+                        if part.get("type") == "image":
+                            images.append({"type": "input_image", "image_url": "data:" + part["mimeType"] + ";base64," + part["data"]})
+                            cleaned.append({"type": "text", "text": "截图已作为视觉输入附加"})
+                        else:
+                            cleaned.append(part)
+                    result = {**result, "content": cleaned}
+                    result.pop("structuredContent", None)
                 output = json.dumps(result, ensure_ascii=False)
                 yield LLMStreamEvent("tool_completed", call_id=call.call_id,
                                      output=output, failed=failed)
                 inputs.append({"type": "function_call_output", "call_id": call.call_id, "output": output})
+                if images:
+                    inputs.append({"role": "user", "content": [{"type": "input_text", "text": "以下为观察工具按时间、视角顺序返回的截图，结合CSV分析。"}, *images]})
     raise RuntimeError("超出 Agent 工具轮数限制")
