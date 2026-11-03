@@ -12,16 +12,18 @@ interface Props {
 
 export function Composer({ value, onChange, onSend, onStop, busy, disabled }: Props) {
   const input = useRef<HTMLTextAreaElement>(null);
+  const composing = useRef(false);
   useLayoutEffect(() => {
     if (!input.current) return;
     input.current.style.height = "auto";
     input.current.style.height = `${Math.min(input.current.scrollHeight, 150)}px`;
   }, [value]);
   return <form className="composer" onSubmit={(event) => { event.preventDefault(); if (!busy && !disabled && value.trim()) onSend(); }}>
-    <textarea id="chat-message-input" ref={input} value={value} rows={1} aria-label="发送消息给小虾" placeholder="有什么想法？" onChange={(event) => onChange(event.target.value)} onKeyDown={(event) => {
-      if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+    <textarea id="chat-message-input" ref={input} value={value} rows={1} aria-label="发送消息给小虾" placeholder="有什么想法？" onChange={(event) => onChange(event.target.value)}
+      onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }} onKeyDown={(event) => {
+      if (event.key === "Enter" && !event.shiftKey && !composing.current && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) {
         event.preventDefault();
-        if (!busy && !disabled && value.trim()) onSend();
+        if (!event.repeat && !busy && !disabled && value.trim()) event.currentTarget.form?.requestSubmit();
       }
     }} />
     <div className="composer-tools">
