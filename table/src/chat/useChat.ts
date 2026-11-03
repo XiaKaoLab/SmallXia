@@ -1,11 +1,12 @@
 /** 功能：管理会话恢复、流式消息状态及停止生成。
- * Created on 2026-11-01; Updated on 2026-11-01
+ * Created on 2026-11-01; Updated on 2026-11-03
  * @author: https://github.com/Linmoqian
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { agentClient } from "./AgentClient";
 import type { AgentEvent, Bootstrap, ChatMessage } from "./types";
+import { MessageTimeline } from "./MessageTimeline";
 
 const empty: Bootstrap = { sessions: [], skills: [], model: "", configured: false };
 
@@ -49,9 +50,9 @@ export function useChat() {
     if (!sessionId || !agentClient.desktop) return;
     setHistoryLoading(true);
     setError("");
-    void agentClient.request<{ messages: { role: "user" | "assistant"; content: string }[] }>({ action: "history", session_id: sessionId })
+    void agentClient.request<{ messages: Pick<ChatMessage, "role" | "content" | "activities" | "parts">[] }>({ action: "history", session_id: sessionId })
       .then((result) => {
-        if (alive) setMessages(result.messages.map((message, index) => ({ ...message, id: `${sessionId}-${index}`, activities: [], status: "completed" })));
+        if (alive) setMessages(result.messages.map((message, index) => ({ ...message, id: `${sessionId}-${index}`, activities: message.activities ?? [], status: "completed" })));
       }).catch((failure: unknown) => { if (alive) setError(String(failure)); })
       .finally(() => { if (alive) setHistoryLoading(false); });
     return () => { alive = false; };
@@ -82,24 +83,27 @@ export function useChat() {
       if (request.cancelled) return;
       setMessages((items) => [...items,
         { id: crypto.randomUUID(), role: "user", content: text.trim(), activities: [], status: "completed" },
-        { id: assistantId, role: "assistant", content: "", activities: [], status: "streaming" },
+        { id: assistantId, role: "assistant", content: "", activities: [], parts: [], status: "streaming" },
       ]);
       await agentClient.stream(request.id, id, text.trim(), skills, (event: AgentEvent) => {
         if (request.cancelled && event.type !== "completed") return;
-        if (event.type === "delta") update((message) => ({ ...message, content: message.content + event.delta }));
-        if (event.type === "skill_loaded") update((message) => ({ ...message, activities: [...message.activities, {
+        if (event.type === "delta") update((message) => MessageTimeline.text(message, event.delta));
+        if (event.type === "skill_loaded") update((message) => MessageTimeline.activity(message, {
           id: `skill-${event.skill}`, name: event.skill, kind: "skill", status: "completed", output: "技能指令已加载",
-        }] }));
-        if (event.type === "tool_started") update((message) => ({ ...message, activities: [...message.activities, {
+        }));
+        if (event.type === "tool_started") update((message) => MessageTimeline.activity(message, {
           id: event.call_id, name: event.name, kind: "tool", status: "running", output: "",
-        }] }));
+        }));
         if (event.type === "tool_delta") update((message) => ({ ...message, activities: message.activities.map((item) => item.id === event.call_id ? { ...item, output: item.output + event.delta } : item) }));
         if (event.type === "tool_completed") update((message) => ({ ...message, activities: message.activities.map((item) => item.id === event.call_id ? { ...item, output: event.output, status: event.failed ? "failed" : "completed" } : item) }));
         if (event.type === "completed") {
           request.cancelled = false;
           request.completed = true;
           completed = true;
-          update((message) => ({ ...message, content: event.result.text, status: "completed", result: event.result }));
+          update((message) => {
+            const suffix = event.result.text.startsWith(message.content) ? event.result.text.slice(message.content.length) : "";
+            return { ...MessageTimeline.text(message, suffix), content: event.result.text, status: "completed", result: event.result };
+          });
         }
       });
       if (!completed && !request.cancelled) throw new Error("回答在完成前结束，请重试");

@@ -46,9 +46,8 @@ class DesktopBridge:
         elif action == "create":
             self.emit({"type": "data", "data": {"id": self.sessions.create()}})
         elif action == "history":
-            snapshot = self.sessions.read(request["session_id"])
             self.emit({"type": "data", "data": {
-                "messages": [asdict(message) for message in snapshot.messages]
+                "messages": self.sessions.read_display(request["session_id"])
             }})
         elif action == "clear":
             self.sessions.clear(request["session_id"])

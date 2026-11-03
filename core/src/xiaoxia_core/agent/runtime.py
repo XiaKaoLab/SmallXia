@@ -1,5 +1,5 @@
 """组合消息、技能与流式 LLM，完整成功后原子保存一轮对话。
-Created on 2026-11-01; Updated on 2026-11-01
+Created on 2026-11-01; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 
@@ -12,6 +12,7 @@ from typing import Literal
 from ..llm import LLM, LLMMessage, LLMResult
 from .sessions import SessionStore
 from .skills import SkillRegistry
+from .transcript import AgentTranscript
 
 
 @dataclass(frozen=True)
@@ -56,8 +57,10 @@ class SimpleAgent:
                 raise ValueError("所选技能指令过长，请减少技能数量")
             instructions = "\n\n".join([self.instructions, *sections])
             messages = [*snapshot.messages[-self.max_context_turns * 2:], user]
+            transcript = AgentTranscript()
             yield AgentEvent("started", session_id)
             for name in names:
+                transcript.activity(f'skill-{name}', name, 'skill', 'completed', '技能指令已加载')
                 yield AgentEvent("skill_loaded", session_id, skill=name)
             result: LLMResult | None = None
             with closing(self.llm.stream_messages(messages, instructions=instructions)) as stream:
@@ -65,8 +68,13 @@ class SimpleAgent:
                     if event.type == "delta":
                         if result is not None:
                             raise RuntimeError("LLM 完成事件后出现文本增量")
+                        transcript.text(event.delta)
                         yield AgentEvent("delta", session_id, delta=event.delta)
                     elif event.type in ("tool_started", "tool_completed"):
+                        if event.type == 'tool_started':
+                            transcript.activity(event.call_id, event.name, 'tool')
+                        else:
+                            transcript.complete_tool(event.call_id, event.output, event.failed)
                         yield AgentEvent(event.type, session_id, call_id=event.call_id,
                                          name=event.name, output=event.output, failed=event.failed)
                     elif event.type == "completed":
@@ -75,7 +83,7 @@ class SimpleAgent:
                         result = event.result
             if result is None:
                 raise RuntimeError("LLM 流在完成前结束，本轮未保存")
-            self.sessions.append_turn(snapshot, user, LLMMessage("assistant", result.text))
+            self.sessions.append_turn(snapshot, user, LLMMessage("assistant", result.text), presentation=transcript.finish(result.text))
             yield AgentEvent("completed", session_id, result=result)
         finally:
             self._busy.release()

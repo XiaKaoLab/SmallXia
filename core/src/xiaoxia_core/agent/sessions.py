@@ -1,9 +1,10 @@
 """使用 SQLite 管理会话与完整轮次，乐观锁防止覆盖并发修改。
-Created on 2026-11-01; Updated on 2026-11-01
+Created on 2026-11-01; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 
 import sqlite3
+import json
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -37,6 +38,10 @@ class SessionStore:
                     content TEXT NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS messages_session ON messages(session_id, id);
+                CREATE TABLE IF NOT EXISTS message_presentations (
+                    message_id INTEGER PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
+                    presentation TEXT NOT NULL
+                );
             """)
 
     @contextmanager
@@ -72,7 +77,7 @@ class SessionStore:
         return SessionSnapshot(session_id, rows[0][0], messages)
 
     def append_turn(
-        self, snapshot: SessionSnapshot, user: LLMMessage, assistant: LLMMessage
+        self, snapshot: SessionSnapshot, user: LLMMessage, assistant: LLMMessage, *, presentation=None
     ) -> None:
         if user.role != "user" or assistant.role != "assistant":
             raise ValueError("完整轮次必须依次包含 user 和 assistant")
@@ -83,10 +88,21 @@ class SessionStore:
             ).rowcount
             if changed != 1:
                 raise RuntimeError("会话已被其他调用修改，本轮回答未保存")
-            db.executemany(
-                "INSERT INTO messages(session_id, role, content) VALUES (?, ?, ?)",
-                [(snapshot.session_id, message.role, message.content) for message in (user, assistant)],
-            )
+            for message in (user, assistant):
+                cursor = db.execute('INSERT INTO messages(session_id, role, content) VALUES (?, ?, ?)',
+                    (snapshot.session_id, message.role, message.content))
+                if message.role == 'assistant' and presentation is not None:
+                    db.execute('INSERT INTO message_presentations(message_id, presentation) VALUES (?, ?)',
+                        (cursor.lastrowid, json.dumps(presentation, ensure_ascii=False)))
+
+    def read_display(self, session_id):
+        self.read(session_id)  # 同样校验会话存在。
+        with self._connection() as db:
+            rows = db.execute('''SELECT m.role, m.content, p.presentation FROM messages m
+                LEFT JOIN message_presentations p ON p.message_id = m.id
+                WHERE m.session_id = ? ORDER BY m.id''', (session_id,)).fetchall()
+        return [dict(role=role, content=content, **(json.loads(presentation) if presentation else {}))
+                for role, content, presentation in rows]
 
     def clear(self, session_id: str) -> None:
         with self._connection() as db:

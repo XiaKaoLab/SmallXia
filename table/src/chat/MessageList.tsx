@@ -5,10 +5,8 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { ArrowDown, Check, Copy } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { IconButton } from "../shared/IconButton";
-import { ActivityCard } from "./ActivityCard";
+import { MessageBody } from "./MessageBody";
 import type { ChatMessage } from "./types";
 
 function CopyMessage({ text }: { text: string }) {
@@ -38,9 +36,7 @@ export function MessageList({ messages, busy }: { messages: ChatMessage[]; busy:
       {messages.length > 0 && <div className="message-list">
         {messages.map((message) => <motion.article key={message.id} className={`message message-${message.role}`} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}>
           {message.role === "user" ? <div className="user-bubble">{message.content}</div> : <>
-            {message.activities.length > 0 && <div className="activity-stack" aria-label="技能与工具活动" tabIndex={0}>{message.activities.map((activity) => <ActivityCard key={activity.id} activity={activity} />)}</div>}
-            {message.content ? <div className="markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({ children, href, title }) => <a href={href} title={title} target="_blank" rel="noreferrer">{children}</a> }}>{message.content}</ReactMarkdown></div> : message.status === "streaming" ? <div className="thinking" role="status" aria-label="正在生成"><i /><i /><i /></div> : null}
-            {message.status === "streaming" && message.content && <span className="stream-caret" />}
+            <MessageBody message={message} />
             {message.status === "completed" && <div className="message-actions"><CopyMessage text={message.content} />{message.result?.output_tokens != null && <small>{message.result.output_tokens} tokens</small>}</div>}
             {(message.status === "failed" || message.status === "cancelled") && <small className="message-interrupted">{message.status === "cancelled" ? "已停止生成" : "回答未完成"}</small>}
           </>}
