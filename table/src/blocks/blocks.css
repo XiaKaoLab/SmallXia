@@ -27,6 +27,21 @@
 
 .blocks-heading { flex-wrap: wrap; gap: 6px; }
 .blocks-heading-actions { flex-wrap: wrap; gap: 4px; }
+.program-library { position: relative; display: flex; gap: 2px; }
+.program-button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: #638378; font-size: 12px; }
+.program-button:hover:not(:disabled), .program-button[aria-expanded="true"] { background: #eaf2ed; }
+.program-button:disabled { opacity: .45; }
+.program-library-panel { position: absolute; top: calc(100% + 8px); left: 0; width: min(290px, calc(100vw - 32px)); z-index: 50; padding: 10px; border: 1px solid #dbe5df; border-radius: 12px; background: #f7fbf8; box-shadow: 0 8px 24px #2d49351a; color: #455d54; }
+.program-library-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 12px; }
+.program-library-panel form { display: flex; gap: 8px; }
+.program-library-panel input { width: 100%; min-width: 0; min-height: 40px; padding: 0 10px; border: 1px solid #d4e1d8; border-radius: 8px; background: white; color: inherit; font: inherit; font-size: 12px; }
+.program-save { min-height: 44px; padding: 0 12px; flex-shrink: 0; border: 0; border-radius: 8px; background: #e0eee5; color: #355c46; }
+.program-save:disabled { opacity: .45; }
+.program-library-list { max-height: 260px; overflow-y: auto; }
+.program-library-list p { padding: 8px; font-size: 12px; color: #84948b; }
+.program-library-row { display: flex; align-items: center; gap: 4px; }
+.program-library-row > button:first-child { flex: 1; min-width: 0; min-height: 44px; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: inherit; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.program-library-row > button:first-child:hover:not(:disabled) { background: #eaf2ed; }
 
 .blocks-workspace .blocklyToolbox { background: #eaf0ed; border-right: 1px solid #dbe5df; padding: 12px 4px; }
 .blocks-workspace .blocklyToolboxCategoryContainer { margin: 3px 0; border-radius: 7px; }

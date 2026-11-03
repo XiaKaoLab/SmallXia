@@ -25,6 +25,7 @@ import { ProgramClient, type ProgramReceipt } from "./ProgramClient";
 import { HardwareBlocks } from "./HardwareBlocks";
 import { WorkflowTemplate } from "./WorkflowTemplate";
 import { WorkspaceStore } from "./WorkspaceStore";
+import { ProgramLibrary } from "./ProgramLibrary";
 import "blockly/blocks";
 import { Play, Square } from "lucide-react";
 import { agentClient } from "../chat/AgentClient";
@@ -40,6 +41,7 @@ export function BlocksSidebar() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [running, setRunning] = useState(false);
+  const [ready, setReady] = useState(false);
   const runLock = useRef(false);
   const programRef = useRef<ProgramClient | null>(null);
   const liveRef = useRef<LiveJointRunner | null>(null);
@@ -127,6 +129,7 @@ export function BlocksSidebar() {
         });
         update();
         detachDebug = blocksDebug.attach(workspace, limits, () => { edited = true; update(); });
+        setReady(true);
         controlBridge = new BlocksControlBridge(() => runRef.current(), () => runLock.current);
         void controlBridge.start();
         const program = new ProgramClient(setNotice, receiveReceipt);
@@ -209,6 +212,16 @@ export function BlocksSidebar() {
 
   return <aside className="blocks-sidebar" aria-label="机械臂积木编程">
     <header className="blocks-heading"><h2>积木编程</h2><div className="blocks-heading-actions">
+      <ProgramLibrary disabled={!ready || running} snapshot={() => blocksDebug.exportWorkspace()}
+        open={async snapshot => {
+          if (runLock.current) throw new Error("请先停止当前程序");
+          await liveRef.current?.pause();
+          try {
+            blocksDebug.importWorkspace(snapshot);
+            if (workspaceRef.current) new WorkspaceStore().save(workspaceRef.current);
+          } finally { liveRef.current?.resume(); }
+        }}
+        notice={message => { setError(""); setNotice(message); }} error={failure => { setNotice(""); setError(UiMessage.error(failure)); }} />
       <button type="button" className="blocks-run" onClick={() => void run()} disabled={!code || running}
         aria-label={running ? "运行中" : "运行"} aria-busy={running} title="运行">
         <Play size={15} fill="currentColor" /><span>{running ? "运行中" : "运行"}</span>
