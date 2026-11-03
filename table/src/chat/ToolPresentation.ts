@@ -1,0 +1,91 @@
+/** 功能：将 MCP 工具标识、协议包装与字段转换为简短中文说明。
+ * Created on 2026-11-03; Updated on 2026-11-03
+ * @author: https://github.com/Linmoqian
+ */
+const tools: Record<string, [string, string]> = {
+  table_get_state: ["读取机械臂状态", "查看仿真模型当前的六轴角度"],
+  table_get_limits: ["读取关节限位", "查看各关节允许的角度范围"],
+  table_move_joints: ["设置机械臂姿态", "向仿真模型发送六轴目标角度"],
+  blocks_catalog: ["查看积木目录", "了解可用积木及其参数"],
+  blocks_list: ["读取当前积木", "查看工作区中的积木与连接"],
+  blocks_create: ["添加积木", "在编程区放入指定积木"],
+  blocks_set_fields: ["设置积木参数", "修改积木中的选项和数值"],
+  blocks_move: ["移动积木", "调整积木在编程区的位置"],
+  blocks_connect: ["连接积木", "把积木连接成程序"],
+  blocks_remove: ["删除积木", "移除指定积木"],
+  blocks_clear: ["清空积木", "清空当前编程区"],
+  blocks_export: ["备份积木", "保存当前积木与连接"],
+  blocks_import: ["恢复积木", "载入已有的积木程序"],
+  blocks_run: ["运行积木程序", "提交当前程序，完成情况需查询运行状态"],
+  blocks_command_status: ["查询积木操作", "确认积木操作是否完成"],
+  blocks_programs: ["查看后台程序", "查看积木程序的运行情况"],
+  blocks_program_status: ["查询程序进度", "读取程序的状态和输出"],
+  blocks_program_stop: ["停止积木程序", "停止程序并清理它启动的任务"],
+  rl_train_ball: ["训练抓球策略", "在物理仿真中训练机械臂拿取小球"],
+  rl_capabilities: ["查看训练能力", "读取训练环境支持的功能"],
+  rl_export_onnx: ["导出 ONNX 模型", "将已训练策略导出为推理模型"],
+  rl_predict_onnx: ["预测机械臂动作", "用 ONNX 模型计算下一步动作"],
+  rl_rollout_onnx: ["运行 ONNX 推理", "在仿真中执行抓球策略"],
+  rl_create_session: ["创建训练环境", "准备强化学习会话"],
+  rl_get_session: ["读取训练环境", "查看当前会话状态"],
+  rl_list_sessions: ["查看训练会话", "列出已有训练环境"],
+  rl_step: ["执行训练动作", "让仿真环境前进一步"],
+  rl_intervene: ["接管训练动作", "设置人工介入状态"],
+  rl_feedback: ["记录任务结果", "记录本次任务成功或失败"],
+  rl_label_reward: ["标注奖励", "为训练样本添加奖励标签"],
+  rl_reset: ["重置训练环境", "开始新的仿真回合"],
+  rl_start_learner: ["启动策略学习", "使用采集的数据更新模型"],
+  rl_start_actor: ["启动策略执行", "在仿真环境中采集策略经验"],
+  rl_predict: ["预测策略动作", "根据当前观测计算动作"],
+  rl_train_reward: ["训练奖励模型", "学习任务奖励的判定方式"],
+  rl_get_job: ["查询训练进度", "查看后台训练任务的状态"],
+  rl_stop_job: ["停止训练任务", "终止指定后台任务"],
+  rl_stop_session: ["关闭训练环境", "结束指定训练会话"],
+};
+
+export const jointNames: Record<string, string> = {
+  shoulder_pan: "肩部旋转", shoulder_lift: "肩部抬升", elbow_flex: "肘部弯曲",
+  wrist_flex: "腕部弯曲", wrist_roll: "腕部旋转", gripper: "夹爪",
+};
+const labels: Record<string, string> = {
+  ...jointNames, status: "状态", id: "编号", request_id: "请求编号", robot_id: "机械臂", unit: "单位",
+  joint_positions: "关节角度", applied_joint_positions: "应用角度", physical: "实机", source: "来源",
+  camera: "相机", playback: "回放", limited: "到达边界", limit_reason: "边界原因", lower: "下限", upper: "上限",
+  command_id: "操作编号", result: "结果", program: "后台程序", kind: "任务类型", progress: "进度",
+  step: "当前步数", total_steps: "总步数", frames: "帧数", episodes: "回合数", score: "分数",
+  blocks: "积木", type: "类型", fields: "参数", output: "输出", error: "错误", message: "说明",
+  executed: "已执行", target: "目标", model: "模型", name: "名称", position: "位置", rotation: "方向",
+  visible: "显示", parent_link: "安装位置", fov: "视场角", num_envs: "并行数量", rounds: "训练轮数",
+};
+const values: Record<string, string> = {
+  accepted: "目标已接收", queued: "等待执行", running: "执行中", succeeded: "已完成", completed: "已完成",
+  failed: "失败", cancelled: "已停止", interrupted: "已中断", paused: "已暂停", rad: "弧度",
+  display_target: "仿真显示目标", table: "仿真机械臂",
+};
+
+export class ToolPresentation {
+  static describe(name: string): [string, string] {
+    return tools[name] ?? ["执行工具", name];
+  }
+  static label(key: string): string { return labels[key] ?? key.replace(/_/g, " "); }
+  static value(value: string): string { return values[value] ?? value; }
+  static parse(output: string): unknown {
+    let value: unknown = output;
+    for (let depth = 0; depth < 6; depth++) {
+      if (typeof value === "string") {
+        try { value = JSON.parse(value); continue; } catch { return value; }
+      }
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        const object = value as Record<string, unknown>;
+        if (object.structuredContent != null) { value = object.structuredContent; continue; }
+        if (Array.isArray(object.content)) {
+          const texts = object.content.filter(item => item?.type === "text" && typeof item.text === "string").map(item => item.text);
+          if (texts.length === 1) { value = texts[0]; continue; }
+          if (texts.length > 1) return texts.map(text => ToolPresentation.parse(text));
+        }
+      }
+      return value;
+    }
+    return value;
+  }
+}
