@@ -19,6 +19,7 @@ export class BlocksCursorPresenter {
     this.owner = `blocks:${command.id}`;
     const args = command.arguments;
     const id = args.child_id ?? args.id;
+    if (id) blocksDebug.reveal(String(id), Object.keys(args.fields ?? {})[0]);
     const button = command.operation === "run" ? document.querySelector(".blocks-run")?.getBoundingClientRect() : undefined;
     const target = button ? { x: button.left + button.width / 2, y: button.top + button.height / 2 }
       : blocksDebug.visualTarget(id ? String(id) : undefined, Object.keys(args.fields ?? {})[0]);
@@ -39,6 +40,7 @@ export class BlocksCursorPresenter {
         const created = result && typeof result === "object" && "id" in result ? String(result.id) : undefined;
         const id = created ?? (args.child_id ? String(args.child_id) : args.id ? String(args.id) : undefined);
         if (!failed && ["create", "move", "connect", "set_fields"].includes(command.operation)) {
+          if (id) blocksDebug.reveal(id, Object.keys(args.fields ?? {})[0]);
           const point = blocksDebug.visualTarget(id, Object.keys(args.fields ?? {})[0]);
           if (point) agentCursor.move(owner, point, ["move", "connect", "create"].includes(command.operation));
         }

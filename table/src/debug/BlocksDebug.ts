@@ -27,6 +27,17 @@ class WorkspaceManager {
   constructor(private readonly workspace: Blockly.WorkspaceSvg,
     private readonly limits: Limits, private readonly changed: () => void) {}
 
+  reveal(id: string, field?: string): void {
+    const block = this.workspace.getBlockById(id);
+    if (!block) return;
+    const viewport = this.workspace.getParentSvg().getBoundingClientRect();
+    const element = (field ? block.getField(field)?.getSvgRoot() : null) ?? block.getSvgRoot();
+    const bounds = element?.getBoundingClientRect();
+    if (bounds && (bounds.left < viewport.left + 85 || bounds.right > viewport.right - 20
+      || bounds.top < viewport.top + 12 || bounds.bottom > viewport.bottom - 20)) this.workspace.centerOnBlock(id);
+    block.select();
+  }
+
   visualTarget(id?: string, field?: string): { x: number; y: number } | undefined {
     const block = id ? this.workspace.getBlockById(id) : null;
     const element = (field ? block?.getField(field)?.getSvgRoot() : null) ?? block?.getSvgRoot();
@@ -174,6 +185,7 @@ export class BlocksDebugAPI {
     return () => { if (this.manager === manager) this.manager = undefined; };
   }
   ready(): boolean { return !!this.manager; }
+  reveal(id: string, field?: string): void { this.active().reveal(id, field); }
   visualTarget(id?: string, field?: string): { x: number; y: number } | undefined {
     return this.manager?.visualTarget(id, field);
   }
