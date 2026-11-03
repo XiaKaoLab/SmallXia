@@ -7,7 +7,7 @@ Created on 2026-11-03; Updated on 2026-11-03
 class QuestionTool:
     definition = {
         'type': 'function', 'name': 'ask_user', 'strict': False,
-        'description': '需要用户澄清目标、选择方案或补充必要信息时使用。提供一个自然问题和2–4个简短候选答案，用户仍可自由输入。调用后结束本轮等待回答，不替用户选择。普通结果回复不要强行提问。',
+        'description': '需要用户澄清目标、选择方案或补充必要信息时使用。提供一个自然问题和2–4个简短候选答案，用户仍可自由输入。调用后结束本轮等待回答，不替用户选择。画面中物体、相机用途或任务语义的歧义影响判断时也可询问；能从画面合理判断就直接回答，普通结果回复不要强行提问。',
         'parameters': {'type': 'object', 'properties': {
             'question': {'type': 'string', 'description': '直接向用户提出的问题，最多300字'},
             'options': {'type': 'array', 'items': {'type': 'string'}, 'minItems': 2, 'maxItems': 4,

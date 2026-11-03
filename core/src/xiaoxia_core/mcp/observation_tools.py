@@ -19,7 +19,7 @@ class ObservationTools:
         return CameraCalibration.camera_request('')
 
     def robot_observe(self, samples: int = 2, interval_s: float = 0.5, views: list[str] | None = None, source: str = "simulation", camera_id: str | None = None) -> list[TextContent | ImageContent]:
-        """只读截图及CSV。source=simulation为多视角渲染，real为真实摄像头。真实相机先robot_list_cameras，再指定其中source=real的camera_id，不猜设备，不默认为第一个；real不接受front/side/top视角。每图明确设备身份和时间；真实相机不包含关节反馈、不证明相机安装于指定机械臂。1–3次，间隔0–2秒。"""
+        """只读截图及CSV。source=simulation为多视角渲染，real为真实摄像头。真实相机先robot_list_cameras，再指定其中source=real的camera_id，不猜设备，不默认为第一个；real不接受front/side/top视角。每图明确设备身份和时间；结合画面判断物体、视角与任务语义，含糊时可询问用户；视觉假设不改变来源身份。真实相机不包含关节反馈、不证明相机安装于指定机械臂。1–3次，间隔0–2秒。"""
         if source not in ('simulation', 'real'):
             raise ValueError('来源仅支持simulation或real')
         device = None
