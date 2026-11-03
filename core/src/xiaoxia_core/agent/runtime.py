@@ -114,7 +114,8 @@ class SimpleAgent:
                         result = event.result
             if result is None:
                 raise RuntimeError("LLM 流在完成前结束，本轮未保存")
-            self.sessions.append_turn(snapshot, user, LLMMessage("assistant", result.text), presentation=transcript.finish(result.text))
+            presentation = {**transcript.finish(result.text), 'choices': list(result.choices)}
+            self.sessions.append_turn(snapshot, user, LLMMessage("assistant", result.text), presentation=presentation)
             yield AgentEvent("completed", session_id, result=result)
         finally:
             self._busy.release()

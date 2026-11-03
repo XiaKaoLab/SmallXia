@@ -7,6 +7,7 @@ import json
 
 from ..llm.messages import LLMStreamEvent
 from .client import TableMCPClient
+from .question_tool import QuestionTool
 
 
 def stream_with_mcp(llm, messages, instructions):
@@ -14,6 +15,7 @@ def stream_with_mcp(llm, messages, instructions):
     text = ""
     input_tokens = output_tokens = 0
     guidance = ("持续循环调用工具完成当前请求，根据结果决定下一步，完成后回复。只在阶段变化或需要用户理解时简短说明意图，连续工具不要逐条播报。不要密集轮询后台任务；重复失败时停止说明，不得重试未知结果的动作。"
+                "需要用户澄清目标、选择方案或确认缺失信息时使用 ask_user，提供2–4个简短可点击的答案，并等待用户回复。不要在调用前重复写出同一个问题，不要自动选择；普通问候和完成反馈无需强行加选项。"
                 "对用户使用仿真机械臂、真机机械臂的自然称呼，不把 table 显示模型作为产品名称。"
                 "介绍能力时分别说明仿真与真机：仿真可设置姿态、采集和训练；真机可通过对应积木连接、校准、映射、录制及受控运动，具体取决于连接和校准配置。"
                 "回答当前连接情况前调用 robot_get_environment；串口被发现不等于设备已连接，空控制会话仅代表没有控制连接，不证明设备未插入或没有只读映射。"
@@ -34,7 +36,7 @@ def stream_with_mcp(llm, messages, instructions):
         for round_index in range(64):
             with llm._client.responses.stream(
                 model=llm.config.model, input=inputs, instructions=instructions + guidance,
-                tools=mcp.tools, parallel_tool_calls=False,
+                tools=[*mcp.tools, QuestionTool.definition], parallel_tool_calls=False,
                 include=["reasoning.encrypted_content"],
                 tool_choice="none" if round_index == 63 else "auto",
                 max_output_tokens=llm.config.max_output_tokens, store=False,
@@ -61,6 +63,24 @@ def stream_with_mcp(llm, messages, instructions):
                     text, response.id, response.model, input_tokens, output_tokens))
                 return
             for call in calls:
+                if call.name == 'ask_user':
+                    try:
+                        arguments = json.loads(call.arguments)
+                        if not isinstance(arguments, dict):
+                            raise ValueError('问题参数必须为对象')
+                        question, choices = QuestionTool.parse(arguments)
+                    except (ValueError, TypeError) as error:
+                        inputs.append({'type': 'function_call_output', 'call_id': call.call_id,
+                                       'output': json.dumps({'error': str(error)}, ensure_ascii=False)})
+                        continue
+                    if not text.rstrip().endswith(question):
+                        delta = ('\n\n' if text.strip() else '') + question
+                        text += delta
+                        yield LLMStreamEvent('delta', delta=delta)
+                    from ..llm.client_types import LLMResult
+                    yield LLMStreamEvent('completed', result=LLMResult(
+                        text, response.id, response.model, input_tokens, output_tokens, choices))
+                    return
                 yield LLMStreamEvent("tool_started", call_id=call.call_id, name=call.name)
                 failed = False
                 try:

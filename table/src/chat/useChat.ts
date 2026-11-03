@@ -50,7 +50,7 @@ export function useChat() {
     if (!sessionId || !agentClient.desktop) return;
     setHistoryLoading(true);
     setError("");
-    void agentClient.request<{ messages: Pick<ChatMessage, "role" | "content" | "activities" | "parts">[] }>({ action: "history", session_id: sessionId })
+    void agentClient.request<{ messages: Pick<ChatMessage, "role" | "content" | "activities" | "parts" | "choices">[] }>({ action: "history", session_id: sessionId })
       .then((result) => {
         if (alive) setMessages(result.messages.map((message, index) => ({ ...message, id: `${sessionId}-${index}`, activities: message.activities ?? [], status: "completed" })));
       }).catch((failure: unknown) => { if (alive) setError(String(failure)); })
@@ -102,7 +102,7 @@ export function useChat() {
           completed = true;
           update((message) => {
             const suffix = event.result.text.startsWith(message.content) ? event.result.text.slice(message.content.length) : "";
-            return { ...MessageTimeline.text(message, suffix), content: event.result.text, status: "completed", result: event.result };
+            return { ...MessageTimeline.text(message, suffix), content: event.result.text, choices: event.result.choices ?? [], status: "completed", result: event.result };
           });
         }
       });

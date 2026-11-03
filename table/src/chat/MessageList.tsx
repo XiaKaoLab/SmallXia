@@ -18,7 +18,7 @@ function CopyMessage({ text }: { text: string }) {
     {state === "failed" && <small role="status">复制失败</small>}</span>;
 }
 
-export function MessageList({ messages, busy }: { messages: ChatMessage[]; busy: boolean }) {
+export function MessageList({ messages, busy, onAnswer }: { messages: ChatMessage[]; busy: boolean; onAnswer?: (answer: string) => void }) {
   const scroll = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
   const [showBottom, setShowBottom] = useState(false);
@@ -34,9 +34,12 @@ export function MessageList({ messages, busy }: { messages: ChatMessage[]; busy:
       setShowBottom(!pinned.current);
     }}>
       {messages.length > 0 && <div className="message-list">
-        {messages.map((message) => <motion.article key={message.id} className={`message message-${message.role}`} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}>
+        {messages.map((message, index) => <motion.article key={message.id} className={`message message-${message.role}`} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}>
           {message.role === "user" ? <div className="user-bubble">{message.content}</div> : <>
             <MessageBody message={message} />
+            {index === messages.length - 1 && message.status === "completed" && !!message.choices?.length && <div className="answer-choices" role="group" aria-label="候选答案">
+              {message.choices.map(answer => <button type="button" key={answer} disabled={busy || !onAnswer} onClick={() => onAnswer?.(answer)}>{answer}</button>)}
+            </div>}
             {message.status === "completed" && <div className="message-actions"><CopyMessage text={message.content} />{message.result?.output_tokens != null && <small>{message.result.output_tokens} tokens</small>}</div>}
             {(message.status === "failed" || message.status === "cancelled") && <small className="message-interrupted">{message.status === "cancelled" ? "已停止生成" : "回答未完成"}</small>}
           </>}

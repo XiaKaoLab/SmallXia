@@ -46,6 +46,10 @@
 .markdown td, .markdown th { padding: 6px; border-bottom: 1px solid #dfe5e8; text-align: left; }
 .message-actions { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: #aeb4b9; }
 .message-actions small { font-size: 9px; }
+.answer-choices { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0 4px; }
+.answer-choices button { min-height: 44px; max-width: 100%; padding: 8px 13px; border: 1px solid #cbded2; border-radius: 12px; background: #edf5ef; color: #486b59; text-align: left; font: inherit; font-size: 12px; overflow-wrap: anywhere; }
+.answer-choices button:hover:not(:disabled) { background: #dcece1; border-color: #9bbda8; }
+.answer-choices button:disabled { opacity: .5; }
 .message-actions .icon-button { width: 27px; height: 27px; color: #a3aab0; }
 .copy-action { display: flex; align-items: center; gap: 4px; }
 .message-interrupted { display: block; color: #a38e7c; font-size: 10px; margin-top: 9px; }

@@ -48,7 +48,7 @@ export function ChatSidebar() {
       </motion.section>}
     </AnimatePresence>
     {chat.loading && <div className="chat-loading" role="status">正在加载对话…</div>}
-    <MessageList messages={chat.messages} busy={chat.busy} />
+    <MessageList messages={chat.messages} busy={chat.busy} onAnswer={chat.desktop && chat.data.configured && !chat.loading ? answer => { void chat.send(answer); } : undefined} />
     <footer className="chat-footer">
       {notice && <div className="chat-notice error" role="alert"><CircleAlert size={14} /><span>{notice}</span><IconButton label="重新连接" onClick={() => { setRefreshError(""); void chat.refresh().catch((failure: unknown) => setRefreshError(String(failure))); }}><RefreshCw size={14} /></IconButton></div>}
       {!chat.desktop && <p className="chat-notice">请打开桌面应用</p>}
