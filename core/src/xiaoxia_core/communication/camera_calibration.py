@@ -1,5 +1,5 @@
 """真实相机棋盘格内参标定：持久采样、角点检查、误差报告和参数导出。
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 import base64
@@ -37,10 +37,10 @@ class CameraCalibration:
             connection.close()
 
     @staticmethod
-    def camera_request(path):
+    def camera_request(path, *, timeout=4):
         request = Request('http://127.0.0.1:8766/api/v1/cameras' + path,
                           headers={'Authorization': 'Bearer ' + os.environ['XIAOXIA_MOTION_TOKEN']})
-        with urlopen(request, timeout=4) as response:
+        with urlopen(request, timeout=timeout) as response:
             return json.load(response)
 
     def start(self, camera_id, columns=9, rows=6, square_mm=25):

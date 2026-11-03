@@ -3,7 +3,8 @@
  * @author: https://github.com/Linmoqian
  */
 const tools: Record<string, [string, string]> = {
-  robot_observe: ["观察机械臂", "多视角截图，结合时间与关节CSV分析动作"],
+  robot_list_cameras: ["查看摄像头", "区分真实摄像头与虚拟相机，读取设备名称和ID"],
+  robot_observe: ["观察机械臂", "读取真实相机或仿真截图，标注来源身份并结合CSV分析"],
   robot_get_environment: ["查看仿真与真机", "识别机械臂串口候选并查看连接状态"],
   table_get_state: ["读取机械臂状态", "查看仿真模型当前的六轴角度"],
   table_get_limits: ["读取关节限位", "查看各关节允许的角度范围"],
@@ -58,6 +59,10 @@ const labels: Record<string, string> = {
   serial_discovery: "串口查询", sessions: "控制连接", port: "串口", description: "设备说明", note: "说明",
   ...jointNames, status: "状态", id: "编号", request_id: "请求编号", robot_id: "机械臂", unit: "单位",
   joint_positions: "关节角度", applied_joint_positions: "应用角度", physical: "实机", source: "来源",
+  identity: "图像身份", source_kind: "画面类型", camera_id: "相机ID", camera_name: "相机名称",
+  timestamp: "采样时间", timestamp_ns: "接收时间（纳秒）", timestamp_basis: "时间依据",
+  sequence: "帧序号", age_ms: "接收后间隔（毫秒）", robot_association: "机械臂归属",
+  sample: "采样", view: "视角", image: "图片", csv: "CSV文件", csv_content: "CSV记录", directory: "保存位置",
   camera: "相机", playback: "回放", limited: "到达边界", limit_reason: "边界原因", lower: "下限", upper: "上限",
   command_id: "操作编号", result: "结果", program: "后台程序", kind: "任务类型", progress: "进度",
   step: "当前步数", total_steps: "总步数", frames: "帧数", episodes: "回合数", score: "分数",
@@ -70,12 +75,16 @@ const values: Record<string, string> = {
   connected: "已有控制连接", likely: "较可能", possible: "可能", metadata_and_existing_configuration: "设备信息与已有配置",
   accepted: "目标已接收", queued: "等待执行", running: "执行中", succeeded: "已完成", completed: "已完成",
   failed: "失败", cancelled: "已停止", interrupted: "已中断", paused: "已暂停", rad: "弧度",
+  real_camera: "真实摄像头", simulation_render: "仿真渲染", hardware_mapped_render: "真机映射画面",
+  training_render_first_environment: "训练环境画面（第一个环境）",
+  core_receive_time: "后端接收时间", webview_render_capture: "前端渲染截图时间", unverified: "尚未确认",
+  mapped_render: "真机映射模型", front: "正面", side: "侧面", top: "俯视",
   display_target: "仿真显示目标", table: "仿真机械臂",
 };
 
 export class ToolPresentation {
   static category(name: string): "查询" | "修改" | "运行" {
-    if (["robot_observe", "robot_get_environment", "table_get_state", "table_get_limits", "blocks_catalog", "blocks_list", "blocks_export",
+    if (["robot_list_cameras", "robot_observe", "robot_get_environment", "table_get_state", "table_get_limits", "blocks_catalog", "blocks_list", "blocks_export",
       "blocks_command_status", "blocks_programs", "blocks_program_status", "rl_capabilities",
       "rl_get_session", "rl_list_sessions", "rl_get_job"].includes(name)) return "查询";
     if (["table_move_joints", "blocks_create", "blocks_set_fields", "blocks_move", "blocks_connect",

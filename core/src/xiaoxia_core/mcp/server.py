@@ -57,6 +57,7 @@ def main() -> None:
     server = FastMCP("xiaoxia-table-model")
     server.tool()(EnvironmentTools().robot_get_environment)
     server.tool()(ObservationTools().robot_observe)
+    server.tool()(ObservationTools().robot_list_cameras)
     for method in (tools.table_get_state, tools.table_get_limits, tools.table_move_joints):
         server.tool()(method)
     for provider, prefix in ((RLTools(), "rl_"), (BlocksTools(), "blocks_")):
