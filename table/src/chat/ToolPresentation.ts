@@ -64,8 +64,17 @@ const values: Record<string, string> = {
 };
 
 export class ToolPresentation {
+  static category(name: string): "查询" | "修改" | "运行" {
+    if (["table_get_state", "table_get_limits", "blocks_catalog", "blocks_list", "blocks_export",
+      "blocks_command_status", "blocks_programs", "blocks_program_status", "rl_capabilities",
+      "rl_get_session", "rl_list_sessions", "rl_get_job"].includes(name)) return "查询";
+    if (["table_move_joints", "blocks_create", "blocks_set_fields", "blocks_move", "blocks_connect",
+      "blocks_remove", "blocks_clear", "blocks_import", "rl_create_session", "rl_intervene",
+      "rl_feedback", "rl_label_reward", "rl_reset"].includes(name)) return "修改";
+    return "运行";
+  }
   static describe(name: string): [string, string] {
-    return tools[name] ?? ["执行工具", name];
+    return tools[name] ?? [name, "执行指定操作"];
   }
   static label(key: string): string { return labels[key] ?? key.replace(/_/g, " "); }
   static value(value: string): string { return values[value] ?? value; }
