@@ -3,9 +3,12 @@ Created on 2026-11-01; Updated on 2026-11-03
 @author: https://github.com/Linmoqian
 """
 
+import logging
+import sqlite3
 from collections.abc import Iterator, Sequence
 from contextlib import closing
 from dataclasses import dataclass
+from pathlib import Path
 from threading import Lock
 from typing import Literal
 
@@ -14,6 +17,7 @@ from .sessions import SessionStore
 from .skills import SkillRegistry
 from .transcript import AgentTranscript
 from .memory import AgentMemory
+from .knowledge import KnowledgeBase
 
 
 @dataclass(frozen=True)
@@ -44,6 +48,10 @@ class SimpleAgent:
         self.max_skill_characters = max_skill_characters
         self._busy = Lock()
         self.memory = AgentMemory(sessions, llm)
+        self.knowledge = KnowledgeBase(
+            Path(__file__).resolve().parents[4] / 'docs' / 'lerobot',
+            sessions.path.parent / 'knowledge.sqlite3',
+        )
 
     def stream(
         self, session_id: str, text: str, *, skill_names: Sequence[str] = ()
@@ -60,7 +68,12 @@ class SimpleAgent:
             yield AgentEvent("started", session_id)
             self.memory.remember(text)
             memory, history = self.memory.context(snapshot, self.max_context_turns)
-            instructions = "\n\n".join([self.instructions, memory, *sections])
+            try:
+                knowledge = self.knowledge.context(text)
+            except (OSError, ValueError, sqlite3.Error):
+                logging.getLogger(__name__).exception('本地知识库检索失败，本轮继续普通对话')
+                knowledge = ''
+            instructions = "\n\n".join([self.instructions, memory, knowledge, *sections])
             messages = [*history, user]
             transcript = AgentTranscript()
             for name in names:
