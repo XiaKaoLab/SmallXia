@@ -3,7 +3,7 @@
  * @author: https://github.com/Linmoqian
  */
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { ArrowUp, Square } from "lucide-react";
+import { ArrowUp, Square, X } from "lucide-react";
 import { SlashCommands } from "./SlashCommands";
 
 interface Props {
@@ -17,6 +17,8 @@ export function Composer({ value, onChange, onSend, onStop, busy, disabled }: Pr
   const menuId = useId();
   const [selected, setSelected] = useState(0);
   const [dismissed, setDismissed] = useState<string | null>(null);
+  const activeCommand = SlashCommands.selected(value);
+  const visibleValue = activeCommand?.text ?? value;
   const commands = !busy && !disabled && dismissed !== value ? SlashCommands.match(value) : [];
   const choice = Math.min(selected, Math.max(0, commands.length - 1));
   useEffect(() => { setSelected(0); }, [value]);
@@ -42,11 +44,21 @@ export function Composer({ value, onChange, onSend, onStop, busy, disabled }: Pr
         <command.icon size={17} className="slash-command-icon" aria-hidden="true" /><span className="slash-command-name">{command.name}</span>
       </button>)}
     </div>}
-    <textarea id="chat-message-input" ref={input} value={value} rows={1} aria-label="发送消息给小虾" placeholder="有什么想法？" onChange={(event) => onChange(event.target.value)}
+    <div className="composer-input-row">
+    {activeCommand && <span className="composer-command">
+      <activeCommand.command.icon size={15} aria-hidden="true" /><span>{activeCommand.command.name}</span>
+      <button type="button" aria-label={`移除${activeCommand.command.name}命令`} title="移除命令" onClick={() => {
+        onChange(activeCommand.text); input.current?.focus();
+      }}><X size={12} /></button>
+    </span>}
+    <textarea id="chat-message-input" ref={input} value={visibleValue} rows={1} aria-label="发送消息给小虾" placeholder={activeCommand ? "" : "有什么想法？"} onChange={(event) => onChange(activeCommand ? `/${activeCommand.command.name} ${event.target.value}` : event.target.value)}
       role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded={commands.length > 0}
       aria-controls={commands.length ? menuId : undefined} aria-activedescendant={commands.length ? `${menuId}-${choice}` : undefined}
       onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }} onKeyDown={(event) => {
       if (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+      if (activeCommand && event.key === "Backspace" && event.currentTarget.selectionStart === 0 && event.currentTarget.selectionEnd === 0) {
+        event.preventDefault(); onChange(activeCommand.text); return;
+      }
       if (commands.length) {
         if (event.key === "ArrowDown" || event.key === "ArrowUp") {
           event.preventDefault();
@@ -63,6 +75,7 @@ export function Composer({ value, onChange, onSend, onStop, busy, disabled }: Pr
         if (!event.repeat && !busy && !disabled && value.trim()) event.currentTarget.form?.requestSubmit();
       }
     }} />
+    </div>
     <div className="composer-tools">
       {busy ? <button type="button" className="send-button" aria-label="停止生成" onClick={onStop}><Square size={13} fill="currentColor" /></button> : <button type="submit" className="send-button" aria-label="发送消息" disabled={disabled || !value.trim()}><ArrowUp size={18} /></button>}
     </div>

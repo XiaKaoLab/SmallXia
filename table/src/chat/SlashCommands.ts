@@ -15,4 +15,10 @@ export class SlashCommands {
     const query = value.slice(1);
     return this.items.filter(item => item.name.startsWith(query));
   }
+
+  static selected(value: string) {
+    const match = value.match(/^\/([^\s]+)\s([\s\S]*)$/);
+    const command = match && this.items.find(item => item.name === match[1]);
+    return command ? { command, text: match![2] } : null;
+  }
 }

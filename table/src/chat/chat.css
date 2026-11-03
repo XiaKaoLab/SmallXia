@@ -79,6 +79,11 @@
 .composer:focus-within { box-shadow: 0 3px 20px #33424b0b, 0 0 0 1px #c2cdca; }
 .composer textarea { display: block; width: 100%; min-height: 40px; max-height: 150px; resize: none; overflow-y: auto; border: 0; outline: none; color: #424a50; background: none; font-size: 12px; line-height: 1.7; padding: 2px 1px 8px; }
 .composer textarea::placeholder { color: #a6adb3; }
+.composer-input-row { display: flex; align-items: flex-start; gap: 7px; }
+.composer-input-row textarea { flex: 1; min-width: 0; }
+.composer-command { display: inline-flex; flex-shrink: 0; align-items: center; gap: 5px; margin-top: 1px; padding: 4px 6px; border: 1px solid #c8dbd0; border-radius: 7px; background: #e5f0e9; color: #527d6e; font-size: 12px; line-height: 20px; }
+.composer-command button { display: grid; place-items: center; padding: 2px; border: 0; border-radius: 4px; background: transparent; color: inherit; }
+.composer-command button:hover { background: #cfdfd5; }
 .composer-tools { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .send-button { display: grid; place-items: center; height: 30px; width: 30px; margin-left: 3px; border: 0; border-radius: 50%; background: #29332f; color: #fff; transition: background .15s; }
 .send-button:hover:not(:disabled) { background: #486154; }
