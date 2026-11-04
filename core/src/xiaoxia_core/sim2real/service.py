@@ -16,6 +16,7 @@ class CoordinateIdentity:
         follower=workflow.config['follower']
         digest=hashlib.sha256(json.dumps(workflow.config,sort_keys=True).encode('utf-8'))
         for key in (('calibration',) if workflow.config.get('coordinate_basis')=='official_calibration' else ('calibration','mapping')):digest.update(workflow.path(follower[key]).read_bytes())
+        if follower.get('zero_reference'):digest.update(workflow.path(follower['zero_reference']).read_bytes())
         digest.update(workflow.path(workflow.config['urdf']).read_bytes())
         return digest.hexdigest()
 
@@ -70,6 +71,9 @@ class Sim2RealAPI:
             report['coordinate_fingerprint']=CoordinateIdentity.fingerprint(workflow)
             if not blockers:
                 arm=workflow.arm('follower')  # 只读文件并构造适配器，不 connect、不 arm。
+                report['zero_source']=getattr(arm.calibration,'zero_source','measured_urdf')
+                report['zero_ticks']={name:j.zero_tick for name,j in arm.calibration.joints.items()}
+                report['mapping_required']=not native
                 report['limits']={name:{'lower':v.lower,'upper':v.upper,'unit':'rad'} for name,v in arm.limits.joints.items()}
         except (ValueError,KeyError,TypeError,OSError,json.JSONDecodeError) as error:blockers.append(str(error))
         with self.hardware.lock:

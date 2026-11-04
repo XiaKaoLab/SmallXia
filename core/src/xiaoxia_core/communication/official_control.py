@@ -3,6 +3,7 @@ Created on 2026-11-04; Updated on 2026-11-04
 @author: https://github.com/Linmoqian
 """
 import json
+from hashlib import sha256
 from math import pi,isfinite
 from ..contracts import Action
 from .calibration import ArmCalibration,EncoderJoint
@@ -17,12 +18,15 @@ class OfficialJointLimits(JointLimits):
         return Action({n:current[n]+max(-min(self.joints[n].velocity,max_velocity)*dt,min(min(self.joints[n].velocity,max_velocity)*dt,desired.joint_positions[n]-current[n])) for n in JOINTS})
 
 class OfficialArmCalibration(ArmCalibration):
-    def __init__(self,path):
+    def __init__(self,path,zero_reference=None):
+        reference=json.loads(zero_reference.read_text(encoding="utf-8")) if zero_reference else None
+        if reference and reference["calibration_sha256"]!=sha256(path.read_bytes()).hexdigest():raise ValueError("零位记录与设备校准不匹配")
+        self.zero_source="user_declared_current_pose" if reference else "official_calibration"
         raw=OfficialCalibrationStore.validate(json.loads(path.read_text(encoding='utf-8')))
         self.joints={};self.tick_bounds={};limits={}
         for name in JOINTS:
             row=raw[name]
-            zero=row['range_min'] if name=='gripper' else (row['range_min']+row['range_max'])/2
+            zero=reference['zero_ticks'][name] if reference else (row['range_min'] if name=='gripper' else (row['range_min']+row['range_max'])/2)
             joint=EncoderJoint(row['id'],row['homing_offset'],row['range_min'],row['range_max'],zero,1)
             self.joints[name]=joint;self.tick_bounds[name]=(row['range_min'],row['range_max'])
             limits[name]=JointLimit(joint.angle(row['range_min']),joint.angle(row['range_max']),1,35)

@@ -110,7 +110,7 @@ class HardwareWorkflow:
         item = self.config[role]
         if self.config.get('coordinate_basis')=='official_calibration':
             from ..communication.official_control import OfficialArmCalibration
-            calibration=OfficialArmCalibration(self.path(item['calibration']))
+            calibration=OfficialArmCalibration(self.path(item['calibration']),self.path(item['zero_reference']) if item.get('zero_reference') else None)
         else:
             calibration = ArmCalibration.load(self.path(item["calibration"]), self.path(item["mapping"]), self.limits)
         return SOArmTransport(item["port"], calibration, role,
