@@ -9,7 +9,8 @@
 .qiling-speech-bubble header span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .qiling-speech-bubble button { width:28px; height:28px; margin:-4px -7px -3px 0; border:0; border-radius:50%; background:transparent; color:inherit; cursor:pointer; font-size:19px; }
 .qiling-speech-bubble button:hover { background:#e4f0e7; }
-.qiling-speech-content { white-space:pre-wrap; overflow-wrap:anywhere; max-height:180px; overflow-y:auto; font-size:13px; line-height:1.7; }
+.qiling-speech-content { white-space:pre-wrap; overflow-wrap:anywhere; max-height:min(180px,32vh); overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; font-size:13px; line-height:1.7; }
+.qiling-speech-content::-webkit-scrollbar { display:none; width:0; height:0; }
 .qiling-speech-bubble.is-thinking .qiling-speech-content { animation:qiling-thinking 1.3s ease-in-out infinite; }
 @keyframes qiling-appear { from { opacity:0; transform:translate(-50%,-95%) scale(.96); } to { opacity:1; transform:translate(-50%,-100%) scale(1); } }
 @keyframes qiling-thinking { 50% { opacity:.45; } }

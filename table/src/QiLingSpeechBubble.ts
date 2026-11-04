@@ -1,5 +1,5 @@
 /** 功能：将器灵的真实流式回复投影到机械臂旁，显示思考、回复与结束状态气泡。
- * Created on 2026-11-03; Updated on 2026-11-03
+ * Created on 2026-11-03; Updated on 2026-11-04
  * @author: https://github.com/Linmoqian
  */
 import * as THREE from "three";
@@ -14,11 +14,12 @@ export class QiLingSpeechBubble {
   private readonly point=new THREE.Vector3();
   private timer?: ReturnType<typeof setTimeout>;
   private text="";
+  private following=true;
   private node="";
   private readonly receive=(raw:Event)=>{
     const event=(raw as CustomEvent<QiLingReceipt>).detail;
     if(!event)return;
-    if(["loaded","started","preflight"].includes(event.type)) {this.node=event.node_id;this.text="";}
+    if(["loaded","started","preflight"].includes(event.type)) {this.node=event.node_id;this.text="";this.following=true;}
     else if(this.node && event.node_id!==this.node)return;
     if(!["preflight","loaded","started","delta","tool_started","tool_completed","completed","error","stopped"].includes(event.type))return;
     clearTimeout(this.timer);this.timer=undefined;
@@ -37,7 +38,7 @@ export class QiLingSpeechBubble {
     }
     if(event.type==="error"){this.content.textContent=event.text??"这次没完成。";this.dismissAfter(12000);}
     if(event.type==="stopped"){this.content.textContent="已停止。";this.dismissAfter(3000);}
-    this.content.scrollTop=this.content.scrollHeight;
+    if(this.following)this.content.scrollTop=this.content.scrollHeight;
   };
   constructor(private readonly host:HTMLElement) {
     this.panel.className="qiling-speech-bubble";this.panel.hidden=true;
@@ -46,6 +47,8 @@ export class QiLingSpeechBubble {
     const close=document.createElement("button");close.type="button";close.textContent="×";close.setAttribute("aria-label","关闭器灵气泡");
     close.addEventListener("click",()=>{this.panel.hidden=true;clearTimeout(this.timer);});
     header.append(this.name,close);this.content.className="qiling-speech-content";
+    this.content.tabIndex=0;this.content.setAttribute("aria-label","器灵回复");
+    this.content.addEventListener("scroll",()=>{this.following=this.content.scrollHeight-this.content.clientHeight-this.content.scrollTop<12;});
     this.panel.append(header,this.content);host.append(this.panel);
     window.addEventListener("table:qiling-speech",this.receive);
   }
