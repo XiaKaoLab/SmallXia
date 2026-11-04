@@ -1,5 +1,5 @@
 """Sim2Real 一期：只读坐标预检、真实反馈与单次小幅限速动作，复用已验证硬件控制。
-Created on 2026-11-03; Updated on 2026-11-03
+Created on 2026-11-03; Updated on 2026-11-04
 @author: https://github.com/Linmoqian
 """
 from pathlib import Path
@@ -25,7 +25,10 @@ class Sim2RealAPI:
     max_step_rad=pi/18
     max_velocity_rad_s=.15
 
-    def __init__(self,core,hardware):self.core=Path(core);self.hardware=hardware;self.lock=RLock()
+    def __init__(self,core,hardware):
+        self.core=Path(core);self.hardware=hardware;self.lock=RLock()
+        from .coordinate_calibration import CoordinateCalibrationAPI
+        self.coordinates=CoordinateCalibrationAPI(core,hardware)
 
     def check(self,port,profile='so100.local.yaml'):
         if not isinstance(port,str) or not re.fullmatch(r'COM[1-9][0-9]*',port):raise ValueError('请选择机械臂 COM 口')
@@ -110,6 +113,8 @@ class Sim2RealAPI:
     def handle(self,method,path,body=None):
         body=body or {};endpoint=path.removeprefix(self.prefix).strip('/')
         try:
+            if endpoint=='calibrations' or endpoint.startswith('calibrations/'):
+                return self.coordinates.handle(method,endpoint,body)
             if method=='POST' and endpoint=='checks':return 200,self.check(body.get('port'),body.get('profile','so100.local.yaml'))
             if method=='POST' and endpoint=='state':return 200,self.state(body.get('port'),body.get('profile','so100.local.yaml'))
             if method=='POST' and endpoint=='motions':return 202,self.move(body)
