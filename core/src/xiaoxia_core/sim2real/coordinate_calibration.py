@@ -42,7 +42,8 @@ class CoordinateCalibrationAPI:
             def enable_torque(self,*a,**k):raise ValueError('标定采样禁止改动力矩')
             def disable_torque(self,*a,**k):raise ValueError('标定采样禁止改动力矩')
         port=workflow.config['follower']['port']
-        if port in self.hardware.sessions:raise ValueError('请先停止真机控制')
+        session=self.hardware.sessions.get(port)
+        if session is not None and session.active:raise ValueError('请先停止真机控制')
         bus=ReadOnlyBus(port,{n:Motor(i,'sts3215',MotorNormMode.DEGREES) for i,n in enumerate(JOINTS,1)})
         try:
             bus.connect();bus.set_timeout(150)
@@ -76,8 +77,6 @@ class CoordinateCalibrationAPI:
     def advance(self, sid, body):
         path,state=self.load(sid)
         if state['stage'] not in ('zero','direction'):raise ValueError('当前步骤无需采样')
-        required='pose_confirmed' if state['stage']=='zero' else 'positive_direction_confirmed'
-        if body.get(required) is not True:raise ValueError('请确认参考姿态或本轴正方向')
         workflow=self.workflow(state['profile'])
         if self.fingerprint(workflow)!=state['fingerprint']:raise ValueError('校准配置已改变，请重新开始')
         ticks,spread=self.sample(workflow)
@@ -92,7 +91,7 @@ class CoordinateCalibrationAPI:
             if state['index']==len(JOINTS):state['stage']='review'
         if state['stage']=='direction':
             name=JOINTS[state['index']]
-            state.update(joint=name,reference_rad={n:(10*pi/180 if n==name else 0) for n in JOINTS},instruction='请沿模型正方向转动当前关节')
+            state.update(joint=name,reference_rad={n:(10*pi/180 if n==name else 0) for n in JOINTS},instruction='跟随模型转动')
         else:
             state.pop('joint',None);state.update(reference_rad=dict.fromkeys(JOINTS,0),instruction='确认并保存')
         state['updated_at']=time();atomic_json(path,state);return state
@@ -100,10 +99,9 @@ class CoordinateCalibrationAPI:
     def save(self,sid,body):
         path,state=self.load(sid)
         if state['stage']=='saved':return state
-        if state['stage']!='review' or body.get('confirmed') is not True:raise ValueError('请先完成六轴测量并确认')
+        if state['stage']!='review':raise ValueError('请先完成六轴测量')
         workflow=self.workflow(state['profile'])
         if self.fingerprint(workflow)!=state['fingerprint']:raise ValueError('校准配置已改变，请重新开始')
-        self.sample(workflow)  # 保存前再次检查 EEPROM 身份及只读状态。
         candidate=self.root/(sid+'.mapping.json')
         mapping={'verified':True,'joints':{n:{k:state['joints'][n][k] for k in ('zero_tick','direction')} for n in JOINTS},'measurement_id':sid}
         atomic_json(candidate,mapping)

@@ -2,6 +2,7 @@
  * Created on 2026-11-04; Updated on 2026-11-04
  * @author: https://github.com/Linmoqian
  */
+import { UiMessage } from "./shared/UiMessage";
 import { agentClient } from "./chat/AgentClient";
 interface CoordinateState {id:string;port:string;stage:string;instruction:string;joint?:string;reference_rad:Record<string,number>;close_panel?:boolean}
 export class CoordinateCalibrationDisplay {
@@ -27,7 +28,9 @@ export class CoordinateCalibrationDisplay {
     window.addEventListener("table:coordinate-calibration",this.start);
   }
   private async open(state:CoordinateState):Promise<void>{
-    if(this.state&&this.state.id!==state.id){this.notice.textContent="请先完成或取消当前校准";this.notice.hidden=false;return;}
+    const previous=this.state;
+    this.generation++;this.busy=false;clearTimeout(this.timer);
+    if(previous&&previous.id!==state.id)void agentClient.request({action:"coordinate_request",operation:"cancel",session_id:previous.id}).catch(()=>undefined);
     this.error="";this.state=state;this.panel.hidden=false;this.notice.hidden=true;this.render();
     await this.act("state");
   }
@@ -42,8 +45,7 @@ export class CoordinateCalibrationDisplay {
     if(this.busy||!this.state)return;
     this.retryOperation=operation;this.error="";this.busy=true;this.render();const generation=this.generation;
     try{
-      const result=await agentClient.request<{state:CoordinateState;display_alignment?:{id:string;port:string;mode:string}}>({action:"coordinate_request",operation,session_id:this.state.id,
-        body:operation==="sample"?{pose_confirmed:this.state.stage==="zero",positive_direction_confirmed:this.state.stage==="direction"}:operation==="save"?{confirmed:true}:{}});
+      const result=await agentClient.request<{state:CoordinateState;display_alignment?:{id:string;port:string;mode:string}}>({action:"coordinate_request",operation,session_id:this.state.id});
       if(generation!==this.generation)return;
       this.state=result.state;
       if(["saved","cancelled"].includes(result.state.stage)){
@@ -53,8 +55,8 @@ export class CoordinateCalibrationDisplay {
           if(result.display_alignment)window.dispatchEvent(new CustomEvent("table:alignment-start",{detail:result.display_alignment}));
         }
       }
-    }catch(error){if(generation===this.generation)this.error=String(error).replace(/^Error: /,"");}
-    finally{this.busy=false;if(this.state)this.render();}
+    }catch(error){if(generation===this.generation)this.error=UiMessage.error(error,"读取失败，请重试");}
+    finally{if(generation===this.generation){this.busy=false;if(this.state)this.render();}}
   }
   dispose():void{this.generation++;clearTimeout(this.timer);window.removeEventListener("table:coordinate-calibration",this.start);this.panel.remove();this.notice.remove();}
 }
