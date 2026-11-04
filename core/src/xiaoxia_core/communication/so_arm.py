@@ -121,7 +121,14 @@ class SOArmTransport(RobotTransport):
         bus, self._bus = self._bus, None
         try:
             if bus is not None and bus.is_connected:
-                bus.disconnect(disable_torque=self._armed)
+                try:
+                    if self._armed:
+                        # 广播关闭所有轴，避免某一轴的过载应答中断其余轴释放。
+                        bus.sync_write("Torque_Enable", {name:0 for name in JOINTS}, normalize=False)
+                        if any(bus.sync_read("Torque_Enable", normalize=False).values()):
+                            raise RuntimeError("部分电机力矩尚未关闭")
+                finally:
+                    bus.disconnect(disable_torque=False)
         finally:
             self._armed = False
             self._last_command = None

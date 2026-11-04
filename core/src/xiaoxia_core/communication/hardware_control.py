@@ -148,6 +148,8 @@ class HardwareControlSession:
         finally:
             try:
                 self.arm.disconnect()
+            except Exception as error:
+                with self.lock:self.state.update(status='failed',error=f'释放控制失败：{error}')
             finally:
                 with self.lock:
                     if self.state['status'] != 'failed':
