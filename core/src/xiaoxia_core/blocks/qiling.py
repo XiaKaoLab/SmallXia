@@ -1,5 +1,5 @@
 """积木内运行器灵子进程，转发回复并在程序停止时清理 Agent/MCP 进程。
-Created on 2026-11-03; Updated on 2026-11-03
+Created on 2026-11-03; Updated on 2026-11-04
 @author: https://github.com/Linmoqian
 """
 import json,os,subprocess,sys
@@ -10,6 +10,7 @@ from queue import Queue,Empty
 
 class QiLingBlock:
     _bindings = {}
+    _replies = {}
     _emit_lock=Lock()
 
     @classmethod
@@ -21,6 +22,7 @@ class QiLingBlock:
         if not isinstance(name,str) or not name.strip() or len(name)>32:raise ValueError('器灵名称需要1–32字')
         if not isinstance(model,str) or not model.strip():raise ValueError('请选择器灵模型')
         name=name.strip()
+        cls._replies.pop(name,None)
         old=cls._bindings.get(name,{})
         if old.get('lease'):old['lease'].close()
         lease=None;load_text=None
@@ -59,7 +61,22 @@ class QiLingBlock:
         name=name.strip() if isinstance(name,str) else ''
         binding=self._bindings.get(name)
         if binding is None:raise ValueError('请先向机械臂载入对应器灵，再发送消息')
-        return self.run(node_id,message,binding['model'],agent_id=binding['agent_id'],spirit=name,target=binding['target'],profile=binding.get('profile','so100.local.yaml'),enable_motion=binding.get('enable_motion',False))
+        self._replies.pop(name,None)
+        reply=self.run(node_id,message,binding['model'],agent_id=binding['agent_id'],spirit=name,target=binding['target'],profile=binding.get('profile','so100.local.yaml'),enable_motion=binding.get('enable_motion',False))
+        self._replies[name]=reply
+        return reply
+
+    @classmethod
+    def reply(cls,name='器灵'):
+        if name not in cls._bindings:raise ValueError('请先载入对应器灵')
+        return cls._replies.get(name,'')
+
+    @classmethod
+    def wait_reply(cls,name='器灵'):
+        # 发送本身等待完整回复；此步骤确认本轮成功，不读取历史会话冒充新回复。
+        cls.reply(name)
+        if name not in cls._replies:raise ValueError('请先向器灵发送消息，再等待回复')
+        return cls._replies[name]
 
     def run(self,node_id,message,model='default',*,agent_id=None,spirit='器灵',target='simulation',profile='so100.local.yaml',enable_motion=False):
         options={'creationflags':subprocess.CREATE_NO_WINDOW} if os.name=='nt' else {'start_new_session':True}

@@ -3,6 +3,7 @@
  * @author: https://github.com/Linmoqian
  */
 import { COORDINATE_BLOCK } from "./coordinateBlock";
+import { QILING_WAIT, QILING_REPLY, TEXT_MATCH } from "./QiLingReplyBlocks";
 import { QILING_LOAD, QILING_SEND, QILING_TYPES, SIM2REAL_CHECK } from "./QiLingBlocks";
 import { TEXT_READ, TEXT_PICK, TEXT_VISION_TYPES } from "./TextVisionBlocks";
 import { CAMERA_CALIBRATION_BLOCK } from "./cameraCalibrationBlock";
@@ -34,10 +35,14 @@ export class BlocksToolbox {
         { kind: "button", text: "刷新模型", callbackkey: "REFRESH_QILING_MODELS" },
         block(SIM2REAL_CHECK), block(QILING_LOAD),
         { kind: "block", type: QILING_SEND, inputs: { MESSAGE: { shadow: { type: "text", fields: { TEXT: "你好" } } } } },
+        block(QILING_WAIT),block(QILING_REPLY),
+        { kind: "block", type: "controls_if", inputs: { IF0: { block: { type: TEXT_MATCH, fields: { OP: "CONTAINS" }, inputs: {
+          TEXT: { block: { type: QILING_REPLY } }, VALUE: { shadow: { type: "text", fields: { TEXT: "完成" } } },
+        } } } } },
       ] },
       { kind: "category", name: "机械臂", colour: "#638b80", contents: [{ kind: "button", text: "刷新串口", callbackkey: "REFRESH_ARM_PORTS" }, block(BLOCK_TYPE), block(CALIBRATION_BLOCK), block(COORDINATE_BLOCK), block(ARM_MAPPING_BLOCK), ...HARDWARE_TYPES.map(block)] },
       { kind: "category", name: "相机", colour: "#587e9d", contents: [{ kind: "button", text: "刷新相机", callbackkey: "REFRESH_CAMERAS" }, block(CAMERA_BLOCK_TYPE), block(FRAME_CAPTURE), block(RED_DETECT), block(RED_VALUE), block(TEXT_READ), block(CAMERA_CALIBRATION_BLOCK)] },
-      { kind: "category", name: "逻辑", colour: "#687f9b", contents: [block(WAIT), block(WAIT_RESULT), ...LOGIC_TYPES.filter(type => !type.startsWith('procedures_call')).map(block)] },
+      { kind: "category", name: "逻辑", colour: "#687f9b", contents: [block(WAIT), block(WAIT_RESULT), {kind:"block",type:TEXT_MATCH,inputs:{TEXT:{shadow:{type:"text",fields:{TEXT:""}}},VALUE:{shadow:{type:"text",fields:{TEXT:""}}}}}, ...LOGIC_TYPES.filter(type => !type.startsWith('procedures_call')).map(block)] },
       { kind: "category", name: "变量", colour: "#9a805c", contents: [
         { kind: "button", text: "创建变量", callbackkey: "CREATE_VARIABLE" },
         block("variables_set"), block("variables_get"), block(FRAME_VARIABLE), block("text"), block("math_number"),

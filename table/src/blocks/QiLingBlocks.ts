@@ -1,5 +1,5 @@
 /** 功能：器灵载入与发送消息积木，绑定模型、共享会话并转发机械臂气泡事件。
- * Created on 2026-11-03; Updated on 2026-11-03
+ * Created on 2026-11-03; Updated on 2026-11-04
  * @author: https://github.com/Linmoqian
  */
 import * as Blockly from "blockly/core";
@@ -8,11 +8,12 @@ import { armTargetCatalog } from "./ArmTargetCatalog";
 import { agentClient } from "../chat/AgentClient";
 import { agentCursor } from "../interaction/AgentCursor";
 import { ToolPresentation } from "../chat/ToolPresentation";
+import { QiLingReplyBlocks, QILING_REPLY_TYPES } from "./QiLingReplyBlocks";
 export const QILING_AGENT="table_qiling_agent";
 export const QILING_LOAD="table_qiling_load";
 export const QILING_SEND="table_qiling_send";
 export const SIM2REAL_CHECK="table_sim2real_check";
-export const QILING_TYPES=[QILING_AGENT,QILING_LOAD,QILING_SEND,SIM2REAL_CHECK];
+export const QILING_TYPES=[QILING_AGENT,QILING_LOAD,QILING_SEND,SIM2REAL_CHECK,...QILING_REPLY_TYPES];
 export interface QiLingReceipt { type: string; node_id: string; spirit?: string; target?: string; agent_id?: string; ready?: boolean; physical?: boolean; source?: string; unit?: string; joint_positions?: Record<string,number>; observed_at_ns?: number; feedback_age_ms?: number; delta?: string; name?: string; call_id?: string; failed?: boolean; text?: string; result?: { text: string; model: string } }
 
 class QiLingCatalog {
@@ -59,6 +60,7 @@ export class QiLingBlocks {
     this.speaking.clear();
   }
   register():void {
+    QiLingReplyBlocks.register();
     Blockly.Blocks[QILING_LOAD]={init(this:Blockly.Block) {
       this.appendDummyInput().appendField("向机械臂").appendField(new Blockly.FieldDropdown(function(){return armTargetCatalog.options(this.getValue());}),"TARGET")
         .appendField("载入").appendField(new Blockly.FieldTextInput("器灵"),"SPIRIT");
