@@ -1,5 +1,5 @@
 /** 功能：定义唯一机械臂位置积木并生成调用模型 API 的 Python。
- * Created on 2026-11-01; Updated on 2026-11-03
+ * Created on 2026-11-01; Updated on 2026-11-04
  * @author: https://github.com/Linmoqian
  */
 import * as Blockly from "blockly/core";
@@ -27,10 +27,9 @@ export function registerPositionBlock(limits: Limits, onSlide: (block: Blockly.B
         this.appendDummyInput().appendField(`M${index + 1} ${label}`)
           .appendField(new JointAngleSlider(Math.max(lower, Math.min(0, upper)), lower, upper, `M${index + 1} ${label}`, (angle) => {
             if (this.isInFlyout) return angle;
-            if (this.getFieldValue("TARGET") !== "simulation") return angle;
             const accepted = jointPreview.stage(name, angle);
             this.setFieldValue(String(accepted), name);
-            onSlide(this);
+            if (this.getFieldValue("TARGET") === "simulation") onSlide(this);
             return accepted;
           }), name);
       }
