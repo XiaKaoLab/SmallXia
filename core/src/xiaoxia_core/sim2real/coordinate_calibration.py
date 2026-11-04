@@ -54,8 +54,7 @@ class CoordinateCalibrationAPI:
                 if any(bus.sync_read('Torque_Enable',normalize=False).values()):raise ValueError('请先安全支撑机械臂并关闭力矩')
                 samples.append(bus.sync_read('Present_Position',normalize=False));sleep(.04)
             spread={n:max(s[n] for s in samples)-min(s[n] for s in samples) for n in JOINTS}
-            # 中值滤波允许轻微手持抖动；跨编码器边界或持续移动不会被当作稳定零点。
-            if max(spread.values())>24:raise ValueError('请保持姿态，稍后自动重试采样')
+            # 波动作为测量信息返回，中值滤波不再以固定阈值拦截。
             return {n:median(s[n] for s in samples) for n in JOINTS},spread
         finally:
             if bus.is_connected:bus.disconnect(disable_torque=False)
@@ -63,8 +62,6 @@ class CoordinateCalibrationAPI:
     def load(self, sid):
         path=self.root/(identifier(sid)+'.json')
         state=json.loads(path.read_text(encoding='utf-8'))
-        if state['stage'] not in ('saved','cancelled') and time()-state['updated_at']>1800:
-            raise ValueError('测量已过期，请重新开始')
         return path,state
 
     def start(self, body):
@@ -89,7 +86,7 @@ class CoordinateCalibrationAPI:
             state['zero_spread_ticks']=spread;state['stage']='direction';state['index']=0
         else:
             name=JOINTS[state['index']];delta=ticks[name]-state['joints'][name]['zero_tick']
-            if not 35<=abs(delta)<=350:raise ValueError('请从参考姿态沿提示方向转动约5至20度')
+            if delta==0:raise ValueError('未检测到转动，请转动当前关节')
             state['joints'][name].update(direction=1 if delta>0 else -1,positive_sample_tick=ticks[name])
             state['index']+=1
             if state['index']==len(JOINTS):state['stage']='review'
