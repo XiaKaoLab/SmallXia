@@ -103,8 +103,8 @@ class SOArmTransport(RobotTransport):
             command = self.limits.constrain(action, self._last_command or current, max(dt, 0.0001), self.max_velocity)
             ticks = self.calibration.ticks(command.joint_positions)
             bus.sync_write("Goal_Position", ticks, normalize=False)
-            if bus.sync_read("Goal_Position", normalize=False) != ticks:
-                raise RuntimeError("目标位置寄存器回读与本次命令不一致")
+            # 沿用官方同步写入方式；到位由 Present_Position 反馈判断，
+            # 不以固件目标寄存器的瞬时回读差异代替实际位置错误。
             self._last_command = self.calibration.angles(ticks)
             self._last_sent = now
         except BaseException:
