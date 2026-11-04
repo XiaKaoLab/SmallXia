@@ -1,5 +1,5 @@
 """通过标准 MCP stdio 提供 table 模型、RL 与当前 WebView 积木工具。
-Created on 2026-11-01; Updated on 2026-11-03
+Created on 2026-11-01; Updated on 2026-11-04
 @author: https://github.com/Linmoqian
 """
 
@@ -68,6 +68,9 @@ def main() -> None:
         bound=Sim2RealTools(context['target'],context['profile'],context['enable_motion'])
         methods=methods[:3]+[bound.arm_get_state,bound.arm_get_limits,bound.arm_move_joints]
     if profile == 'default':
+        from .arm_mapping_tools import ArmMappingTools
+        mapping=ArmMappingTools()
+        methods.extend([mapping.arm_mapping_status,mapping.arm_mapping_step,mapping.arm_mapping_save])
         for provider,prefix in ((RLTools(),'rl_'),(BlocksTools(),'blocks_')):
             methods.extend(getattr(provider,name) for name in dir(provider) if name.startswith(prefix))
     for method in methods:
