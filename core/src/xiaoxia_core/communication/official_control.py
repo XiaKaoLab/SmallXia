@@ -3,10 +3,18 @@ Created on 2026-11-04; Updated on 2026-11-04
 @author: https://github.com/Linmoqian
 """
 import json
-from math import pi
+from math import pi,isfinite
+from ..contracts import Action
 from .calibration import ArmCalibration,EncoderJoint
 from .official_calibration import OfficialCalibrationStore
 from ..safety import JOINTS,JointLimit,JointLimits
+
+class OfficialJointLimits(JointLimits):
+    def constrain(self,desired,current,dt,max_velocity):
+        self.validate(desired.joint_positions)
+        if set(current)!=set(JOINTS) or not all(isfinite(v) for v in current.values()):raise ValueError('六轴反馈无效')
+        if not isfinite(dt) or dt<=0:raise ValueError('控制周期无效')
+        return Action({n:current[n]+max(-min(self.joints[n].velocity,max_velocity)*dt,min(min(self.joints[n].velocity,max_velocity)*dt,desired.joint_positions[n]-current[n])) for n in JOINTS})
 
 class OfficialArmCalibration(ArmCalibration):
     def __init__(self,path):
@@ -18,21 +26,23 @@ class OfficialArmCalibration(ArmCalibration):
             joint=EncoderJoint(row['id'],row['homing_offset'],row['range_min'],row['range_max'],zero,1)
             self.joints[name]=joint;self.tick_bounds[name]=(row['range_min'],row['range_max'])
             limits[name]=JointLimit(joint.angle(row['range_min']),joint.angle(row['range_max']),1,35)
-        self.limits=JointLimits(limits)
+        self.limits=OfficialJointLimits(limits)
 
     def angles(self,ticks):
-        # 端点反馈有数个刻度抖动；只在8刻度内按官方端点计算，不扩大目标行程。
-        bounded={}
-        for name,value in ticks.items():
-            low,high=self.tick_bounds[name]
-            if value<low-8 or value>high+8:raise ValueError(f'{name} 实测位置超出官方校准行程')
-            bounded[name]=max(low,min(high,value))
+        if set(ticks)!=set(JOINTS) or any(not isfinite(v) or not 0<=v<=4095 for v in ticks.values()):raise ValueError('编码器反馈无效')
         self.last_raw_ticks=dict(ticks)
-        return super().angles(bounded)
+        return {n:self.joints[n].angle(v) for n,v in ticks.items()}
+
+    def ticks(self,positions):
+        # 轨迹可能从校准端点外的真实起点向区间内恢复；目标入口仍按校准行程检查。
+        ticks={n:self.joints[n].tick(v) for n,v in positions.items()}
+        if set(ticks)!=set(JOINTS) or any(not 0<=v<=4095 for v in ticks.values()):raise ValueError('编码器目标越界')
+        return ticks
 
 class OfficialJointGuard:
     """官方关节空间仅检查实测机械行程，不冒充 URDF 几何碰撞校验。"""
     def __init__(self,limits):self.limits=limits
-    def assert_pose(self,positions):self.limits.validate(positions)
-    def assert_path(self,start,target):self.assert_pose(start);self.assert_pose(target)
+    def assert_pose(self,positions):
+        if set(positions)!=set(JOINTS) or not all(isfinite(v) for v in positions.values()):raise ValueError("六轴反馈无效")
+    def assert_path(self,start,target):self.assert_pose(start);self.limits.validate(target)
     def limit_path(self,start,target):self.assert_path(start,target);return dict(target),''
