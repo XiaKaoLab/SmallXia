@@ -1,5 +1,5 @@
 """为 Tauri 提供单请求 JSONL 桥接，复用会话、技能与 Agent 流。
-Created on 2026-11-01; Updated on 2026-11-03
+Created on 2026-11-01; Updated on 2026-11-04
 @author: https://github.com/Linmoqian
 """
 
@@ -33,6 +33,9 @@ class DesktopBridge:
         if action == "qiling_models":
             from .qiling import QiLingModels
             self.emit({"type":"data","data":QiLingModels.list()})
+        elif action == "coordinate_request":
+            from ..sim2real.bridge import CoordinateBridge
+            self.emit({"type":"data","data":CoordinateBridge.request(request)})
         elif action == "bootstrap":
             sessions = []
             for session_id in self.sessions.list_sessions():

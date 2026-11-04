@@ -1,5 +1,5 @@
 """复用官方校准跟随实机，缺失时引导逐轴检查行程；仅校准写入，无运动目标。
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-04
 @author: https://github.com/Linmoqian
 """
 import json
@@ -184,20 +184,35 @@ class DisplayAlignment:
                 state.update(mode='mapping', model_target='table', source_physical=True)
 
             joint_map = OfficialUrdfMap(raw_calibration, limits)
+            control_map = None
+            # 已实测保存的映射优先于显示用中值转换；必须匹配同一串口与 EEPROM。
+            if request['mode'] == 'mapping':
+                from ..imitation.workflows import HardwareWorkflow
+                from .calibration import ArmCalibration
+                profile = Path(__file__).resolve().parents[3] / 'configs/so100.local.yaml'
+                if profile.exists():
+                    workflow = HardwareWorkflow(profile)
+                    mapping_path = workflow.path(workflow.config['follower']['mapping'])
+                    mapping = json.loads(mapping_path.read_text(encoding='utf-8'))
+                    if workflow.config['follower']['port'] == request['port'] and mapping.get('verified') is True:
+                        official = json.loads(workflow.path(workflow.config['follower']['calibration']).read_text(encoding='utf-8'))
+                        if official != raw_calibration:raise ValueError('控制映射与设备校准不匹配')
+                        control_map = ArmCalibration.load(workflow.path(workflow.config['follower']['calibration']), mapping_path, limits)
+
             wrist_offset = DisplayFrame.load(request["port"], raw_calibration)
             state["wrist_roll_offset_deg"] = wrist_offset
-            state.update(angle_basis='lerobot_degrees_to_urdf_v1', input_unit='encoder_ticks', output_unit='rad',
-                gripper_unit='encoder_ticks_to_rad', gripper_zero='calibrated_closed_position', geometry_verified=False,
+            state.update(angle_basis='measured_encoder_to_urdf_v1' if control_map else 'lerobot_degrees_to_urdf_v1', input_unit='encoder_ticks', output_unit='rad',
+                gripper_unit='encoder_ticks_to_rad', gripper_zero='calibrated_closed_position', geometry_verified=control_map is not None,
                 calibration_source=calibration_source, calibration_path=calibration_path,
                 instruction='已复用匹配的校准，六轴按编码器转角映射。')
             atomic_json(directory / 'alignment.json', {**request, 'angle_basis': state['angle_basis'],
                 'calibration_path': calibration_path, 'calibration_source': calibration_source,
-                'device_calibration': raw_calibration, 'geometry_verified': False, 'verified_for_motion': False})
+                'device_calibration': raw_calibration, 'geometry_verified': control_map is not None, 'verified_for_motion': control_map is not None})
             while not (directory / 'stop').exists() and time() - (directory / 'lease').stat().st_mtime < 10:
                 ticks = bus.sync_read('Present_Position', normalize=False)
                 if any(bus.sync_read('Torque_Enable', normalize=False).values()):
                     raise ValueError('检测到力矩已开启，结束只读显示对齐')
-                angles = DisplayFrame.apply(joint_map.angles(ticks), wrist_offset)
+                angles = ({name: control_map.joints[name].angle(ticks[name]) for name in JOINTS} if control_map else DisplayFrame.apply(joint_map.angles(ticks), wrist_offset))
                 state.update(status='following', timestamp=time(), joint_positions=angles, ticks=ticks,
                     outside_device_calibration=[name for name in JOINTS if not calibration[name].range_min <= ticks[name] <= calibration[name].range_max])
                 if route is not None:

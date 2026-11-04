@@ -17,3 +17,7 @@
 
 .hardware-control-preview-label { position:absolute; top:14px; right:18px; padding:7px 12px; border:1px solid #ffffffb0; border-radius:999px; background:#f4faf5e6; color:#557061; font-size:11px; pointer-events:none; }
 .hardware-control-preview-label[hidden] { display:none; }
+.coordinate-calibration-panel {position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:45;display:flex;align-items:center;gap:10px;max-width:calc(100% - 24px);padding:10px 14px;border:1px solid #ffffff70;border-radius:999px;background:#dbefe6ed;color:#34584c;font-size:12px;box-shadow:0 4px 18px #36584c12;}
+.coordinate-calibration-panel[hidden]{display:none;}
+.coordinate-calibration-panel button{border:1px solid #8ab5a580;border-radius:999px;padding:7px 12px;background:#eef9f2;color:inherit;cursor:pointer;white-space:nowrap;}
+.coordinate-calibration-panel button:disabled{opacity:.55;cursor:wait;}

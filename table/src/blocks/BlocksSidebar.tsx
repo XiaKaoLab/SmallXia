@@ -1,7 +1,8 @@
 /** 功能：左侧分类 Blockly 工作区与 Python 后台运行。
- * Created on 2026-11-01; Updated on 2026-11-03
+ * Created on 2026-11-01; Updated on 2026-11-04
  * @author: https://github.com/Linmoqian
  */
+import { registerCoordinateBlock } from "./coordinateBlock";
 import { QiLingBlocks, qiLingCatalog } from "./QiLingBlocks";
 import { UiMessage } from "../shared/UiMessage";
 import { useEffect, useRef, useState } from "react";
@@ -90,6 +91,7 @@ export function BlocksSidebar() {
         registerCameraBlock();
         registerCalibrationBlock();
         registerArmMappingBlock();
+        registerCoordinateBlock();
         registerCameraCalibrationBlock();
         registerFrameBlocks();
         new PolicyBlocks().register();
@@ -182,6 +184,7 @@ export function BlocksSidebar() {
     if (receipt.qiling) qiling.current.receive(workspaceRef.current ?? undefined, receipt.qiling);
     if (receipt.ball_training && ["ball_pickup", "ball_onnx_rollout"].includes(receipt.ball_training.kind)) window.dispatchEvent(new CustomEvent("table:ball-training-started", { detail: receipt.ball_training }));
     if (receipt.camera_calibration?.id) window.dispatchEvent(new CustomEvent("table:camera-calibration-start", { detail: receipt.camera_calibration }));
+    if(receipt.coordinate_calibration)window.dispatchEvent(new CustomEvent("table:coordinate-calibration",{detail:receipt.coordinate_calibration}));
     if (receipt.display_alignment?.id) window.dispatchEvent(new CustomEvent("table:alignment-start", { detail: receipt.display_alignment }));
     if (receipt.limited && receipt.applied_joint_positions) jointPreview.confirm(receipt.applied_joint_positions, jointPreview.revision);
   }

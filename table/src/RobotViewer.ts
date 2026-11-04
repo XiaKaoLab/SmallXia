@@ -1,7 +1,8 @@
 /** 功能：管理机械臂 URDF、场景和交互生命周期。
- * Created on 2026-11-01; Updated on 2026-11-03
+ * Created on 2026-11-01; Updated on 2026-11-04
  * @author: https://github.com/Linmoqian
  */
+import { CoordinateCalibrationDisplay } from "./CoordinateCalibrationDisplay";
 import { HardwareControlPreview } from "./HardwareControlPreview";
 import { QiLingSpeechBubble } from "./QiLingSpeechBubble";
 import { RobotObservation } from "./RobotObservation";
@@ -33,6 +34,7 @@ export class RobotViewer {
   private modelCamera: VirtualCameraConfig | null = null;
   private readonly clock = new THREE.Clock();
   private readonly cameraRig: VirtualCameraRig;
+  private readonly coordinateCalibration: CoordinateCalibrationDisplay;
   private readonly alignment: HardwareAlignmentDisplay;
   private readonly observation: RobotObservation;
   private readonly cameraCalibration: CameraCalibrationDisplay;
@@ -63,6 +65,7 @@ export class RobotViewer {
       ready: this.modelReady,
     }));
     this.alignment = new HardwareAlignmentDisplay(host);
+    this.coordinateCalibration = new CoordinateCalibrationDisplay(host);
     this.cameraCalibration = new CameraCalibrationDisplay(host);
     this.spiritSpeech = new QiLingSpeechBubble(host);
     this.cameraRig = new VirtualCameraRig(this.scene, host);
@@ -236,6 +239,7 @@ export class RobotViewer {
     this.spiritSpeech.dispose();
     this.controlFeedback.dispose();
     this.alignment.dispose();
+    this.coordinateCalibration.dispose();
     this.training.dispose();
     this.stopPreview();
     this.poseGuard?.dispose();

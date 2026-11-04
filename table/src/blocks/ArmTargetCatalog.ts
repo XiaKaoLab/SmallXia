@@ -1,5 +1,5 @@
 /** 功能：为机械臂积木提供仿真和实际发现的串口选项，枚举不打开设备。
- * Created on 2026-11-02; Updated on 2026-11-03
+ * Created on 2026-11-02; Updated on 2026-11-04
  * @author: https://github.com/Linmoqian
  */
 import * as Blockly from "blockly/core";
@@ -28,7 +28,7 @@ export class ArmTargetCatalog {
       if (!workspace || workspace.isDragging()) return;
       const blocks = [...workspace.getAllBlocks(false), ...(workspace.getFlyout()?.getWorkspace().getAllBlocks(false) ?? [])];
       for (const block of blocks) {
-        if (!["table_hardware_connect", "table_hardware_stop", "table_demo_hardware", "table_set_arm_position", "table_calibrate_arm", "table_map_hardware_arm", "table_qiling_load", "table_sim2real_check"].includes(block.type)) continue;
+        if (!["table_hardware_connect", "table_hardware_stop", "table_demo_hardware", "table_set_arm_position", "table_calibrate_arm", "table_map_hardware_arm", "table_calibrate_mapping", "table_qiling_load", "table_sim2real_check"].includes(block.type)) continue;
         const field = block.getField("TARGET") as Blockly.FieldDropdown | null;
         if (!field) continue;
         const selected = field.getValue();
