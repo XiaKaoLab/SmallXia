@@ -27,6 +27,7 @@ export function registerPositionBlock(limits: Limits, onSlide: (block: Blockly.B
         this.appendDummyInput().appendField(`M${index + 1} ${label}`)
           .appendField(new JointAngleSlider(Math.max(lower, Math.min(0, upper)), lower, upper, `M${index + 1} ${label}`, (angle) => {
             if (this.isInFlyout) return angle;
+            if(this.getFieldValue("TARGET")==="simulation")window.dispatchEvent(new Event("table:hardware-preview-clear"));
             const accepted = jointPreview.stage(name, angle);
             this.setFieldValue(String(accepted), name);
             onSlide(this);

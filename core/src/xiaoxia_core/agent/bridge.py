@@ -33,6 +33,9 @@ class DesktopBridge:
         if action == "qiling_models":
             from .qiling import QiLingModels
             self.emit({"type":"data","data":QiLingModels.list()})
+        elif action == "hardware_preview":
+            from ..communication.hardware_preview import HardwarePreviewStream
+            HardwarePreviewStream.run(self.emit)
         elif action == "hardware_drag":
             from ..communication.hardware_client import HardwareClient
             from ..blocks.workflow import BlockWorkflow

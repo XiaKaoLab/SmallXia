@@ -177,12 +177,12 @@ export class RobotViewer {
     this.robot.visible = true;
     if (hardwarePositions && this.poseGuard) {
       if (!this.alignmentVisible) { this.fitTraining(1); this.alignmentVisible = true; }
-      const desired = Object.fromEntries(Object.entries(hardwarePositions).map(([name, angle]) => {
-        const joint = this.robot!.joints[name];
-        return [name, joint ? Math.max(joint.limit.lower, Math.min(joint.limit.upper, angle)) : angle];
-      }));
-      const pose = this.poseGuard.limit(desired);
-      this.robot.setJointValues(pose.pose);
+      // 只读实测显示不再被仿真目标约束截断，避免真机动而模型卡在旧姿态。
+      for(const [name,angle] of Object.entries(hardwarePositions)){
+        const joint=this.robot.joints[name];if(!joint)continue;
+        const ignored=joint.ignoreLimits;joint.ignoreLimits=true;
+        joint.setJointValue(angle);joint.ignoreLimits=ignored;
+      }
       this.robot.position.set(0, 0, 0);
       this.cameraRig.configure(this.robot, this.modelCamera);
       this.cameraRig.setInferenceFrame(null, false);

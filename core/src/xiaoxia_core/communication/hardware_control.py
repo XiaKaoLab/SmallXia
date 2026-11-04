@@ -132,7 +132,7 @@ class HardwareControlSession:
             with self.lock:
                 self.target = current
                 self.feedback_at=monotonic()
-                self.state.update(status='ready', joint_positions=current,start_joint_positions=dict(current),observed_at_ns=time_ns())
+                self.state.update(status='ready', joint_positions=current,render_joint_positions=self.arm.render_positions(current),start_joint_positions=dict(current),observed_at_ns=time_ns())
                 self.lease = monotonic()
             while not self.stop.wait(1 / 30):
                 with self.lock:
@@ -145,7 +145,7 @@ class HardwareControlSession:
                 reached = max(abs(measured[name] - target[name]) for name in target) < tolerance
                 with self.lock:
                     self.feedback_at=monotonic()
-                    self.state.update(joint_positions=measured, status='ready' if reached else 'moving',observed_at_ns=time_ns())
+                    self.state.update(joint_positions=measured,render_joint_positions=self.arm.render_positions(measured), status='ready' if reached else 'moving',observed_at_ns=time_ns())
         except Exception as error:
             with self.lock:
                 self.state.update(status='failed', error=str(error))
@@ -153,7 +153,7 @@ class HardwareControlSession:
             def homing_feedback(positions):
                 with self.lock:
                     self.feedback_at=monotonic()
-                    self.state.update(status='returning_zero',joint_positions=positions,observed_at_ns=time_ns())
+                    self.state.update(status='returning_zero',joint_positions=positions,render_joint_positions=self.arm.render_positions(positions),observed_at_ns=time_ns())
             self.arm.release_feedback=homing_feedback
             try:
                 if self.arm._armed:

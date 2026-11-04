@@ -23,14 +23,19 @@ class OfficialArmCalibration(ArmCalibration):
         if reference and reference["calibration_sha256"]!=sha256(path.read_bytes()).hexdigest():raise ValueError("零位记录与设备校准不匹配")
         self.zero_source="user_declared_current_pose" if reference else "official_calibration"
         raw=OfficialCalibrationStore.validate(json.loads(path.read_text(encoding='utf-8')))
-        self.joints={};self.tick_bounds={};limits={}
+        self.joints={};self.tick_bounds={};self.render_offsets={};self.raw_calibration=raw;limits={}
         for name in JOINTS:
             row=raw[name]
             zero=reference['zero_ticks'][name] if reference else (row['range_min'] if name=='gripper' else (row['range_min']+row['range_max'])/2)
+            model_zero=row['range_min'] if name=='gripper' else (row['range_min']+row['range_max'])/2
+            self.render_offsets[name]=(zero-model_zero)*2*pi/4095
             joint=EncoderJoint(row['id'],row['homing_offset'],row['range_min'],row['range_max'],zero,1)
             self.joints[name]=joint;self.tick_bounds[name]=(row['range_min'],row['range_max'])
             limits[name]=JointLimit(joint.angle(row['range_min']),joint.angle(row['range_max']),1,35)
         self.limits=OfficialJointLimits(limits)
+
+    def render_angles(self,positions):
+        return {n:v+self.render_offsets[n] for n,v in positions.items()}
 
     def angles(self,ticks):
         if set(ticks)!=set(JOINTS) or any(not isfinite(v) or not 0<=v<=4095 for v in ticks.values()):raise ValueError('编码器反馈无效')

@@ -27,6 +27,8 @@ class SOArmTransport(RobotTransport):
         self._armed = False
         self._trajectory = None
         self._last_ticks = None
+        self.render_joint_positions = None
+        self._render_wrist_offset = 0.0
         self.release_feedback = None
         self.release_result = {}
         self._return_pose = None
@@ -56,6 +58,9 @@ class SOArmTransport(RobotTransport):
             if any(bus.read("Operating_Mode", name, normalize=False) != 0 for name in JOINTS):
                 raise RuntimeError("电机未处于位置模式；拒绝自动改写")
             self._bus = bus
+            if hasattr(self.calibration,'render_angles'):
+                from .display_frame import DisplayFrame
+                self._render_wrist_offset=DisplayFrame.load(self.port,self.calibration.raw_calibration)
             self.read_observation()
         except BaseException:
             self._bus = None
@@ -71,7 +76,14 @@ class SOArmTransport(RobotTransport):
     def read_observation(self) -> Observation:
         ticks = self._connected().sync_read("Present_Position", normalize=False)
         positions = self.calibration.angles(ticks)
+        self.render_joint_positions=self.render_positions(positions)
         return Observation(monotonic_ns(), positions)
+
+    def render_positions(self,positions):
+        if hasattr(self.calibration,'render_angles'):
+            from .display_frame import DisplayFrame
+            return DisplayFrame.apply(self.calibration.render_angles(positions),self._render_wrist_offset)
+        return dict(positions)
 
     def arm(self) -> None:
         if self.role != "follower":

@@ -1,5 +1,5 @@
 /** 功能：封装 Tauri Channel 与 Python Agent 的请求和取消操作。
- * Created on 2026-11-01; Updated on 2026-11-02
+ * Created on 2026-11-01; Updated on 2026-11-04
  * @author: https://github.com/Linmoqian
  */
 import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
@@ -43,6 +43,11 @@ export class AgentClient {
     if (failure) throw new Error(failure);
     if (value === undefined) throw new Error("Agent 未返回结果");
     return value;
+  }
+
+  async hardwarePreview<T>(requestId:string,receive:(state:T)=>void):Promise<void>{
+    await this.dispatch<{type:"hardware_preview";data:T}|{type:"error";message:string}|{type:"completed"}>(
+      requestId,{action:"hardware_preview"},event=>{if(event.type==="hardware_preview")receive(event.data);},event=>event.type==="error"||event.type==="completed");
   }
 
   bootstrap(): Promise<Bootstrap> { return this.request({ action: "bootstrap" }); }
