@@ -24,6 +24,8 @@ class SOArmTransport(RobotTransport):
         self.identity_confirmed = identity_confirmed
         self._bus = None
         self._armed = False
+        self.release_feedback = None
+        self.release_result = {}
         self._last_command: dict[str, float] | None = None
         self._last_sent = 0.0
 
@@ -123,10 +125,18 @@ class SOArmTransport(RobotTransport):
             if bus is not None and bus.is_connected:
                 try:
                     if self._armed:
-                        # 广播关闭所有轴，避免某一轴的过载应答中断其余轴释放。
-                        bus.sync_write("Torque_Enable", {name:0 for name in JOINTS}, normalize=False)
-                        if any(bus.sync_read("Torque_Enable", normalize=False).values()):
-                            raise RuntimeError("部分电机力矩尚未关闭")
+                        from .slow_zero_release import SlowZeroRelease
+                        try:
+                            self.release_result=SlowZeroRelease(self.calibration,self.max_velocity,self.release_feedback).run(bus)
+                        except Exception as error:
+                            self.release_result={'zero_reached':False,'error':str(error)}
+                            raise
+                        finally:
+                            # 异常也逐项记录；故障时不能谎报已回零。
+                            bus.sync_write("Torque_Enable", {name:0 for name in JOINTS}, normalize=False)
+                            torque=bus.sync_read("Torque_Enable", normalize=False)
+                            self.release_result['torque_disabled']=not any(torque.values())
+                            if any(torque.values()):raise RuntimeError("部分电机力矩尚未关闭")
                 finally:
                     bus.disconnect(disable_torque=False)
         finally:

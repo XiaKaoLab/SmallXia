@@ -91,7 +91,7 @@ class HardwareControlSession:
 
     @property
     def active(self):
-        return self.state['status'] in ('connecting', 'ready', 'moving')
+        return self.state['status'] in ('connecting', 'ready', 'moving', 'returning_zero')
 
     def start(self):
         self.thread.start()
@@ -106,7 +106,7 @@ class HardwareControlSession:
 
     def move(self, body):
         with self.lock:
-            if not self.active or self.state['status'] == 'connecting':
+            if self.state['status'] not in ('ready','moving'):
                 raise ValueError('机械臂控制尚未就绪')
             if body.get('unit') != 'rad':
                 raise ValueError('仅支持弧度')
@@ -146,11 +146,19 @@ class HardwareControlSession:
             with self.lock:
                 self.state.update(status='failed', error=str(error))
         finally:
+            def homing_feedback(positions):
+                with self.lock:
+                    self.feedback_at=monotonic()
+                    self.state.update(status='returning_zero',joint_positions=positions,observed_at_ns=time_ns())
+            self.arm.release_feedback=homing_feedback
             try:
+                if self.arm._armed:
+                    with self.lock:self.state.update(status='returning_zero')
                 self.arm.disconnect()
+                with self.lock:self.state['release']=self.arm.release_result
             except Exception as error:
                 with self.lock:self.state.update(status='failed',error=f'释放控制失败：{error}')
             finally:
                 with self.lock:
                     if self.state['status'] != 'failed':
-                        self.state['status'] = 'stopped'
+                        self.state['status'] = 'failed' if self.state.get('error') else 'stopped'
