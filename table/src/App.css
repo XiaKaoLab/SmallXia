@@ -1,5 +1,5 @@
 /* 功能：机械臂与四分之一聊天栏的应用布局。
- * Created on 2026-11-01; Updated on 2026-11-03
+ * Created on 2026-11-01; Updated on 2026-11-04
  * @author: https://github.com/Linmoqian
  */
 * { box-sizing: border-box; }
@@ -10,8 +10,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 button { color: inherit; cursor: pointer; }
 button:disabled { cursor: default; opacity: .4; }
 button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 2px solid #638378; outline-offset: 3px; }
-.workspace { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(0, 2fr) minmax(0, 1fr); width: 100%; height: 100%; }
-.robot-viewer { position: relative; width: 100%; height: 100%; min-width: 0; touch-action: none; }
+.workspace { display: grid; grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(300px, 1fr) minmax(0, 2fr) minmax(0, 1fr); width: 100%; height: 100%; }
+.robot-viewer { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; touch-action: none; }
 .robot-viewer canvas { display: block; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 @media (max-width: 1100px) { .workspace { grid-template-columns: 300px minmax(0, 1fr) 275px; } }
@@ -46,7 +46,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
 .camera-calibration pre { font: inherit; font-variant-numeric: tabular-nums; white-space: pre-wrap; line-height: 1.7; }
 
 /* 六轴同时校准：滑杆显示实时读数，色带标出采集范围，竖线为中值。
-   Created on 2026-11-02; Updated on 2026-11-03
+   Created on 2026-11-02; Updated on 2026-11-04
    @author: https://github.com/Linmoqian */
 .hardware-alignment.is-calibrating { background: #588575ed; color: #e4f5ed; }
 .hardware-alignment.is-calibrating p { color: #dfede6; }
@@ -64,12 +64,12 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
 
 .hardware-alignment.is-calibrating button { background: #e0f2e9; color: #35574b; }
 
-/* 校准成功提示，独立于自动关闭的面板。Updated on 2026-11-03 */
+/* 校准成功提示，独立于自动关闭的面板。Updated on 2026-11-04 */
 .calibration-saved-notice { position: absolute; z-index: 12; top: 24px; left: 50%; transform: translateX(-50%); padding: 10px 18px; border: 1px solid #b9d9c8; border-radius: 10px; background: #e5f5ecf2; color: #35574b; box-shadow: 0 6px 24px #35574b18; font-size: 13px; pointer-events: none; }
 .calibration-saved-notice[hidden] { display: none; }
 
 /* 顶部映射胶囊，按需展开六轴角度。
-   Created on 2026-11-02; Updated on 2026-11-03
+   Created on 2026-11-02; Updated on 2026-11-04
    @author: https://github.com/Linmoqian */
 .hardware-alignment.is-mapping { width: max-content; max-width: calc(100% - 24px); padding: 6px 10px 6px 16px; border-radius: 999px; box-shadow: 0 4px 18px #29473712; }
 .hardware-alignment.is-mapping > div:first-child { gap: 10px; white-space: nowrap; }
