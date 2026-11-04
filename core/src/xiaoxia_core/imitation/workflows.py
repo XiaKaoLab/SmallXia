@@ -1,5 +1,5 @@
 """组织仿真主从、实机示教记录和策略回放，保持前端独立。
-Created on 2026-11-01; Updated on 2026-11-01
+Created on 2026-11-01; Updated on 2026-11-04
 @author: https://github.com/Linmoqian
 """
 
@@ -108,7 +108,11 @@ class HardwareWorkflow:
 
     def arm(self, role: str) -> SOArmTransport:
         item = self.config[role]
-        calibration = ArmCalibration.load(self.path(item["calibration"]), self.path(item["mapping"]), self.limits)
+        if self.config.get('coordinate_basis')=='official_calibration':
+            from ..communication.official_control import OfficialArmCalibration
+            calibration=OfficialArmCalibration(self.path(item['calibration']))
+        else:
+            calibration = ArmCalibration.load(self.path(item["calibration"]), self.path(item["mapping"]), self.limits)
         return SOArmTransport(item["port"], calibration, role,
                               max_velocity=self.config.get("max_velocity_rad_s", 0.25), identity_confirmed=True)
 

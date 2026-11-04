@@ -15,7 +15,7 @@ class CoordinateIdentity:
     def fingerprint(workflow):
         follower=workflow.config['follower']
         digest=hashlib.sha256(json.dumps(workflow.config,sort_keys=True).encode('utf-8'))
-        for key in ('calibration','mapping'):digest.update(workflow.path(follower[key]).read_bytes())
+        for key in (('calibration',) if workflow.config.get('coordinate_basis')=='official_calibration' else ('calibration','mapping')):digest.update(workflow.path(follower[key]).read_bytes())
         digest.update(workflow.path(workflow.config['urdf']).read_bytes())
         return digest.hexdigest()
 
@@ -48,13 +48,16 @@ class Sim2RealAPI:
                 blockers.append('一期真机速度需在0–0.15弧度/秒内')
             report['configured_velocity_rad_s']=speed
             follower=config['follower']
-            calibration_path=workflow.path(follower['calibration']);mapping_path=workflow.path(follower['mapping'])
+            native=config.get('coordinate_basis')=='official_calibration'
+            calibration_path=workflow.path(follower['calibration'])
+            mapping_path=None if native else workflow.path(follower['mapping'])
             raw=json.loads(calibration_path.read_text(encoding='utf-8'))
-            mapping=json.loads(mapping_path.read_text(encoding='utf-8'))
+            report['coordinate_basis']='official_calibration' if native else 'urdf'
+            mapping={} if native else json.loads(mapping_path.read_text(encoding='utf-8'))
             report['official_calibration_available']=set(raw)==set(JOINTS)
             if not report['official_calibration_available']:blockers.append('官方校准文件不完整')
             report['mapping_verified']=mapping.get('verified') is True
-            if not report['mapping_verified']:blockers.append('六轴运动坐标尚未确认')
+            if not native and not report['mapping_verified']:blockers.append('六轴运动坐标尚未确认')
             missing=[]
             for name in JOINTS:
                 item=mapping.get('joints',{}).get(name,{})
@@ -62,7 +65,7 @@ class Sim2RealAPI:
                 valid=type(zero)in(int,float) and isfinite(zero) and type(direction)is int and direction in (-1,1)
                 if not valid:missing.append(name)
                 report['joints'][name]={'zero_tick':zero,'direction':direction,'mapping_complete':valid}
-            if missing:blockers.append('请确认六轴的实测零点和编码器方向')
+            if missing and not native:blockers.append('请确认六轴的实测零点和编码器方向')
             report['missing_mapping_joints']=missing
             report['coordinate_fingerprint']=CoordinateIdentity.fingerprint(workflow)
             if not blockers:

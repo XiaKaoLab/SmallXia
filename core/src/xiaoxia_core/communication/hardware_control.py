@@ -1,5 +1,5 @@
 """为已验证坐标配置的从臂提供显式使能、限速运动与失联释放，不自动改写校准。
-Created on 2026-11-02; Updated on 2026-11-03
+Created on 2026-11-02; Updated on 2026-11-04
 @author: https://github.com/Linmoqian
 """
 from copy import deepcopy
@@ -49,7 +49,10 @@ class HardwareControlAPI:
                     arm = workflow.arm('follower')  # 强制 verified=true 与 EEPROM 匹配，不使用显示偏移。
                     if arm.port != port:
                         raise ValueError('配置中的从臂端口不匹配')
-                    session = HardwareControlSession(arm, ModelPoseGuard(workflow.path(workflow.config['urdf'])))
+                    from .official_control import OfficialJointGuard
+                    native=workflow.config.get('coordinate_basis')=='official_calibration'
+                    session = HardwareControlSession(arm, OfficialJointGuard(arm.limits) if native else ModelPoseGuard(workflow.path(workflow.config['urdf'])))
+                    session.state.update(coordinate_basis='official_calibration' if native else 'urdf',geometry_verified=not native)
                     from ..sim2real.service import CoordinateIdentity
                     session.state.update(profile=profile,urdf=str(expected.resolve()),coordinate_fingerprint=CoordinateIdentity.fingerprint(workflow))
                     self.sessions[port] = session

@@ -68,3 +68,12 @@ API 均为 POST，沿用现有服务鉴权：
 实测：COM17 夹爪 1097 → 1129（32刻度，2.813°）→ 1099；其余五轴前后读数相同，最终夹爪力矩0、串口释放。证据 `data/runtime/video_demo/com17-official-jog.json`。这证明夹爪的电机使能、Goal_Position 写入和 Present_Position 反馈链路正常，不代表六轴仿真坐标映射完成。脚本重新运行会真实运动，不应被自动测试调用。
 
 官方参考：https://huggingface.co/docs/lerobot/so100 和 https://huggingface.co/docs/lerobot/backwardcomp 。
+
+
+## 官方校准直接控制模式
+
+本机配置 `coordinate_basis: official_calibration` 时，真机无需额外 URDF 零点/方向映射。五轴以官方校准行程中点为零，夹爪以闭合端为零，按编码器转角换算绝对弧度。范围来自匹配 EEPROM 的官方校准；端点8刻度内的读数抖动归一到端点，目标行程不扩大。模型仅预览，不宣称几何对齐或碰撞验证。
+
+此模式使用实测关节范围检查，不以未对齐 URDF 推断实机碰撞。关节运动沿用限速、反馈、停止和断联释放。旧的 URDF 映射模式仍可选用。不得把官方模式伪装为人工实测 verified=true。
+
+限速轨迹修正：以已发送目标连续积分推进，实测反馈用于行程和到位检查；避免小于电机死区的低速步长不断从静止反馈重启，导致目标无法达到。

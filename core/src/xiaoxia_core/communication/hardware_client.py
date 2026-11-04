@@ -51,7 +51,7 @@ class HardwareClient:
             BlockWorkflow.track(self.endpoint+'/stop')
             return self.wait(ready=True)
         check=BlockWorkflow.http('sim2real/checks',{'port':self.port,'profile':profile})
-        if not check.get('mapping_verified') or check.get('missing_mapping_joints'):
+        if check.get('coordinate_basis')!='official_calibration' and (not check.get('mapping_verified') or check.get('missing_mapping_joints')):
             raise ValueError('请先完成关节映射')
         if not check['ready_for_connection']:
             raise ValueError('；'.join(check['blockers']))

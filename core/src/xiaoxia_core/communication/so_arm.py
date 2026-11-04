@@ -1,5 +1,5 @@
 """复用 LeRobot Feetech 总线实现 SO-100/101 主从臂，连接时只读且不自动校准。
-Created on 2026-11-01; Updated on 2026-11-01
+Created on 2026-11-01; Updated on 2026-11-04
 @author: https://github.com/Linmoqian
 """
 
@@ -98,10 +98,9 @@ class SOArmTransport(RobotTransport):
                 raise RuntimeError("控制周期超时，拒绝继续动作")
             current = self.read_observation().joint_positions
             dt = min(elapsed, 1 / 30)
-            command = self.limits.constrain(action, current, max(dt, 0.0001), self.max_velocity)
-            # 同时约束上一目标和本次反馈，避免重复读取滞后导致目标跳变。
-            if self._last_command is not None:
-                command = self.limits.constrain(command, self._last_command, max(dt, 0.0001), self.max_velocity)
+            # 从上次已发送目标连续推进轨迹，避免低速步长小于死区时永远追着静止反馈。
+            # 实测反馈仍用于行程校验及外层到位判断，速度限制作用于实际下发目标轨迹。
+            command = self.limits.constrain(action, self._last_command or current, max(dt, 0.0001), self.max_velocity)
             ticks = self.calibration.ticks(command.joint_positions)
             bus.sync_write("Goal_Position", ticks, normalize=False)
             if bus.sync_read("Goal_Position", normalize=False) != ticks:
