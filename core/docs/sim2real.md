@@ -59,3 +59,12 @@ API 均为 POST，沿用现有服务鉴权：
 2026-11-04 闭环：单独运行 COM 位置积木若缺少映射，任务自动创建 resume_control 校准会话并打开积木向导，等待操作者完成后继续连接与控制，不要求再次运行。取消/停止结束等待；保存后不再并行启动只读串口跟随，避免抢占控制串口。此链路仍需真实操作者完成姿态和六轴方向，未用假数据冒充实测。
 
 应用 Agent 提供 arm_mapping_status、arm_mapping_step、arm_mapping_save，接管已有积木会话。采样需依据当前实机姿态/方向确认，不能把泛泛授权或仿真画面视为实测依据。保存后已有任务自动继续控制。
+
+
+## 官方坐标真机微动验证
+
+2026-11-04 按 LeRobot 官方电机 API，通过 `core/scripts/verify_com17_gripper.py` 复用与 EEPROM 匹配的已有校准，使用原始编码器坐标验证夹爪位置控制。与 URDF 对齐是两个独立问题，不填写或伪造 verified 映射。
+
+实测：COM17 夹爪 1097 → 1129（32刻度，2.813°）→ 1099；其余五轴前后读数相同，最终夹爪力矩0、串口释放。证据 `data/runtime/video_demo/com17-official-jog.json`。这证明夹爪的电机使能、Goal_Position 写入和 Present_Position 反馈链路正常，不代表六轴仿真坐标映射完成。脚本重新运行会真实运动，不应被自动测试调用。
+
+官方参考：https://huggingface.co/docs/lerobot/so100 和 https://huggingface.co/docs/lerobot/backwardcomp 。
