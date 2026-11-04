@@ -85,8 +85,13 @@ export function BlocksSidebar() {
         if (abort.signal.aborted) return;
         Blockly.setLocale(Object.fromEntries(Object.entries(Zh).filter((entry): entry is [string, string] => typeof entry[1] === "string")));
         registerPositionBlock(limits, (block) => {
-          const source = pythonGenerator.forBlock[BLOCK_TYPE](block, pythonGenerator);
-          if (typeof source === "string") live.schedule(source);
+          const target=String(block.getFieldValue("TARGET"));
+          if(target.startsWith("serial:")){
+            live.scheduleHardware(target.slice(7),Object.fromEntries(JOINTS.map(([name])=>[name,Number(block.getFieldValue(name))])));
+          }else{
+            const source = pythonGenerator.forBlock[BLOCK_TYPE](block, pythonGenerator);
+            if (typeof source === "string") live.schedule(source);
+          }
         });
         registerCameraBlock();
         registerCalibrationBlock();
@@ -147,6 +152,7 @@ export function BlocksSidebar() {
           try { await program.observe(job); }
           catch (failure) { if (!abort.signal.aborted) setError(UiMessage.error(failure)); }
           finally {
+            live.releaseHardware();window.dispatchEvent(new CustomEvent("table:hardware-control-ended",{detail:{target:"all"}}));
             program.dispose();
             if (programRef.current === program) {
               programRef.current = null; runLock.current = false;
@@ -177,10 +183,17 @@ export function BlocksSidebar() {
       }
     }
     void initialize();
-    return () => { abort.abort(); programRef.current?.dispose(); qiling.current.finish(); programRef.current = null; window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; controlBridge?.stop(); detachDebug?.(); detachCameras?.(); detachArmTargets?.(); detachModels?.(); detachQiLing?.(); detachWorkflow?.(); observer?.disconnect(); workspace?.dispose(); };
+    return () => { abort.abort(); if(live.controllingHardware)void programRef.current?.stop().catch(()=>undefined);programRef.current?.dispose(); qiling.current.finish(); programRef.current = null; window.removeEventListener("table:pose-limit", onLimit); window.removeEventListener("table:joint-confirmed", onConfirmed); live.dispose(); liveRef.current = null; workspaceRef.current = null; controlBridge?.stop(); detachDebug?.(); detachCameras?.(); detachArmTargets?.(); detachModels?.(); detachQiLing?.(); detachWorkflow?.(); observer?.disconnect(); workspace?.dispose(); };
   }, []);
 
   function receiveReceipt(receipt: ProgramReceipt) {
+    if(receipt.hardware_feedback){
+      const feedback=receipt.hardware_feedback;
+      if(feedback.physical===true&&feedback.source==="hardware_feedback"&&feedback.port){
+        liveRef.current?.activateHardware(feedback.port);
+        window.dispatchEvent(new CustomEvent("table:hardware-control-feedback",{detail:feedback}));
+      }
+    }
     if (receipt.qiling) qiling.current.receive(workspaceRef.current ?? undefined, receipt.qiling);
     if (receipt.ball_training && ["ball_pickup", "ball_onnx_rollout"].includes(receipt.ball_training.kind)) window.dispatchEvent(new CustomEvent("table:ball-training-started", { detail: receipt.ball_training }));
     if (receipt.camera_calibration?.id) window.dispatchEvent(new CustomEvent("table:camera-calibration-start", { detail: receipt.camera_calibration }));
@@ -207,7 +220,7 @@ export function BlocksSidebar() {
       catch (failure) { program.dispose(); programRef.current = null; throw failure; }
       // 调试接口立即获得可查询任务回执；UI 继续等待真实完成。
       const completion = program.observe(job).catch(failure => { setError(UiMessage.error(failure)); setNotice(""); })
-        .finally(() => { qiling.current.finish(); program.dispose(); programRef.current = null; liveRef.current?.resume(); runLock.current = false; setRunning(false); void workflowCatalog.refresh(); });
+        .finally(() => { liveRef.current?.releaseHardware();window.dispatchEvent(new CustomEvent("table:hardware-control-ended",{detail:{target:"all"}}));qiling.current.finish(); program.dispose(); programRef.current = null; liveRef.current?.resume(); runLock.current = false; setRunning(false); void workflowCatalog.refresh(); });
       void completion;
       return { program: job };
     } catch (failure) {

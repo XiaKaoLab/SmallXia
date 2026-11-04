@@ -33,6 +33,12 @@ class DesktopBridge:
         if action == "qiling_models":
             from .qiling import QiLingModels
             self.emit({"type":"data","data":QiLingModels.list()})
+        elif action == "hardware_drag":
+            from ..communication.hardware_client import HardwareClient
+            from ..blocks.workflow import BlockWorkflow
+            client=HardwareClient(request.get('port'))
+            result=BlockWorkflow.http(client.endpoint+'/motions',{'joint_positions':request.get('positions'),'unit':'rad'})
+            self.emit({'type':'data','data':result})
         elif action == "coordinate_request":
             from ..sim2real.bridge import CoordinateBridge
             self.emit({"type":"data","data":CoordinateBridge.request(request)})

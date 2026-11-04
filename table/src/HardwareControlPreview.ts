@@ -15,7 +15,7 @@ export class HardwareControlPreview {
     this.pose={...event.joint_positions};this.target=event.target!;this.received=performance.now();this.label.hidden=false;
   };
   private readonly ended=(raw:Event)=>{
-    if((raw as CustomEvent<{target:string}>).detail.target!==this.target)return;
+    if(![this.target,"all"].includes((raw as CustomEvent<{target:string}>).detail.target))return;
     this.pose=null;this.label.hidden=true;this.target="";
   };
   constructor(host:HTMLElement){

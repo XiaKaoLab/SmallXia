@@ -8,6 +8,7 @@ import { agentClient } from "../chat/AgentClient";
 export interface ProgramJob { id: string; status: string; log_tail?: string; error?: string; created_at_ns?: number; process_exited?: boolean }
 export interface ProgramReceipt {
   qiling?: QiLingReceipt;
+  hardware_feedback?: QiLingReceipt & {port:string};
   coordinate_calibration?: {id:string;port:string;stage:string;instruction:string;reference_rad:Record<string,number>};
   workflow?: { stage: string; step?: number; total?: number };
   ball_training?: { kind: string }; camera_calibration?: { id: string }; display_alignment?: { id: string };

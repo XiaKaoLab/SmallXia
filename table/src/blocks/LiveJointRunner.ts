@@ -1,12 +1,13 @@
 /** 功能：合并滑杆修改，以单请求队列运行最新 Python 位置程序。
- * Created on 2026-11-02; Updated on 2026-11-02
+ * Created on 2026-11-02; Updated on 2026-11-04
  * @author: https://github.com/Linmoqian
  */
 import { jointPreview } from "../JointPreview";
 import { agentClient } from "../chat/AgentClient";
 
 export class LiveJointRunner {
-  private pending: { source: string; revision: number } | undefined;
+  private pending: { request: Record<string,unknown>; revision: number; hardware?: boolean } | undefined;
+  private hardwarePort="";
   private timer: ReturnType<typeof setTimeout> | undefined;
   private busy = false;
   private stopped = false;
@@ -18,19 +19,31 @@ export class LiveJointRunner {
   schedule(source: string): void {
     if (this.stopped) return;
     if (!agentClient.desktop) { this.status("本地预览；API 同步需要 Tauri 桌面"); return; }
-    this.pending = { source, revision: jointPreview.revision };
+    this.pending = { request:{action:"run_program",source}, revision: jointPreview.revision };
     clearTimeout(this.timer);
     this.timer = setTimeout(() => void this.send(), 120);
   }
 
+  get controllingHardware():boolean {return !!this.hardwarePort;}
+  activateHardware(port:string):void {this.hardwarePort=port;}
+  releaseHardware():void {
+    this.hardwarePort="";
+    if(this.pending?.hardware){this.pending=undefined;clearTimeout(this.timer);}
+  }
+  scheduleHardware(port:string,positions:Record<string,number>):void {
+    if(this.stopped||this.hardwarePort!==port)return;
+    this.pending={request:{action:"hardware_drag",port,positions},revision:jointPreview.revision,hardware:true};
+    clearTimeout(this.timer);this.timer=setTimeout(()=>void this.send(),80);
+  }
+
   private async send(): Promise<void> {
-    if (this.stopped || this.paused || this.busy || !this.pending) return;
-    const { source, revision } = this.pending;
+    if (this.stopped || this.busy || !this.pending || (this.paused&&!this.pending.hardware)) return;
+    const { request, revision, hardware } = this.pending;
     this.pending = undefined;
     this.busy = true;
     try {
-      const result = await agentClient.request<{ output: string }>({ action: "run_program", source });
-      const receipt = JSON.parse(result.output.trim().split("\n").slice(-1)[0] || "{}");
+      const result = await agentClient.request<{ output?: string; limited?:boolean }>(request);
+      const receipt = hardware?result:JSON.parse((result.output??"").trim().split("\n").slice(-1)[0] || "{}");
       if (!this.stopped && receipt.limited && receipt.applied_joint_positions) {
         jointPreview.confirm(receipt.applied_joint_positions, revision);
       }
@@ -53,5 +66,5 @@ export class LiveJointRunner {
 
   resume(): void { this.paused = false; if (this.pending && !this.stopped) void this.send(); }
 
-  dispose(): void { this.stopped = true; this.pending = undefined; clearTimeout(this.timer); }
+  dispose(): void { this.releaseHardware();this.stopped = true; this.pending = undefined; clearTimeout(this.timer); }
 }
