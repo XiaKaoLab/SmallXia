@@ -112,6 +112,9 @@ class HardwareControlSession:
                 raise ValueError('仅支持弧度')
             positions = body.get('joint_positions')
             self.arm.limits.validate(positions)
+            if self.target and all(abs(positions[n]-self.target[n])<.000767 for n in positions):
+                self.lease=monotonic()
+                return deepcopy(self.state)
             applied, reason = self.guard.limit_path(self.state['joint_positions'], positions)
             self.target = dict(applied)
             self.state.update(status='moving', target=applied, limited=bool(reason))
@@ -138,7 +141,8 @@ class HardwareControlSession:
                     target = dict(self.target)
                 self.arm.send_action(Action(target))
                 measured = self.arm.read_observation().joint_positions
-                reached = max(abs(measured[name] - target[name]) for name in target) < .025
+                tolerance=.035 if self.state['status']=='ready' else .025
+                reached = max(abs(measured[name] - target[name]) for name in target) < tolerance
                 with self.lock:
                     self.feedback_at=monotonic()
                     self.state.update(joint_positions=measured, status='ready' if reached else 'moving',observed_at_ns=time_ns())

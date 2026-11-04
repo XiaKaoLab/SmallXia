@@ -10,6 +10,7 @@ from ..contracts import Action, Observation
 from ..safety import JOINTS
 from .calibration import ArmCalibration
 from .transport import RobotTransport
+from .joint_trajectory import JointTrajectory
 
 
 class SOArmTransport(RobotTransport):
@@ -24,6 +25,8 @@ class SOArmTransport(RobotTransport):
         self.identity_confirmed = identity_confirmed
         self._bus = None
         self._armed = False
+        self._trajectory = None
+        self._last_ticks = None
         self.release_feedback = None
         self.release_result = {}
         self._last_command: dict[str, float] | None = None
@@ -85,6 +88,8 @@ class SOArmTransport(RobotTransport):
             if set(enabled) != set(JOINTS) or not all(enabled.values()):
                 raise RuntimeError("从臂力矩使能回读不完整")
             self._last_command, self._last_sent = dict(current), monotonic()
+            self._trajectory=JointTrajectory(current,self.max_velocity)
+            self._last_ticks=dict(ticks)
         except BaseException:
             self.disconnect()
             raise
@@ -100,14 +105,15 @@ class SOArmTransport(RobotTransport):
                 raise RuntimeError("控制周期超时，拒绝继续动作")
             current = self.read_observation().joint_positions
             dt = min(elapsed, 1 / 30)
-            # 从上次已发送目标连续推进轨迹，避免低速步长小于死区时永远追着静止反馈。
-            # 实测反馈仍用于行程校验及外层到位判断，速度限制作用于实际下发目标轨迹。
-            command = self.limits.constrain(action, self._last_command or current, max(dt, 0.0001), self.max_velocity)
-            ticks = self.calibration.ticks(command.joint_positions)
-            bus.sync_write("Goal_Position", ticks, normalize=False)
-            # 沿用官方同步写入方式；到位由 Present_Position 反馈判断，
-            # 不以固件目标寄存器的瞬时回读差异代替实际位置错误。
-            self._last_command = self.calibration.angles(ticks)
+            self.limits.validate(action.joint_positions)
+            if self._trajectory is None:self._trajectory=JointTrajectory(current,self.max_velocity)
+            pose=self._trajectory.step(action.joint_positions,max(dt,.0001))
+            ticks = self.calibration.ticks(pose)
+            if ticks!=self._last_ticks:
+                bus.sync_write("Goal_Position", ticks, normalize=False)
+                self._last_ticks=dict(ticks)
+            # 内部保留浮点累积，不能每周期量化后重新起步。
+            self._last_command=pose
             self._last_sent = now
         except BaseException:
             self.disconnect()
@@ -142,3 +148,5 @@ class SOArmTransport(RobotTransport):
         finally:
             self._armed = False
             self._last_command = None
+            self._trajectory = None
+            self._last_ticks = None

@@ -8,6 +8,7 @@ import { agentClient } from "../chat/AgentClient";
 export class LiveJointRunner {
   private pending: { request: Record<string,unknown>; revision: number; hardware?: boolean } | undefined;
   private hardwarePort="";
+  private hardwareKey="";
   private timer: ReturnType<typeof setTimeout> | undefined;
   private busy = false;
   private stopped = false;
@@ -21,19 +22,22 @@ export class LiveJointRunner {
     if (!agentClient.desktop) { this.status("本地预览；API 同步需要 Tauri 桌面"); return; }
     this.pending = { request:{action:"run_program",source}, revision: jointPreview.revision };
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => void this.send(), 120);
+    this.timer = setTimeout(() => {this.timer=undefined;void this.send();}, 120);
   }
 
   get controllingHardware():boolean {return !!this.hardwarePort;}
   activateHardware(port:string):void {this.hardwarePort=port;}
   releaseHardware():void {
-    this.hardwarePort="";
-    if(this.pending?.hardware){this.pending=undefined;clearTimeout(this.timer);}
+    this.hardwarePort="";this.hardwareKey="";
+    if(this.pending?.hardware){this.pending=undefined;clearTimeout(this.timer);this.timer=undefined;}
   }
   scheduleHardware(port:string,positions:Record<string,number>):void {
     if(this.stopped||this.hardwarePort!==port)return;
+    const key=port+JSON.stringify(Object.entries(positions).map(([n,v])=>[n,Math.round(v*4095/(2*Math.PI))]));
+    if(key===this.hardwareKey)return;
+    this.hardwareKey=key;
     this.pending={request:{action:"hardware_drag",port,positions},revision:jointPreview.revision,hardware:true};
-    clearTimeout(this.timer);this.timer=setTimeout(()=>void this.send(),80);
+    if(!this.timer)this.timer=setTimeout(()=>{this.timer=undefined;void this.send();},100);
   }
 
   private async send(): Promise<void> {
@@ -49,6 +53,7 @@ export class LiveJointRunner {
       }
       if (!this.stopped && !this.pending) this.status(receipt.limited ? "已到运动边界" : "已同步");
     } catch (error) {
+      if(hardware)this.hardwareKey="";
       if (!this.stopped) this.status("同步失败，请重试");
     } finally {
       this.busy = false;
@@ -59,7 +64,7 @@ export class LiveJointRunner {
 
   async pause(): Promise<void> {
     this.paused = true;
-    clearTimeout(this.timer);
+    clearTimeout(this.timer);this.timer=undefined;
     this.pending = undefined;
     if (this.busy) await new Promise<void>((resolve) => this.idleWaiters.push(resolve));
   }
