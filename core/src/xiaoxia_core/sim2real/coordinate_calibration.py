@@ -70,7 +70,7 @@ class CoordinateCalibrationAPI:
         if body.get('port')!=workflow.config['follower']['port']:raise ValueError('配置与串口不一致')
         state={'id':uuid4().hex,'profile':body.get('profile','so100.local.yaml'),'port':body['port'],
             'stage':'zero','instruction':'请对齐参考姿态','reference_rad':dict.fromkeys(JOINTS,0),
-            'joints':{},'writes_to_device':0,'verified':False,'updated_at':time(),
+            'resume_control':body.get('resume_control') is True,'joints':{},'writes_to_device':0,'verified':False,'updated_at':time(),
             'fingerprint':self.fingerprint(workflow)}
         atomic_json(self.root/(state['id']+'.json'),state);return state
 

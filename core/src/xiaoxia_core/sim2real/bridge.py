@@ -24,7 +24,7 @@ class CoordinateBridge:
         if state['stage'] in ('zero','direction'):
             from ..mcp.server import TableModelTools
             TableModelTools().table_move_joints(**state['reference_rad'])
-        if operation=='save' and state['stage']=='saved':
+        if operation=='save' and state['stage']=='saved' and not state.get('resume_control'):
             from ..communication.display_alignment import DisplayAlignment
             try:result['display_alignment']=DisplayAlignment.start_mapping(state['port'])
             except Exception as error:result['follow_error']=str(error)

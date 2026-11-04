@@ -63,7 +63,24 @@ class HardwareClient:
 
     def interactive(self, positions):
         """单独运行位置积木时保持控制，滑条只更新该已有会话。"""
-        self.ensure_connected()
+        try:self.ensure_connected()
+        except ValueError as error:
+            if str(error)!='请先完成关节映射':raise
+            calibration=BlockWorkflow.http('sim2real/calibrations',{'port':self.port,'profile':'so100.local.yaml','resume_control':True})
+            print(json.dumps({'coordinate_calibration':calibration},ensure_ascii=False),flush=True)
+            state=calibration
+            try:
+                while True:
+                    directory=os.environ.get('XIAOXIA_PROGRAM_DIR')
+                    if directory and (Path(directory)/'stop').exists():return
+                    state=BlockWorkflow.http('sim2real/calibrations/'+calibration['id'])
+                    if state['stage']=='saved':break
+                    if state['stage']=='cancelled':return
+                    sleep(.4)
+            finally:
+                if state.get('stage')!='saved':
+                    BlockWorkflow.http('sim2real/calibrations/'+calibration['id']+'/cancel',{})
+            self.ensure_connected()
         try:
             BlockWorkflow.http(self.endpoint+'/motions',{'joint_positions':positions,'unit':'rad'})
             while True:
