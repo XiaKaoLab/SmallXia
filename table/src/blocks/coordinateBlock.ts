@@ -9,7 +9,7 @@ export const COORDINATE_BLOCK="table_calibrate_mapping";
 export function registerCoordinateBlock():void {
   Blockly.Blocks[COORDINATE_BLOCK]={init(this:Blockly.Block){
     this.appendDummyInput().appendField("校准关节映射").appendField(new Blockly.FieldDropdown(function(){
-      const options=armTargetCatalog.options(this.getValue()).filter(([,v])=>v!=="simulation");
+      const options=armTargetCatalog.options(this.getValue()==="unavailable"||!this.getValue()?"serial:COM17":this.getValue()).filter(([,v])=>v!=="simulation");
       return options.length?options:[["未发现串口","unavailable"]];
     }),"TARGET");
     this.setPreviousStatement(false);this.setNextStatement(false);this.setColour("#638b80");
