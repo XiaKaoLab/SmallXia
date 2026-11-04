@@ -29,6 +29,7 @@ class SOArmTransport(RobotTransport):
         self._last_ticks = None
         self.release_feedback = None
         self.release_result = {}
+        self._return_pose = None
         self._last_command: dict[str, float] | None = None
         self._last_sent = 0.0
 
@@ -77,6 +78,7 @@ class SOArmTransport(RobotTransport):
             raise RuntimeError("主臂只读，禁止力矩使能")
         bus = self._connected()
         current = self.read_observation().joint_positions
+        self._return_pose=dict(current)
         ticks = self.calibration.ticks(current)
         bus.sync_write("Goal_Position", ticks, normalize=False)
         if bus.sync_read("Goal_Position", normalize=False) != ticks:
@@ -133,7 +135,7 @@ class SOArmTransport(RobotTransport):
                     if self._armed:
                         from .slow_zero_release import SlowZeroRelease
                         try:
-                            self.release_result=SlowZeroRelease(self.calibration,self.max_velocity,self.release_feedback).run(bus)
+                            self.release_result=SlowZeroRelease(self.calibration,self.max_velocity,self.release_feedback,target=self._return_pose).run(bus)
                         except Exception as error:
                             self.release_result={'zero_reached':False,'error':str(error)}
                             raise
@@ -150,3 +152,4 @@ class SOArmTransport(RobotTransport):
             self._last_command = None
             self._trajectory = None
             self._last_ticks = None
+            self._return_pose = None

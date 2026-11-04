@@ -132,7 +132,7 @@ class HardwareControlSession:
             with self.lock:
                 self.target = current
                 self.feedback_at=monotonic()
-                self.state.update(status='ready', joint_positions=current,observed_at_ns=time_ns())
+                self.state.update(status='ready', joint_positions=current,start_joint_positions=dict(current),observed_at_ns=time_ns())
                 self.lease = monotonic()
             while not self.stop.wait(1 / 30):
                 with self.lock:
