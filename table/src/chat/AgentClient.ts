@@ -52,6 +52,12 @@ export class AgentClient {
 
   bootstrap(): Promise<Bootstrap> { return this.request({ action: "bootstrap" }); }
 
+  async realCameraPreview<T>(requestId:string,source:string,receive:(frame:T)=>void):Promise<void>{
+    await this.dispatch<{type:"camera_preview";data:T}|{type:"error";message:string}|{type:"completed"}>(
+      requestId,{action:"real_camera_preview",source},event=>{if(event.type==="camera_preview")receive(event.data);},
+      event=>event.type==="error"||event.type==="completed");
+  }
+
   async redTrackingPreview<T>(requestId:string,id:string,receive:(state:T)=>void):Promise<void>{
     let failure="";
     await this.dispatch<{type:"red_tracking";data:T}|{type:"error";message:string}|{type:"completed"}>(

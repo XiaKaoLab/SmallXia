@@ -165,7 +165,10 @@ def main() -> None:
         request = json.loads(sys.stdin.readline())
         if not isinstance(request, dict):
             raise ValueError("桌面请求必须为对象")
-        if request.get('action') == 'red_tracking_preview':
+        if request.get('action') == 'real_camera_preview':
+            from ..communication.camera_preview import RealCameraPreview
+            RealCameraPreview.stream(request.get('source','auto'), DesktopBridge.emit)
+        elif request.get('action') == 'red_tracking_preview':
             from ..blocks.red_tracking import RedTrackingPreview
             RedTrackingPreview.stream(request.get('id'), DesktopBridge.emit)
         elif request.get('action') in ('alignment_map', 'alignment_preview', 'alignment_stop', 'arm_calibration_action', 'alignment_recalibrate', 'alignment_wrist_offset'):
