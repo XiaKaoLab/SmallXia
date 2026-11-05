@@ -1,5 +1,5 @@
 /** 功能：管理机械臂 URDF、场景和交互生命周期。
- * Created on 2026-11-01; Updated on 2026-11-04
+ * Created on 2026-11-01; Updated on 2026-11-05
  * @author: https://github.com/Linmoqian
  */
 import { CoordinateCalibrationDisplay } from "./CoordinateCalibrationDisplay";
@@ -172,10 +172,10 @@ export class RobotViewer {
 
   private updateJoints(dt: number): void {
     if (!this.robot || !this.modelReady) return;
-    const hardwarePositions=this.controlFeedback.positions??this.alignment.positions;
+    const hardwarePositions=this.alignment.positions??this.controlFeedback.positions;
     this.training.setHidden(hardwarePositions !== null);
     this.robot.visible = true;
-    if (hardwarePositions && this.poseGuard) {
+    if (hardwarePositions) {
       if (!this.alignmentVisible) { this.fitTraining(1); this.alignmentVisible = true; }
       // 只读实测显示不再被仿真目标约束截断，避免真机动而模型卡在旧姿态。
       for(const [name,angle] of Object.entries(hardwarePositions)){

@@ -161,6 +161,7 @@ def main() -> None:
     sys.stdin.reconfigure(encoding="utf-8")
     sys.stdout.reconfigure(encoding="utf-8")
     try:
+        EnvironmentSettings.load()
         request = json.loads(sys.stdin.readline())
         if not isinstance(request, dict):
             raise ValueError("桌面请求必须为对象")

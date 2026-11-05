@@ -1,22 +1,23 @@
 /** 功能：统一订阅真机反馈驱动模型，覆盖积木、Agent、API与回位全过程。
- * Created on 2026-11-03; Updated on 2026-11-04
+ * Created on 2026-11-03; Updated on 2026-11-05
  * @author: https://github.com/Linmoqian
  */
 import { JOINTS } from "./blocks/positionBlock";
 import { agentClient } from "./chat/AgentClient";
-interface Feedback {physical?:boolean;source?:string;unit?:string;port?:string;target?:string|Record<string,number>;status?:string;feedback_age_ms?:number;observed_at_ns?:number;joint_positions?:Record<string,number>;render_joint_positions?:Record<string,number>;release?:{start_reached?:boolean}}
+interface Feedback {physical?:boolean;source?:string;unit?:string;port?:string;target?:string|Record<string,number>;status?:string;feedback_age_ms?:number;observed_at_ns?:number;joint_positions?:Record<string,number>;render_joint_positions?:Record<string,number>;read_only_following?:boolean;observation_error?:string;release?:{start_reached?:boolean}}
 export class HardwareControlPreview {
   private pose:Record<string,number>|null=null;
   private smoothed:Record<string,number>|null=null;
   private target="";private received=0;private rendered=0;private streamAt=0;
   private phase="";private disposed=false;private requestId="";
+  private following=false;
   private retry?:ReturnType<typeof setTimeout>;
   private readonly label=document.createElement("div");
   private readonly receive=(raw:Event)=>{
     if(performance.now()-this.streamAt<500)return;
     this.accept((raw as CustomEvent<Feedback>).detail);
   };
-  private readonly clear=()=>{this.pose=null;this.smoothed=null;this.target="";this.label.hidden=true;};
+  private readonly clear=()=>{if(this.following)return;this.pose=null;this.smoothed=null;this.target="";this.label.hidden=true;};
   private readonly ended=()=>{ /* 控制任务结束后仍订阅回起点反馈，保留最后实测姿态。 */ };
   constructor(host:HTMLElement){
     this.label.className="hardware-control-preview-label";this.label.hidden=true;host.append(this.label);
@@ -25,26 +26,29 @@ export class HardwareControlPreview {
     window.addEventListener("table:hardware-preview-clear",this.clear);
     if(agentClient.desktop)void this.stream();
   }
-  private accept(event:Feedback):void{
+  private accept(event:Feedback):boolean{
     const target=typeof event.target==="string"?event.target:(event.port?`serial:${event.port}`:"");
-    if(target===this.target&&["stopped","failed"].includes(event.status??"")){this.phase="已停止";this.label.dataset.phase=this.phase;}
-    const positions=event.render_joint_positions??event.joint_positions;
-    if(event.physical!==true||event.unit!=="rad"||!/^serial:COM[1-9][0-9]*$/.test(target)||!positions||event.feedback_age_ms==null||event.feedback_age_ms>500)return;
-    if(!JOINTS.every(([name])=>Number.isFinite(positions[name])))return;
+    if(target===this.target)this.following=event.read_only_following===true||["ready","moving","returning_zero"].includes(event.status??"");
+    if(target===this.target&&["stopped","failed"].includes(event.status??"")){this.phase=event.observation_error?"等待反馈":"已停止";this.label.dataset.phase=this.phase;}
+    const positions=event.render_joint_positions;
+    if(event.physical!==true||event.unit!=="rad"||!/^serial:COM[1-9][0-9]*$/.test(target)||!positions||event.feedback_age_ms==null||event.feedback_age_ms>500)return false;
+    if(!JOINTS.every(([name])=>Number.isFinite(positions[name])))return false;
     if(this.target!==target||!this.smoothed)this.smoothed={...positions};
     this.pose={...positions};this.target=target;this.received=performance.now();this.label.hidden=false;
-    this.phase=event.status==="returning_zero"?"返回起始位置":event.status==="stopped"?"已停止":event.status==="failed"?"已停止":"实测同步";
+    this.following=event.read_only_following===true||["ready","moving","returning_zero"].includes(event.status??"");
+    this.phase=event.read_only_following?"只读同步":event.observation_error?"等待反馈":event.status==="returning_zero"?"返回起始位置":event.status==="stopped"?"已停止":event.status==="failed"?"已停止":"实测同步";
     this.label.dataset.target=target;this.label.dataset.phase=this.phase;
     this.label.dataset.observedAt=String(event.observed_at_ns??0);
+    return true;
   }
   private async stream():Promise<void>{
     this.requestId=crypto.randomUUID();
     try{
       await agentClient.hardwarePreview<{sessions:Feedback[]}>(this.requestId,state=>{
         if(this.disposed)return;
-        const active=state.sessions.filter(s=>["ready","moving","returning_zero"].includes(s.status??""));
-        const selected=active.find(s=>`serial:${s.port}`===this.target)??active[0]??state.sessions.find(s=>`serial:${s.port}`===this.target);
-        if(selected){this.streamAt=performance.now();this.accept(selected);}
+        const active=state.sessions.filter(s=>s.read_only_following||["ready","moving","returning_zero"].includes(s.status??""));
+        const selected=active.find(s=>`serial:${s.port}`===this.target)??active[0]??state.sessions.find(s=>`serial:${s.port}`===this.target)??state.sessions.at(-1);
+        if(selected&&this.accept(selected))this.streamAt=performance.now();
       });
     }catch{ /* 服务重启后重新订阅；从不重发电机动作。 */ }
     if(!this.disposed)this.retry=setTimeout(()=>void this.stream(),1000);

@@ -1,5 +1,5 @@
 """复用官方校准跟随实机，缺失时引导逐轴检查行程；仅校准写入，无运动目标。
-Created on 2026-11-02; Updated on 2026-11-04
+Created on 2026-11-02; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
 import json
@@ -22,6 +22,7 @@ class DisplayAlignment:
     def start(cls, port, *, mapping=False, recalibrate=False):
         if not isinstance(port, str) or not re.fullmatch(r'COM[1-9][0-9]*', port):
             raise ValueError('请选择实际 COM 口')
+        from ..blocks.workflow import BlockWorkflow
         cls.root.mkdir(parents=True, exist_ok=True)
         pending = []
         for existing in cls.root.glob('*/request.json'):
@@ -38,7 +39,7 @@ class DisplayAlignment:
             for previous in pending:
                 try:
                     state = json.loads((previous / 'state.json').read_text(encoding='utf-8'))
-                    if state['status'] not in ('failed', 'stopped', 'saved'):
+                    if state['status'] not in ('failed', 'stopped', 'saved') or state.get('disconnected') is not True:
                         remaining.append(previous)
                 except (OSError, ValueError):
                     remaining.append(previous)
@@ -48,6 +49,7 @@ class DisplayAlignment:
                 raise ValueError('上一显示对齐仍在释放串口，请稍后重新运行')
             pending = remaining
             sleep(.05)
+        BlockWorkflow.http(f'hardware/arms/{port}/observe-stop', {})
         directory = cls.root / uuid4().hex
         directory.mkdir()
         atomic_json(directory / 'request.json', {'port': port, 'mode': 'mapping' if mapping else 'alignment', 'recalibrate': bool(recalibrate)})
@@ -232,6 +234,9 @@ class DisplayAlignment:
                 bus.disconnect(disable_torque=False)
             state['calibration_write_count'] = bus.calibration_write_count
             state['disconnected'] = not bus.is_connected
+            from ..blocks.workflow import BlockWorkflow
+            try: BlockWorkflow.http(f"hardware/arms/{request['port']}/observe-resume", {})
+            except Exception: pass
             atomic_json(directory / 'state.json', state)
 
 

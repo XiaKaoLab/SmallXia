@@ -35,16 +35,20 @@ class HardwareControlAPI:
                 raise ValueError('请选择 COM 口')
             port = parts[1]
             with self.lock:
-                if method == 'POST' and len(parts) == 3 and parts[2] in ('connect', 'enable'):
+                if method == 'POST' and len(parts) == 3 and parts[2] in ('connect', 'enable', 'observe'):
                     if parts[2] == 'connect' and body.get('enable_motion') is not True:
                         raise ValueError('请勾选启用真机运动')
                     profile = body.get('profile', 'so100.local.yaml')
                     if not isinstance(profile, str) or Path(profile).name != profile or not profile.endswith('.yaml'):
                         raise ValueError('请选择本机机械臂配置')
                     if port in self.sessions and self.sessions[port].active:
-                        if parts[2] == 'enable' and self.sessions[port].state.get('profile') == profile and self.sessions[port].state['status'] != 'returning_zero':
-                            return 200, self.sessions[port].snapshot(heartbeat=True)
+                        if parts[2] in ('enable','observe') and self.sessions[port].state.get('profile') == profile and self.sessions[port].state['status'] != 'returning_zero':
+                            return 200, self.sessions[port].snapshot(heartbeat=parts[2]=='enable')
                         raise ValueError('机械臂已在控制中')
+                    if port in self.sessions:
+                        if parts[2]=='observe' and self.sessions[port].thread.is_alive() and self.sessions[port].state.get('profile')==profile:
+                            return 200, self.sessions[port].snapshot()
+                        self.sessions[port].stop_observing()
                     workflow = HardwareWorkflow(self.core / 'configs' / profile)
                     expected = self.core.parent / 'table/public/robots/so100/so100_mid_calib.urdf'
                     if workflow.path(workflow.config['urdf']) != expected.resolve():
@@ -59,9 +63,23 @@ class HardwareControlAPI:
                     from ..sim2real.service import CoordinateIdentity
                     session.state.update(profile=profile,urdf=str(expected.resolve()),coordinate_fingerprint=CoordinateIdentity.fingerprint(workflow))
                     self.sessions[port] = session
-                    session.start()
+                    if parts[2]=='observe':
+                        session.state['status']='stopped'
+                        session.thread=Thread(target=session.observe,daemon=True)
+                        session.thread.start()
+                    else: session.start()
                     return 202, session.snapshot()
                 session = self.sessions.get(port)
+                if method == 'POST' and len(parts) == 3 and parts[2] in ('observe-stop','observe-resume'):
+                    if session is None: return 200, {'observing':False, 'port':port}
+                    if session.active: raise ValueError('请先失能机械臂')
+                    if parts[2] == 'observe-stop': session.stop_observing()
+                    elif not session.thread.is_alive():
+                        from .passive_feedback import PassiveFeedback
+                        session.observer = PassiveFeedback()
+                        session.thread = Thread(target=session.observe, daemon=True)
+                        session.thread.start()
+                    return 200, session.snapshot()
                 if session is None:
                     raise ValueError('请先连接真机控制')
                 if method == 'GET' and len(parts) == 2:
@@ -80,6 +98,7 @@ class HardwareControlAPI:
 
     def close(self):
         for session in self.sessions.values():
+            session.observer.stop.set()
             session.stop.set()
         for session in self.sessions.values():
             session.thread.join(timeout=2)
@@ -87,7 +106,9 @@ class HardwareControlAPI:
 
 class HardwareControlSession:
     def __init__(self, arm, guard):
+        from .passive_feedback import PassiveFeedback
         self.arm, self.guard = arm, guard
+        self.observer = PassiveFeedback()
         self.stop, self.lock = Event(), RLock()
         self.lease = monotonic()
         self.target = None
@@ -103,6 +124,24 @@ class HardwareControlSession:
 
     def start(self):
         self.thread.start()
+
+    def stop_observing(self):
+        self.observer.stop.set()
+        self.thread.join(timeout=3)
+        if self.thread.is_alive():
+            raise ValueError('正在释放只读连接，请稍后重试')
+        with self.lock: self.state['read_only_following'] = False
+
+    def observe(self):
+        def publish(positions, error):
+            with self.lock:
+                self.state.update(read_only_following=positions is not None, observation_error=error)
+                if positions is not None:
+                    self.feedback_at = monotonic()
+                    if not self.state.get('release'):
+                        self.state['release']={'torque_disabled':True,'reference':'read_only_connection'}
+                    self.state.update(joint_positions=positions,render_joint_positions=self.arm.render_positions(positions),observed_at_ns=time_ns())
+        self.observer.run(self.arm, publish)
 
     def snapshot(self, heartbeat=False):
         with self.lock:
@@ -195,3 +234,5 @@ class HardwareControlSession:
                 with self.lock:
                     if self.state['status'] != 'failed':
                         self.state['status'] = 'failed' if self.state.get('error') else 'stopped'
+            if self.state.get('release', {}).get('torque_disabled'):
+                self.observe()

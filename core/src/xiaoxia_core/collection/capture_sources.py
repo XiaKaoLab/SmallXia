@@ -1,5 +1,5 @@
 """提供 MuJoCo 物理采集及只读实机采集源，图像与状态保留各自时间来源。
-Created on 2026-11-02; Updated on 2026-11-03
+Created on 2026-11-02; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
 import base64
@@ -65,10 +65,25 @@ class HardwareCaptureSource:
         self._camera_opened = False
 
     def connect(self):
-        self.transport.connect()  # 仅身份/校准校验和读取；不调用 arm()。
+        from ..blocks.workflow import BlockWorkflow
+        BlockWorkflow.http(f'hardware/arms/{self.transport.port}/observe', {'profile':self.config['profile']})
+
+    def feedback(self):
+        from ..blocks.workflow import BlockWorkflow
+        from time import sleep
+        while True:
+            rows=BlockWorkflow.http('hardware/arms')['sessions']
+            state=next((row for row in rows if row['port']==self.transport.port),None)
+            if state is None: raise RuntimeError('只读机械臂连接已关闭')
+            if state.get('observation_error') or state.get('error'):
+                raise RuntimeError(state.get('observation_error') or state['error'])
+            age=state.get('feedback_age_ms')
+            if state.get('joint_positions') and age is not None and age<500:
+                return Observation(state['observed_at_ns'],state['joint_positions'])
+            sleep(.05)
 
     def observation(self, directory, frame_index):
-        observation = self.transport.read_observation()
+        observation = self.feedback()
         images, metadata = {}, {}
         for source in self.config['cameras']:
             frame = self.client.read(source)

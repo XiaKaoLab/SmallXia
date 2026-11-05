@@ -1,12 +1,12 @@
 """只读录制单只真机的手动示教，复用匹配校准，转换为 SO100 显示坐标并生成下一姿态标签。
-Created on 2026-11-02; Updated on 2026-11-03
+Created on 2026-11-02; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
 from dataclasses import asdict
 import json
 from pathlib import Path
 import re
-from time import monotonic, sleep
+from time import monotonic, sleep, time_ns
 
 from ..communication.display_alignment import DisplayAlignment
 from ..communication.display_frame import DisplayFrame
@@ -44,6 +44,7 @@ class ManualTeaching:
             sleep(.05)
         bus = ReadOnlyBus(port, {name: Motor(i, 'sts3215', MotorNormMode.DEGREES) for i, name in enumerate(JOINTS, 1)})
         workflow = BlockWorkflow()
+        BlockWorkflow.http(f'hardware/arms/{port}/observe-stop', {})
         try:
             bus.connect()
             bus.set_timeout(150)
@@ -61,10 +62,16 @@ class ManualTeaching:
             for index in range(max(2, round(seconds * 2))):
                 sleep(max(0, started + index / 2 - monotonic()))
                 angles = DisplayFrame.apply(mapping.angles(bus.sync_read('Present_Position', normalize=False)), offset)
+                print(json.dumps({'hardware_feedback':{'port':port,'physical':True,'source':'hardware_feedback','unit':'rad',
+                    'render_joint_positions':angles,'joint_positions':angles,'read_only_following':True,
+                    'feedback_age_ms':0,'observed_at_ns':time_ns()}},ensure_ascii=False),flush=True)
                 limits.validate(angles)
                 workflow.client.request(f"datasets/{dataset['id']}/frames", {'action': angles, 'observation': angles})
                 workflow.emit('请转动各个关节', step=index + 1, total=max(2, round(seconds * 2)))
             return workflow.finish()
         finally:
-            if bus.is_connected:
-                bus.disconnect(disable_torque=False)
+            try:
+                if bus.is_connected: bus.disconnect(disable_torque=False)
+            finally:
+                try: BlockWorkflow.http(f'hardware/arms/{port}/observe-resume', {})
+                except Exception: pass

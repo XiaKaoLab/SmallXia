@@ -115,6 +115,10 @@ finally:
 
 停止任务先终止推理进程，再独立请求失能，不等待网络请求完成才停止推理。任务的 `release_request.status` 为 `pending`、`requested` 或 `failed`，请求失败保留原因；`requested` 仍只表示请求成功，失能完成需查看硬件会话 `release.torque_disabled`。
 
+桌面模型持续订阅实测反馈。没有控制会话时，按已确认的 `so100.local.yaml` 建立只读连接；回位失能后继续读取关节，手动摆动也会更新模型，标记 `read_only_following:true`。只读连接不调用使能或运动写入，不刷新控制租约；断开时保留最后实测姿态并等待重新读取，不用仿真目标替代。
+
+`POST /api/v1/hardware/arms/COM17/observe` 可显式建立同样的只读跟随。再次使能会先停止只读线程、释放串口。录制和显示对齐通过 `observe-stop`／`observe-resume` 交接串口；控制期间禁止这类交接。前端只使用转换后的 `render_joint_positions` 显示真机，不把原始控制坐标直接当作模型角度。
+
 ## 本次轻量检查
 
 完成 Python 语法检查，并在临时目录通过 API 服务对象创建两帧记录、finalize、后台导出为原生 LeRobotDataset，返回 succeeded 后清理临时文件。该临时记录仅检查数据通路，不是训练示教数据。没有启动训练、加载策略、驱动实机或构建前端。
