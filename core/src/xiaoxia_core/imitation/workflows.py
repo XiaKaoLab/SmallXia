@@ -1,5 +1,5 @@
 """组织仿真主从、实机示教记录和策略回放，保持前端独立。
-Created on 2026-11-01; Updated on 2026-11-04
+Created on 2026-11-01; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
 
@@ -114,7 +114,8 @@ class HardwareWorkflow:
         else:
             calibration = ArmCalibration.load(self.path(item["calibration"]), self.path(item["mapping"]), self.limits)
         return SOArmTransport(item["port"], calibration, role,
-                              max_velocity=self.config.get("max_velocity_rad_s", 0.25), identity_confirmed=True)
+                              max_velocity=self.config.get("max_velocity_rad_s", 0.25), identity_confirmed=True,
+                              pid_compensation=item.get('pid_load_compensation'))
 
     def inspect(self) -> dict:
         follower = self.arm("follower")

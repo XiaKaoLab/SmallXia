@@ -15,7 +15,7 @@ from .joint_pid import JointPID
 
 
 class SOArmTransport(RobotTransport):
-    def __init__(self, port: str, calibration: ArmCalibration, role: str, max_velocity: float = 0.25, timeout: float = 0.25, *, identity_confirmed: bool = False) -> None:
+    def __init__(self, port: str, calibration: ArmCalibration, role: str, max_velocity: float = 0.25, timeout: float = 0.25, *, identity_confirmed: bool = False, pid_compensation=None) -> None:
         if role not in ("leader", "follower") or not port:
             raise ValueError("需要明确主从角色和串口")
         if not all(isfinite(v) and v > 0 for v in (max_velocity, timeout)):
@@ -24,6 +24,8 @@ class SOArmTransport(RobotTransport):
         self.limits = calibration.limits
         self.max_velocity, self.timeout = max_velocity, timeout
         self.identity_confirmed = identity_confirmed
+        JointPID.validate_compensation(pid_compensation, calibration.limits.joints)
+        self.pid_compensation = pid_compensation
         self._bus = None
         self._armed = False
         self._trajectory = None
@@ -122,7 +124,7 @@ class SOArmTransport(RobotTransport):
                 raise RuntimeError("从臂力矩使能回读不完整")
             self._last_command, self._last_sent = dict(current), monotonic()
             self._trajectory=JointTrajectory(current,self.max_velocity)
-            self._pid=JointPID(current,self.max_velocity)
+            self._pid=JointPID(current,self.max_velocity,compensation=self.pid_compensation)
             self._last_ticks=dict(ticks)
         except BaseException:
             self.disconnect()
@@ -144,7 +146,7 @@ class SOArmTransport(RobotTransport):
             speed = self.max_velocity if max_velocity is None else min(self.max_velocity, max_velocity)
             if not isfinite(speed) or speed <= 0: raise ValueError('运动速度无效')
             self._trajectory.speed = speed
-            if self._pid is None:self._pid=JointPID(current,speed)
+            if self._pid is None:self._pid=JointPID(current,speed,compensation=self.pid_compensation)
             target=self._pid.target(action.joint_positions)
             reference=self._trajectory.step(target,max(dt,.0001))
             pose=self._pid.step(reference,current,max(dt,.0001),speed)
@@ -181,7 +183,7 @@ class SOArmTransport(RobotTransport):
                     if self._armed:
                         from .slow_zero_release import SlowZeroRelease
                         try:
-                            self.release_result=SlowZeroRelease(self.calibration,self.max_velocity,self.release_feedback,target=self._return_pose).run(bus)
+                            self.release_result=SlowZeroRelease(self.calibration,self.max_velocity,self.release_feedback,target=self._return_pose,pid_compensation=self.pid_compensation).run(bus)
                         except Exception as error:
                             self.release_result={'zero_reached':False,'error':str(error)}
                             raise

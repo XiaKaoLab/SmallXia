@@ -9,8 +9,9 @@ from .joint_trajectory import JointTrajectory
 from .joint_pid import JointPID
 
 class SlowZeroRelease:
-    def __init__(self,calibration,speed,feedback=None,target=None):
+    def __init__(self,calibration,speed,feedback=None,target=None,pid_compensation=None):
         self.calibration=calibration;self.speed=speed;self.feedback=feedback
+        self.pid_compensation=pid_compensation
         self.target=dict(target) if target is not None else dict.fromkeys(JOINTS,0.0)
 
     def run(self,bus):
@@ -19,7 +20,7 @@ class SlowZeroRelease:
         start=self.calibration.angles(bus.sync_read('Present_Position',normalize=False))
         count=max(1,ceil((max(abs(start[n]-zero[n]) for n in JOINTS)/self.speed+2*self.speed/.3+1)*30))
         trajectory=JointTrajectory(start,self.speed)
-        pid=JointPID(start,self.speed)
+        pid=JointPID(start,self.speed,compensation=self.pid_compensation)
         pid.target(zero)
         previous_ticks=None
         measured=start

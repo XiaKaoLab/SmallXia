@@ -1,5 +1,5 @@
 # SO-100/101 共用后端；填写真实主从端口和分别校准的文件。
-# Created on 2026-11-01; Updated on 2026-11-01
+# Created on 2026-11-01; Updated on 2026-11-05
 # @author: https://github.com/Linmoqian
 robot: so100
 device_identity_confirmed: false
@@ -16,5 +16,8 @@ follower:
   port: null
   calibration: null
   mapping: null
+  # 逐轴实测后再填写，例如 shoulder_lift: {ki: 0.4, max_trim_deg: 2}。
+  # 为空时保持无积分外环，不能把其他机械臂的负载补偿直接套用。
+  pid_load_compensation: {}
 # 相机名称 -> OpenCV 设备索引；没有图像时仅做关节状态模仿。
 cameras: {}
