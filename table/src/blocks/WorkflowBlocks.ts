@@ -8,6 +8,7 @@ import { workflowCatalog } from "./WorkflowCatalog";
 import { armTargetCatalog } from "./ArmTargetCatalog";
 import { cameraCatalog } from "./CameraCatalog";
 import { PolicyTargetFields } from "./PolicyTargetFields";
+import { RedTrackingBlocks } from "./RedTrackingBlocks";
 
 export const DEMO_BEGIN = "table_demo_begin";
 export const DEMO_RECORD = "table_demo_record";
@@ -25,6 +26,7 @@ const workflow = "__import__('xiaoxia_core.blocks.workflow', fromlist=['BlockWor
 
 export class WorkflowBlocks {
   register(): void {
+    RedTrackingBlocks.register();
     for (const type of WORKFLOW_TYPES) {
       Blockly.Blocks[type] = {
         init(this: Blockly.Block) {

@@ -7,6 +7,7 @@ import { agentClient } from "../chat/AgentClient";
 
 export interface ProgramJob { id: string; status: string; log_tail?: string; error?: string; created_at_ns?: number; process_exited?: boolean }
 export interface ProgramReceipt {
+  red_tracking?: {id:string;source:string;physical:boolean};
   qiling?: QiLingReceipt;
   hardware_feedback?: QiLingReceipt & {port:string};
   coordinate_calibration?: {id:string;port:string;stage:string;instruction:string;reference_rad:Record<string,number>};
@@ -56,6 +57,7 @@ export class ProgramClient {
         this.previousLog = log;
       }
       if (!["queued", "running"].includes(next.status) && next.process_exited !== false) {
+        window.dispatchEvent(new CustomEvent("table:red-tracking-stop"));
         this.current = undefined;
         if (next.status === "failed" || next.status === "interrupted") throw new Error(next.error || "程序未完成");
         this.notice(next.status === "succeeded" ? "运行完成" : "已停止");
@@ -66,6 +68,7 @@ export class ProgramClient {
     return job;
   }
   async stop(): Promise<void> {
+    window.dispatchEvent(new CustomEvent("table:red-tracking-stop"));
     if (this.current) await agentClient.request({ action: "program_request", operation: "stop", id: this.current });
   }
   dispose(): void { this.disposed = true; }

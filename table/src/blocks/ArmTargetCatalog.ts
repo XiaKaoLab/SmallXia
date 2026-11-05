@@ -28,12 +28,12 @@ export class ArmTargetCatalog {
       if (!workspace || workspace.isDragging()) return;
       const blocks = [...workspace.getAllBlocks(false), ...(workspace.getFlyout()?.getWorkspace().getAllBlocks(false) ?? [])];
       for (const block of blocks) {
-        if (!["table_hardware_enable","table_hardware_disable","table_demo_run","table_policy_rollout","table_hardware_connect", "table_hardware_stop", "table_demo_hardware", "table_set_arm_position", "table_calibrate_arm", "table_map_hardware_arm", "table_calibrate_mapping", "table_qiling_load", "table_sim2real_check"].includes(block.type)) continue;
+        if (!["table_track_red_object","table_hardware_enable","table_hardware_disable","table_demo_run","table_policy_rollout","table_hardware_connect", "table_hardware_stop", "table_demo_hardware", "table_set_arm_position", "table_calibrate_arm", "table_map_hardware_arm", "table_calibrate_mapping", "table_qiling_load", "table_sim2real_check"].includes(block.type)) continue;
         const field = block.getField("TARGET") as Blockly.FieldDropdown | null;
         if (!field) continue;
         const selected = field.getValue();
         field.setOptions(() => {
-          const options = this.options(selected).filter(([, value]) => ["table_demo_run","table_policy_rollout","table_set_arm_position","table_qiling_load"].includes(block.type) || value !== "simulation");
+          const options = this.options(selected).filter(([, value]) => ["table_track_red_object","table_demo_run","table_policy_rollout","table_set_arm_position","table_qiling_load"].includes(block.type) || value !== "simulation");
           return options.length ? options : [["未发现串口", "unavailable"]];
         });
         if (selected !== "unavailable") field.setValue(selected); field.forceRerender();

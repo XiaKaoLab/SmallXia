@@ -1,5 +1,5 @@
 /** 功能：左侧分类 Blockly 工作区与 Python 后台运行。
- * Created on 2026-11-01; Updated on 2026-11-04
+ * Created on 2026-11-01; Updated on 2026-11-05
  * @author: https://github.com/Linmoqian
  */
 import { registerCoordinateBlock } from "./coordinateBlock";
@@ -187,6 +187,7 @@ export function BlocksSidebar() {
   }, []);
 
   function receiveReceipt(receipt: ProgramReceipt) {
+    if(receipt.red_tracking)window.dispatchEvent(new CustomEvent("table:red-tracking-start",{detail:receipt.red_tracking}));
     if(receipt.hardware_feedback){
       const feedback=receipt.hardware_feedback;
       if(feedback.physical===true&&feedback.source==="hardware_feedback"&&feedback.port){

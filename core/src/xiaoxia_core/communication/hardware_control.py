@@ -66,6 +66,9 @@ class HardwareControlAPI:
                     raise ValueError('请先连接真机控制')
                 if method == 'GET' and len(parts) == 2:
                     return 200, session.snapshot(heartbeat=True)
+                if method == 'GET' and len(parts) == 3 and parts[2] == 'limits':
+                    return 200, {'physical':True, 'unit':'rad', 'limits': {
+                        name:{'lower':limit.lower,'upper':limit.upper} for name,limit in session.arm.limits.joints.items()}}
                 if method == 'POST' and len(parts) == 3 and parts[2] in ('stop', 'disable'):
                     session.stop.set()
                     return 202, session.snapshot()

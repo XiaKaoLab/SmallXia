@@ -3,6 +3,7 @@
  * @author: https://github.com/Linmoqian
  */
 import { COORDINATE_BLOCK } from "./coordinateBlock";
+import { RED_TRACK } from "./RedTrackingBlocks";
 import { QILING_WAIT, QILING_REPLY, TEXT_MATCH } from "./QiLingReplyBlocks";
 import { QILING_LOAD, QILING_SEND, QILING_TYPES, SIM2REAL_CHECK } from "./QiLingBlocks";
 import { TEXT_READ, TEXT_PICK, TEXT_VISION_TYPES } from "./TextVisionBlocks";
@@ -21,7 +22,7 @@ import { DEMO_PLAY, DEMO_HARDWARE, DEMO_BEGIN, DEMO_RECORD, DEMO_FINISH, DEMO_TR
 
 export const LOGIC_TYPES = ["controls_if", "controls_repeat_ext", "controls_whileUntil", "controls_flow_statements", "logic_compare", "logic_operation", "logic_negate", "logic_boolean", "logic_ternary", "math_arithmetic", "procedures_defnoreturn", "procedures_defreturn", "procedures_callnoreturn", "procedures_callreturn", "procedures_ifreturn"];
 export const VARIABLE_TYPES = ["variables_get", "variables_set", "text", "math_number"];
-export const TOOLBOX_TYPES = [COORDINATE_BLOCK,...QILING_TYPES, ...HARDWARE_TYPES, ...TEXT_VISION_TYPES, ...WORKFLOW_TYPES, ARM_MAPPING_BLOCK, CAMERA_CALIBRATION_BLOCK, CALIBRATION_BLOCK, BLOCK_TYPE, CAMERA_BLOCK_TYPE, FRAME_CAPTURE, FRAME_VARIABLE,
+export const TOOLBOX_TYPES = [RED_TRACK,COORDINATE_BLOCK,...QILING_TYPES, ...HARDWARE_TYPES, ...TEXT_VISION_TYPES, ...WORKFLOW_TYPES, ARM_MAPPING_BLOCK, CAMERA_CALIBRATION_BLOCK, CALIBRATION_BLOCK, BLOCK_TYPE, CAMERA_BLOCK_TYPE, FRAME_CAPTURE, FRAME_VARIABLE,
   ...LOGIC_TYPES, ...VARIABLE_TYPES, ...DATA_TYPES, ...ONNX_TYPES, POLICY_TRAIN, POLICY_PREDICT, POLICY_ROLLOUT, POLICY_JOB, POLICY_STOP, POLICY_RL_BALL];
 export const BLOCK_LIMITS: Record<string, number> = { [COORDINATE_BLOCK]: 1, [ARM_MAPPING_BLOCK]: 1, [CAMERA_CALIBRATION_BLOCK]: 1, [CALIBRATION_BLOCK]: 1, [CAMERA_BLOCK_TYPE]: 1 };
 const block = (type: string) => ({ kind: "block", type,
@@ -41,7 +42,7 @@ export class BlocksToolbox {
         } } } } },
       ] },
       { kind: "category", name: "机械臂", colour: "#638b80", contents: [{ kind: "button", text: "刷新串口", callbackkey: "REFRESH_ARM_PORTS" }, block(BLOCK_TYPE), ...HARDWARE_TYPES.filter(type=>["table_hardware_enable","table_hardware_disable"].includes(type)).map(block), block(CALIBRATION_BLOCK), block(COORDINATE_BLOCK), block(ARM_MAPPING_BLOCK)] },
-      { kind: "category", name: "相机", colour: "#587e9d", contents: [{ kind: "button", text: "刷新相机", callbackkey: "REFRESH_CAMERAS" }, block(CAMERA_BLOCK_TYPE), block(FRAME_CAPTURE), block(RED_DETECT), block(RED_VALUE), block(TEXT_READ), block(CAMERA_CALIBRATION_BLOCK)] },
+      { kind: "category", name: "相机", colour: "#587e9d", contents: [{ kind: "button", text: "刷新相机", callbackkey: "REFRESH_CAMERAS" }, block(CAMERA_BLOCK_TYPE), block(FRAME_CAPTURE), block(RED_TRACK), block(RED_DETECT), block(RED_VALUE), block(TEXT_READ), block(CAMERA_CALIBRATION_BLOCK)] },
       { kind: "category", name: "逻辑", colour: "#687f9b", contents: [block(WAIT), block(WAIT_RESULT), {kind:"block",type:TEXT_MATCH,inputs:{TEXT:{shadow:{type:"text",fields:{TEXT:""}}},VALUE:{shadow:{type:"text",fields:{TEXT:""}}}}}, ...LOGIC_TYPES.filter(type => !type.startsWith('procedures_call')).map(block)] },
       { kind: "category", name: "变量", colour: "#9a805c", contents: [
         { kind: "button", text: "创建变量", callbackkey: "CREATE_VARIABLE" },

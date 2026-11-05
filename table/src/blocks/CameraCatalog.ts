@@ -55,7 +55,7 @@ export class CameraCatalog {
             field.setOptions(() => [["不录制画面", "none"], ...(block.type === 'table_demo_begin' ? [["腕部虚拟相机", "virtual"] as [string, string]] : []), ...this.realOptions(field.getValue()).filter(([, id]) => id.startsWith('opencv_'))]);
             field.setValue(selected); field.forceRerender(); continue;
           }
-          if (!["table_capture_frame", "table_frame_variable", "table_calibrate_camera"].includes(block.type)) continue;
+          if (!["table_track_red_object","table_capture_frame", "table_frame_variable", "table_calibrate_camera"].includes(block.type)) continue;
           const field = block.getField("SOURCE") as Blockly.FieldDropdown;
           const selected = String(field.getValue());
           field.setOptions(() => block.type === "table_calibrate_camera" ? this.realOptions(field.getValue()) : this.options(field.getValue()));

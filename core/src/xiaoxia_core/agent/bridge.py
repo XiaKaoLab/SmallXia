@@ -1,5 +1,5 @@
 """为 Tauri 提供单请求 JSONL 桥接，复用会话、技能与 Agent 流。
-Created on 2026-11-01; Updated on 2026-11-04
+Created on 2026-11-01; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
 
@@ -164,7 +164,10 @@ def main() -> None:
         request = json.loads(sys.stdin.readline())
         if not isinstance(request, dict):
             raise ValueError("桌面请求必须为对象")
-        if request.get('action') in ('alignment_map', 'alignment_preview', 'alignment_stop', 'arm_calibration_action', 'alignment_recalibrate', 'alignment_wrist_offset'):
+        if request.get('action') == 'red_tracking_preview':
+            from ..blocks.red_tracking import RedTrackingPreview
+            RedTrackingPreview.stream(request.get('id'), DesktopBridge.emit)
+        elif request.get('action') in ('alignment_map', 'alignment_preview', 'alignment_stop', 'arm_calibration_action', 'alignment_recalibrate', 'alignment_wrist_offset'):
             from ..communication.display_alignment import DisplayAlignment
             if request['action'] == 'alignment_wrist_offset':
                 DesktopBridge.emit({'type': 'data', 'data': DisplayAlignment.set_wrist_offset(request.get('session_id'), request.get('degrees'))})

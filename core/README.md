@@ -70,6 +70,8 @@ SO 系列串口、可选 OpenCV 相机、ACT 训练与推理入口已实现。�
 
 模型服务另提供 [模仿学习 HTTP API](docs/imitation-api.md)：按 episode 记录模型关节与统一相机画面、导出原生 LeRobot 数据集、后台 ACT 训练、预测与回放，以及任务进度和停止接口。默认在仿真执行；ACT 策略可选择真机串口，配合使能、失能积木闭环执行，实机抓取效果尚未验收。
 
+[红色物体跟随](docs/red-tracking.md) 提供相机分类积木和 Python API，通过颜色检测让随臂相机对准目标，复用原相机窗口显示目标框；支持仿真和已使能真机，不执行抓取。
+
 ## LLM
 
 `llm` 使用 OpenAI Responses API，调用方必须指定自己有权限使用的模型。PowerShell 中先设置 `OPENAI_API_KEY` 和 `OPENAI_MODEL`；可选 `OPENAI_BASE_URL` 必须指向支持 Responses API 的地址。`.env.example` 仅列出变量，模块不自动加载 `.env`。

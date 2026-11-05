@@ -1,5 +1,5 @@
 /** 功能：封装 Tauri Channel 与 Python Agent 的请求和取消操作。
- * Created on 2026-11-01; Updated on 2026-11-04
+ * Created on 2026-11-01; Updated on 2026-11-05
  * @author: https://github.com/Linmoqian
  */
 import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
@@ -51,6 +51,16 @@ export class AgentClient {
   }
 
   bootstrap(): Promise<Bootstrap> { return this.request({ action: "bootstrap" }); }
+
+  async redTrackingPreview<T>(requestId:string,id:string,receive:(state:T)=>void):Promise<void>{
+    let failure="";
+    await this.dispatch<{type:"red_tracking";data:T}|{type:"error";message:string}|{type:"completed"}>(
+      requestId,{action:"red_tracking_preview",id},event=>{
+        if(event.type==="red_tracking")receive(event.data);
+        if(event.type==="error")failure=event.message;
+      },event=>event.type==="error"||event.type==="completed");
+    if(failure)throw new Error(failure);
+  }
 
   async calibrationPreview<T>(requestId: string, sessionId: string, receive: (frame: T) => void): Promise<void> {
     let failure = "";

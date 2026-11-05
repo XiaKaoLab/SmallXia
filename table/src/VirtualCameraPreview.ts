@@ -1,9 +1,11 @@
 /** 功能：仅在显式显示时创建虚拟相机实时画面，隐藏时释放渲染资源。
- * Created on 2026-11-02; Updated on 2026-11-03
+ * Created on 2026-11-02; Updated on 2026-11-05
  * @author: https://github.com/Linmoqian
  */
 import * as THREE from "three";
 import { agentClient } from "./chat/AgentClient";
+
+interface TrackingFrame {status:string;physical:boolean;image?:string;found:boolean;box?:number[];width?:number;height?:number}
 
 export class VirtualCameraPreview {
   private uploading = false;
@@ -13,11 +15,25 @@ export class VirtualCameraPreview {
   private inputSource = "";
   private renderer: THREE.WebGLRenderer | undefined;
   private panel: HTMLElement | undefined;
+  private configuredVisible=false;
+  private trackingId="";
+  private tracking=false;
+  private overlay?: SVGSVGElement;
+  private readonly trackingStart=(event:Event)=>{void this.follow((event as CustomEvent<{id:string}>).detail.id);};
+  private readonly trackingStop=()=>this.stopTracking();
 
-  constructor(private readonly host: HTMLElement) {}
+  constructor(private readonly host: HTMLElement) {
+    window.addEventListener("table:red-tracking-start",this.trackingStart);
+    window.addEventListener("table:red-tracking-stop",this.trackingStop);
+  }
 
   setVisible(visible: boolean): void {
-    if (!visible) { this.dispose(); return; }
+    this.configuredVisible=visible;
+    if (!visible&&!this.tracking) { this.release(); return; }
+    this.show();
+  }
+
+  private show():void {
     if (this.renderer) return;
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(1);
@@ -42,6 +58,7 @@ export class VirtualCameraPreview {
   }
 
   setInputFrame(source: string | null, active: boolean, label = "腕部相机 · 推理输入", identity = "policy_input"): void {
+    if(this.tracking&&identity!=="red_tracking")return;
     this.inputMode = active;
     if (!this.panel || !this.renderer) return;
     this.renderer.domElement.hidden = active;
@@ -64,6 +81,48 @@ export class VirtualCameraPreview {
     this.panel.dataset.source = active ? identity : "virtual_scene";
   }
 
+  private async follow(id:string):Promise<void>{
+    if(this.trackingId)void agentClient.cancel(this.trackingId).catch(()=>undefined);
+    const requestId=crypto.randomUUID();this.trackingId=requestId;this.tracking=true;this.show();
+    try {
+      await agentClient.redTrackingPreview<TrackingFrame>(requestId,id,frame=>{
+        if(this.trackingId!==requestId)return;
+        const status=({tracking:"跟随中",centered:"已对准",searching:"等待目标",stopped:"已停止",failed:"已停止"} as Record<string,string>)[frame.status]??"等待目标";
+        this.setInputFrame(frame.image??null,frame.physical,`${frame.physical?"真实相机":"虚拟相机"} · ${status}`,"red_tracking");
+        if(!this.overlay){
+          this.overlay=document.createElementNS("http://www.w3.org/2000/svg","svg");
+          this.overlay.style.cssText="position:absolute;left:0;top:33px;width:100%;height:calc(100% - 33px);pointer-events:none";
+          this.overlay.setAttribute("aria-label","红色目标位置");this.panel?.append(this.overlay);
+        }
+        const width=frame.width??640,height=frame.height??480;
+        this.overlay.setAttribute("viewBox",`0 0 ${width} ${height}`);
+        this.overlay.setAttribute("preserveAspectRatio","xMidYMid meet");
+        this.overlay.replaceChildren();
+        if(frame.found&&frame.box){
+          const [x,y,w,h]=frame.box,rect=document.createElementNS("http://www.w3.org/2000/svg","rect");
+          rect.setAttribute("x",String(x*width));rect.setAttribute("y",String(y*height));rect.setAttribute("width",String(w*width));rect.setAttribute("height",String(h*height));
+          rect.setAttribute("fill","none");rect.setAttribute("stroke","#ef5656");rect.setAttribute("stroke-width","2");rect.setAttribute("vector-effect","non-scaling-stroke");
+          this.overlay.append(rect);
+        }
+      });
+    } catch(error) {
+      if(this.trackingId===requestId&&this.panel)this.panel.title=String(error);
+    } finally {
+      if(this.trackingId===requestId){
+        this.trackingId="";this.tracking=false;this.overlay?.remove();this.overlay=undefined;
+        this.setInputFrame(null,false);if(!this.configuredVisible)this.release();
+      }
+    }
+  }
+
+  private stopTracking():void {
+    if(!this.tracking)return;
+    const requestId=this.trackingId;this.trackingId="";this.tracking=false;
+    if(requestId)void agentClient.cancel(requestId).catch(()=>undefined);
+    this.overlay?.remove();this.overlay=undefined;this.setInputFrame(null,false);
+    if(!this.configuredVisible)this.release();
+  }
+
   render(scene: THREE.Scene, camera: THREE.PerspectiveCamera): void {
     const renderer = this.renderer;
     if (!renderer || this.inputMode) return;
@@ -80,11 +139,19 @@ export class VirtualCameraPreview {
   }
 
   dispose(): void {
+    window.removeEventListener("table:red-tracking-start",this.trackingStart);
+    window.removeEventListener("table:red-tracking-stop",this.trackingStop);
+    if(this.trackingId)void agentClient.cancel(this.trackingId).catch(()=>undefined);
+    this.trackingId="";this.tracking=false;this.release();
+  }
+
+  private release():void {
     this.renderer?.dispose();
     this.renderer?.forceContextLoss();
     this.panel?.remove();
     this.renderer = undefined;
     this.panel = undefined;
     this.inputImage = undefined; this.inputSource = ""; this.inputMode = false;
+    this.overlay=undefined;
   }
 }
