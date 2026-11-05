@@ -212,6 +212,7 @@ class HardwareControlSession:
                     self.state.update(joint_positions=measured,render_joint_positions=self.arm.render_positions(measured),
                                       status='ready' if reached and current_target else 'moving',
                                       applied_motion_id=motion_id, observed_at_ns=time_ns())
+                    self.state.update(getattr(self.arm,'control_diagnostics',{}))
                     if reached and current_target:
                         self.state['reached_motion_id'] = motion_id
         except Exception as error:

@@ -11,6 +11,7 @@ from ..safety import JOINTS
 from .calibration import ArmCalibration
 from .transport import RobotTransport
 from .joint_trajectory import JointTrajectory
+from .joint_pid import JointPID
 
 
 class SOArmTransport(RobotTransport):
@@ -26,6 +27,7 @@ class SOArmTransport(RobotTransport):
         self._bus = None
         self._armed = False
         self._trajectory = None
+        self._pid = None
         self._last_ticks = None
         self.render_joint_positions = None
         self._render_wrist_offset = 0.0
@@ -120,6 +122,7 @@ class SOArmTransport(RobotTransport):
                 raise RuntimeError("从臂力矩使能回读不完整")
             self._last_command, self._last_sent = dict(current), monotonic()
             self._trajectory=JointTrajectory(current,self.max_velocity)
+            self._pid=JointPID(current,self.max_velocity)
             self._last_ticks=dict(ticks)
         except BaseException:
             self.disconnect()
@@ -141,7 +144,13 @@ class SOArmTransport(RobotTransport):
             speed = self.max_velocity if max_velocity is None else min(self.max_velocity, max_velocity)
             if not isfinite(speed) or speed <= 0: raise ValueError('运动速度无效')
             self._trajectory.speed = speed
-            pose=self._trajectory.step(action.joint_positions,max(dt,.0001))
+            if self._pid is None:self._pid=JointPID(current,speed)
+            target=self._pid.target(action.joint_positions)
+            reference=self._trajectory.step(target,max(dt,.0001))
+            pose=self._pid.step(reference,current,max(dt,.0001),speed)
+            # 修正不可越过已确认行程；从行程外起步时保留平滑恢复轨迹。
+            pose={name:max(min(reference[name],self.limits.joints[name].lower),
+                  min(max(reference[name],self.limits.joints[name].upper),value)) for name,value in pose.items()}
             ticks = self.calibration.ticks(pose)
             if ticks!=self._last_ticks:
                 bus.sync_write("Goal_Position", ticks, normalize=False)
@@ -158,6 +167,11 @@ class SOArmTransport(RobotTransport):
         if self._last_command is None:
             raise RuntimeError("尚无已发送目标")
         return Action(dict(self._last_command))
+
+    @property
+    def control_diagnostics(self):
+        return {'stabilizer':'pid_deadband', 'last_sent_goal_ticks':dict(self._last_ticks or {}),
+                'pid_holding_joints':[name for name,locked in self._pid.locked.items() if locked] if self._pid else []}
 
     def disconnect(self) -> None:
         bus, self._bus = self._bus, None
@@ -183,5 +197,6 @@ class SOArmTransport(RobotTransport):
             self._armed = False
             self._last_command = None
             self._trajectory = None
+            self._pid = None
             self._last_ticks = None
             self._return_pose = None

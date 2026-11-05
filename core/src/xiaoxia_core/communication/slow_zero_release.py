@@ -1,11 +1,12 @@
 """功能：正常失能前限速返回本次运行起始姿态，确认实际反馈后关闭力矩。
-Created on 2026-11-04; Updated on 2026-11-04
+Created on 2026-11-04; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
 from math import ceil
 from time import sleep
 from ..safety import JOINTS
 from .joint_trajectory import JointTrajectory
+from .joint_pid import JointPID
 
 class SlowZeroRelease:
     def __init__(self,calibration,speed,feedback=None,target=None):
@@ -18,17 +19,21 @@ class SlowZeroRelease:
         start=self.calibration.angles(bus.sync_read('Present_Position',normalize=False))
         count=max(1,ceil((max(abs(start[n]-zero[n]) for n in JOINTS)/self.speed+2*self.speed/.3+1)*30))
         trajectory=JointTrajectory(start,self.speed)
+        pid=JointPID(start,self.speed)
+        pid.target(zero)
         previous_ticks=None
         measured=start
         for index in range(1,count+1):
-            target=trajectory.step(zero,1/30)
+            reference=trajectory.step(zero,1/30)
+            target=pid.step(reference,measured,1/30,self.speed)
+            target={n:max(min(start[n],zero[n]),min(max(start[n],zero[n]),v)) for n,v in target.items()}
             ticks=self.calibration.ticks(target)
             if ticks!=previous_ticks:
                 bus.sync_write('Goal_Position',ticks,normalize=False);previous_ticks=ticks
             sleep(1/30)
             measured=self.calibration.angles(bus.sync_read('Present_Position',normalize=False))
             if self.feedback:self.feedback(measured)
-            if max(abs(target[n]-zero[n]) for n in JOINTS)<1e-8:break
+            if max(abs(target[n]-zero[n]) for n in JOINTS)<JointPID.tick:break
         # 轨迹下发结束后等实际电机收敛，不能把命令为零当成已回零。
         for _ in range(90):
             if max(abs(measured[n]-zero[n]) for n in JOINTS)<.025:
