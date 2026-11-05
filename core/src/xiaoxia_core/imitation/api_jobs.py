@@ -8,7 +8,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from threading import RLock
+from threading import RLock, Thread
 from time import time_ns, sleep
 from uuid import uuid4
 
@@ -91,16 +91,32 @@ class ImitationJobs:
     def list(self):
         return [self.get(path.parent.name) for path in self.root.glob('*/status.json')]
 
+    def _release_hardware(self, job_id, target):
+        from ..blocks.workflow import BlockWorkflow
+        try:
+            receipt = BlockWorkflow.http(f"hardware/arms/{target.removeprefix('serial:')}/disable", {})
+            release = {'status': 'requested', 'hardware_status': receipt['status']}
+        except Exception as error:
+            release = {'status': 'failed', 'error': str(error)}
+        with self._lock:
+            path = self.root / job_id / 'status.json'
+            state = json.loads(path.read_text(encoding='utf-8'))
+            atomic_json(path, {**state, 'release_request': release})
+
     def stop(self, job_id: str):
         with self._lock:
             state = self.get(job_id)
             process = self._processes.get(job_id)
             if process is not None and process.poll() is None:
                 request = json.loads((self.root / job_id / 'request.json').read_text(encoding='utf-8'))
-                if request.get('physical') is True and request['kind'] == 'rollout':
-                    from ..blocks.workflow import BlockWorkflow
-                    BlockWorkflow.http(f"hardware/arms/{request['target'].removeprefix('serial:')}/disable", {})
+                physical = request.get('physical') is True and request['kind'] == 'rollout'
+                # 先中止推理；请求失能独立执行，网络异常不能阻断停止进程。
                 process.terminate()
+                if physical:
+                    path = self.root / job_id / 'status.json'
+                    state['release_request'] = {'status': 'pending'}
+                    atomic_json(path, state)
+                    Thread(target=self._release_hardware, args=(job_id, request['target']), daemon=True).start()
                 try:
                     process.wait(timeout=3)
                 except subprocess.TimeoutExpired:

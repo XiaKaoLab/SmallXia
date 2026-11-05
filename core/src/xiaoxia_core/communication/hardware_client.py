@@ -24,21 +24,27 @@ class HardwareClient:
         BlockWorkflow.track(self.endpoint + '/stop')
         return self.wait(ready=True)
 
-    def wait(self, ready=False):
-        deadline = monotonic() + 120
-        while monotonic() < deadline:
+    def wait(self, ready=False, motion_id=None):
+        from .motion_progress import MotionProgress
+        progress = MotionProgress()
+        while True:
             state = BlockWorkflow.http(self.endpoint)
-            if state['status'] == 'ready':
+            if motion_id is not None and state.get('motion_id') != motion_id:
+                raise RuntimeError('目标已被其他动作替换')
+            if state['status'] == 'ready' and (motion_id is None or state.get('reached_motion_id') == motion_id):
                 return state
             if state['status'] not in ('connecting', 'moving'):
                 raise RuntimeError(state.get('error', '真机控制已停止'))
+            if state.get('target') and state.get('joint_positions'):
+                try: progress.update(state['joint_positions'], state['target'])
+                except RuntimeError:
+                    self.stop()
+                    raise
             sleep(.05)
-        self.stop()
-        raise TimeoutError('等待真机到位超时')
 
     def move(self, positions):
-        BlockWorkflow.http(self.endpoint + '/motions', {'joint_positions': positions, 'unit': 'rad'})
-        return self.wait()
+        receipt = BlockWorkflow.http(self.endpoint + '/motions', {'joint_positions': positions, 'unit': 'rad'})
+        return self.wait(motion_id=receipt['motion_id'])
 
     def stop(self):
         return BlockWorkflow.http(self.endpoint + '/stop', {})
@@ -52,10 +58,14 @@ class HardwareClient:
         return state
 
     def disable(self):
+        from .motion_progress import MotionProgress
+        progress = MotionProgress('回位没有进展，请检查实际关节状态')
         heartbeat = self._heartbeats.pop(self.port, None)
         if heartbeat: heartbeat.close()
         state = BlockWorkflow.http(self.endpoint + '/disable', {})
         while state['status'] in ('connecting', 'ready', 'moving', 'returning_zero'):
+            if state['status'] == 'returning_zero' and state.get('start_joint_positions'):
+                progress.update(state['joint_positions'], state['start_joint_positions'])
             sleep(.05)
             state = BlockWorkflow.http(self.endpoint)
         if state['status'] != 'stopped' or not state.get('release', {}).get('torque_disabled'):

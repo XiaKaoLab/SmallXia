@@ -90,6 +90,10 @@ dataset_id = dataset["id"]
 
 策略读取实测六轴反馈，以 `render_joint_positions` 转到训练模型坐标；预测经过 0.15 rad/s 上限，再由硬件控制器逆转换到编码器控制坐标，沿用现有平滑轨迹。每轮重新读取反馈，最后一步等待实际到位。进度和结果标注 `physical:true`、串口与反馈，不把下发成功当成抓取成功。
 
+动作回执包含 `motion_id`、`applied_motion_id`、`reached_motion_id`，到位只确认对应目标。推理结束后按最新反馈及实际周期计算下一目标，驱动器同时限制策略速度；控制循环按 30 Hz 节拍调度，不额外叠加每轮串口处理时间。等待到位与回位按位置是否持续接近目标识别停滞，不设置正常动作的总时长上限。
+
+真实策略图像在内存解码缩放，同轮同源图像只读取一次。任务阶段为 `loading_policy`、`warming_policy`、`inferencing`；预热不下发动作，结束后清空动作队列。进度保留 `inference_ms`、`capture_ms`、`cycle_ms`、`effective_fps`、观察及执行反馈时间和相机接收时间，方便区分模型、相机、控制延迟；这些时间不代表硬件同步。CPU 推理默认使用两个计算线程，可通过 `XIAOXIA_INFERENCE_THREADS` 调整。
+
 视觉策略的 `camera_source` 为所选真实摄像头，按模型尺寸缩放；多相机模型可用 `camera_sources` 显式映射各模型图像键。未提供映射时，仅接受模型本身的真实相机键，不能将虚拟图像当作实拍。仿真训练的视觉策略在实机上的效果尚未验证。此链路面向当前 `so100_mid_calib` 坐标的 ACT 检查点；抓球 SAC/ONNX 的仿真环境观测尚未迁移到真机。
 
 ```python
@@ -108,6 +112,8 @@ finally:
 ```
 
 停止真机策略任务或推理失败会请求回位失能。任务正常完成保留当前使能状态，供后续积木衔接；程序结束仍沿用控制释放清理。失联由已有控制会话处理。故障下是否返回起始位置、是否关闭力矩以实际 `release` 结果为准。
+
+停止任务先终止推理进程，再独立请求失能，不等待网络请求完成才停止推理。任务的 `release_request.status` 为 `pending`、`requested` 或 `failed`，请求失败保留原因；`requested` 仍只表示请求成功，失能完成需查看硬件会话 `release.torque_disabled`。
 
 ## 本次轻量检查
 

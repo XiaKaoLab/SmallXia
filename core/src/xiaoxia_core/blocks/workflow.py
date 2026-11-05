@@ -83,10 +83,10 @@ class BlockWorkflow:
         previous = None
         while True:
             state = self.http(f'{namespace}/jobs/{job["id"]}')
-            progress = (state['status'], state.get('step'), state.get('frames'))
+            progress = (state['status'], state.get('step'), state.get('frames'), state.get('phase'))
             if progress != previous:
                 self.emit(state['kind'], status=state['status'], step=state.get('step'),
-                          total=state.get('total_steps'), frames=state.get('frames'))
+                          total=state.get('total_steps'), frames=state.get('frames'), phase=state.get('phase'))
                 previous = progress
             if state['status'] == 'succeeded' and state.get('process_exited', True):
                 return state

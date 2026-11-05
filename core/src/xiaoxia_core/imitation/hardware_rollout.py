@@ -2,12 +2,12 @@
 Created on 2026-11-05; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
-import base64
 from time import monotonic, sleep, time_ns
 
 from ..contracts import Observation
-from ..collection.frame_client import CameraFrameClient
 from ..communication.control_heartbeat import ControlHeartbeat
+from ..communication.motion_progress import MotionProgress
+from .policy_images import PolicyImages
 
 
 class HardwarePolicyRollout:
@@ -26,50 +26,56 @@ class HardwarePolicyRollout:
         return state
 
     def run(self, policy, execute):
-        from PIL import Image
         period = 1 / self.request['fps']
-        camera = CameraFrameClient()
+        camera = PolicyImages(policy.metadata, self.request.get('camera_sources', {}))
         heartbeat = None
         completed = 0
+        last_dispatch = monotonic()
         try:
             self.state()
             heartbeat = ControlHeartbeat(self.port).start()
             for step in range(self.request['steps']):
                 started = monotonic()
-                images = {}
-                for key, shape in policy.metadata['images'].items():
-                    source = self.request.get('camera_sources', {}).get(key, key)
-                    if source != 'real' and not source.startswith('opencv_'):
-                        raise ValueError('真机策略需要为模型图像选择真实摄像头')
-                    frame = camera.read(source)
-                    path = self.worker.directory / f'hardware-image-{len(images)}.jpg'
-                    path.write_bytes(base64.b64decode(frame['image_base64']))
-                    resized = None
-                    with Image.open(path) as image:
-                        if image.size != (shape[1], shape[0]):
-                            resized = image.convert('RGB').resize((shape[1], shape[0]))
-                    if resized is not None:
-                        resized.save(path)
-                    images[key] = str(path)
+                images, image_timing = camera.read()
                 state = self.state()
                 observed = state['render_joint_positions']
-                observation = Observation(state.get('observed_at_ns', time_ns()), observed, images)
-                action = policy.predict(observation)
+                observation = Observation(state.get('observed_at_ns', time_ns()), observed, {})
+                infer_started = monotonic()
+                action = policy.predict(observation, images=images)
+                infer_finished = monotonic()
                 if not execute:
                     return {'joint_positions': action.joint_positions, 'frame': 'so100_mid_calib',
-                            'physical': True, 'executed': False, 'target': self.request['target']}
+                            'unit': 'rad', 'physical': True, 'executed': False, 'target': self.request['target']}
                 # 模型限速后，由已有控制器逆转换到编码器坐标并执行平滑轨迹。
-                self.state()
-                safe = policy.limits.constrain(action, observed, period, .15)
+                latest = self.state()
+                dispatch_at = monotonic()
+                interval = max(period, dispatch_at - last_dispatch)
+                safe = policy.limits.constrain(action, latest['render_joint_positions'], interval, .15)
                 receipt = self.worker.http(self.endpoint + '/motions', {
-                    'joint_positions': safe.joint_positions, 'unit': 'rad', 'frame': 'so100_mid_calib'})
+                    'joint_positions': safe.joint_positions, 'unit': 'rad', 'frame': 'so100_mid_calib',
+                    'max_velocity': .15})
+                last_dispatch = dispatch_at
                 completed += 1
                 self.worker.progress(step=completed, total_steps=self.request['steps'],
-                                     physical=True, target=self.request['target'], last_receipt=receipt)
+                                     physical=True, target=self.request['target'], last_receipt=receipt,
+                                     observation_at_ns=observation.timestamp_ns,
+                                     execution_feedback_at_ns=latest.get('observed_at_ns'),
+                                     observation_age_ms=round((time_ns()-observation.timestamp_ns)/1e6, 2),
+                                     inference_ms=round((infer_finished-infer_started)*1000, 2),
+                                     capture_ms=round((infer_started-started)*1000, 2),
+                                     cycle_ms=round((monotonic()-started)*1000, 2),
+                                     effective_fps=round(1/interval, 2), **image_timing)
                 sleep(max(0, period - (monotonic() - started)))
             # 最后一帧也必须有实际到位反馈，不能用接收成功冒充完成。
             state = self.state()
-            while state['status'] == 'moving':
+            expected = receipt['motion_id']
+            progress = MotionProgress()
+            while True:
+                if state['motion_id'] != expected:
+                    raise RuntimeError('策略目标已被其他动作替换')
+                if state['status'] == 'ready' and state['reached_motion_id'] == expected:
+                    break
+                progress.update(state['joint_positions'], state['target'])
                 sleep(.05)
                 state = self.state()
             return {'steps': completed, 'executed': True, 'physical': True,

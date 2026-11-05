@@ -1,5 +1,5 @@
 /** 功能：启动并观察后台积木任务，增量传递回执，刷新后可重新连接或停止。
- * Created on 2026-11-02; Updated on 2026-11-04
+ * Created on 2026-11-02; Updated on 2026-11-05
  * @author: https://github.com/Linmoqian
  */
 import type { QiLingReceipt } from "./QiLingBlocks";
@@ -10,7 +10,7 @@ export interface ProgramReceipt {
   qiling?: QiLingReceipt;
   hardware_feedback?: QiLingReceipt & {port:string};
   coordinate_calibration?: {id:string;port:string;stage:string;instruction:string;reference_rad:Record<string,number>};
-  workflow?: { stage: string; step?: number; total?: number };
+  workflow?: { stage: string; phase?: string; step?: number; total?: number };
   ball_training?: { kind: string }; camera_calibration?: { id: string }; display_alignment?: { id: string };
   limited?: boolean; applied_joint_positions?: Record<string, number>;
 }
@@ -46,7 +46,11 @@ export class ProgramClient {
           try {
             const value = JSON.parse(line) as ProgramReceipt;
             this.receipt(value);
-            if (value.workflow) this.notice(`${value.workflow.stage}${value.workflow.step ? ` · ${value.workflow.step}/${value.workflow.total}` : ""}`);
+            if (value.workflow) {
+              const phases:Record<string,string>={loading_policy:"加载策略…",warming_policy:"准备动作…",inferencing:"运行策略"};
+              const stage=phases[value.workflow.phase??""]??value.workflow.stage;
+              this.notice(`${stage}${value.workflow.step ? ` · ${value.workflow.step}/${value.workflow.total}` : ""}`);
+            }
           } catch { /* 普通日志不显示到界面。 */ }
         }
         this.previousLog = log;

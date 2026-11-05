@@ -125,7 +125,7 @@ class SOArmTransport(RobotTransport):
             self.disconnect()
             raise
 
-    def send_action(self, action: Action) -> None:
+    def send_action(self, action: Action, *, max_velocity=None) -> None:
         if self.role != "follower" or not self._armed:
             raise RuntimeError("从臂尚未显式使能")
         bus = self._connected()
@@ -138,6 +138,9 @@ class SOArmTransport(RobotTransport):
             dt = min(elapsed, 1 / 30)
             self.limits.validate(action.joint_positions)
             if self._trajectory is None:self._trajectory=JointTrajectory(current,self.max_velocity)
+            speed = self.max_velocity if max_velocity is None else min(self.max_velocity, max_velocity)
+            if not isfinite(speed) or speed <= 0: raise ValueError('运动速度无效')
+            self._trajectory.speed = speed
             pose=self._trajectory.step(action.joint_positions,max(dt,.0001))
             ticks = self.calibration.ticks(pose)
             if ticks!=self._last_ticks:

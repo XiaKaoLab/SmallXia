@@ -1,5 +1,5 @@
 """用 LeRobot ACT 完成真实参数更新、检查点保存与有界关节策略推理。
-Created on 2026-11-01; Updated on 2026-11-02
+Created on 2026-11-01; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
 
@@ -119,6 +119,11 @@ class ACTJointPolicy(Policy):
 
     def load(self, checkpoint: Path) -> None:
         os.environ.setdefault("USE_TF", "0")
+        import torch
+        if self.device == 'cpu':
+            threads = int(os.environ.get('XIAOXIA_INFERENCE_THREADS', '2'))
+            if threads < 1: raise ValueError('推理线程数必须为正整数')
+            torch.set_num_threads(threads)
         from lerobot.policies.act.modeling_act import ACTPolicy
         self._policy = None
         metadata = json.loads((checkpoint / "imitation.json").read_text(encoding="utf-8"))
@@ -130,11 +135,20 @@ class ACTJointPolicy(Policy):
         self._policy = ACTPolicy.from_pretrained(checkpoint, local_files_only=True).to(self.device).eval()
         self.reset()
 
+    def warmup(self) -> None:
+        """只预热计算，不发送动作；清空预热产生的动作队列。"""
+        import numpy as np
+        images = {name: np.zeros(shape, dtype=np.uint8) for name, shape in self.metadata['images'].items()}
+        try:
+            self.predict(Observation(0, self.limits.midpoint()), images=images)
+        finally:
+            self.reset()
+
     def reset(self) -> None:
         if self._policy is not None:
             self._policy.reset()
 
-    def predict(self, observation: Observation) -> Action:
+    def predict(self, observation: Observation, *, images=None) -> Action:
         import numpy as np
         import torch
         from PIL import Image
@@ -146,8 +160,11 @@ class ACTJointPolicy(Policy):
         if not self.metadata["images"]:
             batch["observation.environment_state"] = batch["observation.state"].clone()
         for name, shape in self.metadata["images"].items():
-            with Image.open(observation.image_paths[name]) as image:
-                pixels = np.array(image.convert("RGB"), copy=True)
+            if images is not None:
+                pixels = np.array(images[name], dtype=np.uint8, copy=True)
+            else:
+                with Image.open(observation.image_paths[name]) as image:
+                    pixels = np.array(image.convert("RGB"), copy=True)
             if list(pixels.shape) != shape:
                 raise ValueError(f"推理图像尺寸不匹配: {name}")
             batch[f"observation.images.{name}"] = torch.from_numpy(pixels).permute(2, 0, 1).float().unsqueeze(0).to(self.device) / 255

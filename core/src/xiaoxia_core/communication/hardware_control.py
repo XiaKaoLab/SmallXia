@@ -5,6 +5,7 @@ Created on 2026-11-02; Updated on 2026-11-05
 from copy import deepcopy
 from pathlib import Path
 import re
+from math import isfinite
 from threading import Event, RLock, Thread
 from time import monotonic,time_ns
 
@@ -87,8 +88,10 @@ class HardwareControlSession:
         self.stop, self.lock = Event(), RLock()
         self.lease = monotonic()
         self.target = None
+        self.speed_limit = arm.max_velocity
         self.feedback_at = None
-        self.state = {'status': 'connecting', 'port': arm.port, 'physical': True, 'unit': 'rad'}
+        self.state = {'status': 'connecting', 'port': arm.port, 'physical': True, 'unit': 'rad',
+                      'motion_id': 0, 'applied_motion_id': 0, 'reached_motion_id': 0}
         self.thread = Thread(target=self.run, daemon=True)
 
     @property
@@ -108,7 +111,7 @@ class HardwareControlSession:
 
     def move(self, body):
         with self.lock:
-            if self.state['status'] not in ('ready','moving'):
+            if self.stop.is_set() or self.state['status'] not in ('ready','moving'):
                 raise ValueError('机械臂控制尚未就绪')
             if body.get('unit') != 'rad':
                 raise ValueError('仅支持弧度')
@@ -118,12 +121,20 @@ class HardwareControlSession:
             elif body.get('frame', 'control') != 'control':
                 raise ValueError('未知关节坐标系')
             self.arm.limits.validate(positions)
+            speed = body.get('max_velocity', self.arm.max_velocity)
+            if isinstance(speed, bool) or not isinstance(speed, (int, float)) or not isfinite(speed) or speed <= 0:
+                raise ValueError('运动速度必须为有限正数')
+            speed = min(speed, self.arm.max_velocity)
             if self.target and all(abs(positions[n]-self.target[n])<.000767 for n in positions):
+                self.speed_limit = speed
+                self.state['max_velocity'] = speed
                 self.lease=monotonic()
                 return deepcopy(self.state)
             applied, reason = self.guard.limit_path(self.state['joint_positions'], positions)
             self.target = dict(applied)
-            self.state.update(status='moving', target=applied, limited=bool(reason))
+            self.speed_limit = speed
+            self.state.update(status='moving', target=applied, limited=bool(reason),
+                              motion_id=self.state['motion_id'] + 1, max_velocity=speed)
             self.lease = monotonic()
             return deepcopy(self.state)
 
@@ -140,18 +151,27 @@ class HardwareControlSession:
                 self.feedback_at=monotonic()
                 self.state.update(status='ready', joint_positions=current,render_joint_positions=self.arm.render_positions(current),start_joint_positions=dict(current),observed_at_ns=time_ns())
                 self.lease = monotonic()
-            while not self.stop.wait(1 / 30):
+            next_tick = monotonic() + 1 / 30
+            while not self.stop.wait(max(0, next_tick - monotonic())):
+                next_tick = monotonic() + 1 / 30
                 with self.lock:
                     if monotonic() - self.lease > 2:
                         raise TimeoutError('控制连接已断开')
                     target = dict(self.target)
-                self.arm.send_action(Action(target))
+                    motion_id = self.state['motion_id']
+                    speed = self.speed_limit
+                    tolerance = .035 if self.state['status'] == 'ready' else .025
+                self.arm.send_action(Action(target), max_velocity=speed)
                 measured = self.arm.read_observation().joint_positions
-                tolerance=.035 if self.state['status']=='ready' else .025
                 reached = max(abs(measured[name] - target[name]) for name in target) < tolerance
                 with self.lock:
                     self.feedback_at=monotonic()
-                    self.state.update(joint_positions=measured,render_joint_positions=self.arm.render_positions(measured), status='ready' if reached else 'moving',observed_at_ns=time_ns())
+                    current_target = motion_id == self.state['motion_id']
+                    self.state.update(joint_positions=measured,render_joint_positions=self.arm.render_positions(measured),
+                                      status='ready' if reached and current_target else 'moving',
+                                      applied_motion_id=motion_id, observed_at_ns=time_ns())
+                    if reached and current_target:
+                        self.state['reached_motion_id'] = motion_id
         except Exception as error:
             with self.lock:
                 self.state.update(status='failed', error=str(error))

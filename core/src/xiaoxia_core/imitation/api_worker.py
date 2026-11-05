@@ -90,12 +90,16 @@ class ImitationWorker:
         from ..collection.frame_client import CameraFrameClient
         from ..contracts import Observation
         from .act import ACTJointPolicy
+        self.progress(phase='loading_policy')
         policy = ACTJointPolicy(self.request['device'])
         policy.load(Path(self.request['checkpoint']))
         if policy.metadata.get('model_frame') != 'so100_mid_calib':
             raise ValueError('模型坐标与当前 SO100 仿真不匹配，请使用当前仿真重新采集或完成坐标转换')
         if self.request.get('physical') is True:
             from .hardware_rollout import HardwarePolicyRollout
+            self.progress(phase='warming_policy')
+            policy.warmup()
+            self.progress(phase='inferencing')
             return HardwarePolicyRollout(self).run(policy, rollout)
         if 'simulation' in policy.metadata['images']:
             return self.predict_simulation(policy, rollout)
