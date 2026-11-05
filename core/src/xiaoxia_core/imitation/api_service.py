@@ -1,8 +1,9 @@
 """将模仿学习 HTTP 路由连接到示教数据、后台 ACT 任务和模型推理。
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
 import json
+import re
 from pathlib import Path
 from threading import RLock
 
@@ -98,11 +99,28 @@ class ImitationAPI:
                 steps = self.integer(body, 'steps', 1, 1, 1000) if parts == ['rollouts'] else 1
                 fps = self.integer(body, 'fps', 2, 1, 30)
                 metadata = json.loads((checkpoint / 'imitation.json').read_text(encoding='utf-8'))
-                if 'virtual' in metadata['images'] and fps > 2:
+                target = body.get('target', 'table')
+                physical = isinstance(target, str) and re.fullmatch(r'serial:COM[1-9][0-9]*', target) is not None
+                if target not in ('table', 'simulation') and not physical:
+                    raise ValueError('请选择仿真或真机串口')
+                sources = body.get('camera_sources', {})
+                if not isinstance(sources, dict) or any(not isinstance(k,str) or not isinstance(v,str) for k,v in sources.items()):
+                    raise ValueError('camera_sources 必须是图像名称到相机来源的映射')
+                if physical:
+                    if metadata.get('model_frame') != 'so100_mid_calib':
+                        raise ValueError('模型关节坐标不匹配')
+                    for key in metadata['images']:
+                        if body.get('camera_source') and key not in sources:
+                            sources[key] = body['camera_source']
+                        source = sources.get(key, key)
+                        if not isinstance(source,str) or (source != 'real' and not re.fullmatch(r'opencv_[0-9a-f]{16}',source)):
+                            raise ValueError('请为模型图像选择真实摄像头')
+                if not physical and 'virtual' in metadata['images'] and fps > 2:
                     raise ValueError('虚拟图像策略回放 fps 不得超过 2')
                 return 202, self.jobs.start('rollout' if parts == ['rollouts'] else 'predict',
                     {'checkpoint': str(checkpoint), 'device': device, 'steps': steps, 'fps': fps,
-                     'target': 'table', 'physical': False})
+                     'target': target, 'physical': physical, 'camera_sources': sources},
+                    initial_state={'target':target,'physical':physical})
             if len(parts) == 3 and parts[0] == 'jobs' and parts[2] == 'stop':
                 return 200, self.jobs.stop(parts[1])
             return 404, {'error': 'route_not_found'}

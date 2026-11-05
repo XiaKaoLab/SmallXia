@@ -1,11 +1,12 @@
 /** 功能：策略积木通过既有模仿学习客户端创建任务、查询状态和停止任务。
- * Created on 2026-11-02; Updated on 2026-11-03
+ * Created on 2026-11-02; Updated on 2026-11-05
  * @author: https://github.com/Linmoqian
  */
 import * as Blockly from "blockly/core";
 import { pythonGenerator, Order } from "blockly/python";
 import { TextVisionBlocks } from "./TextVisionBlocks";
 import { OnnxPolicyBlocks } from "./OnnxPolicyBlocks";
+import { PolicyTargetFields } from "./PolicyTargetFields";
 
 export const POLICY_TRAIN = "table_policy_train";
 export const POLICY_PREDICT = "table_policy_predict";
@@ -49,6 +50,7 @@ export class PolicyBlocks {
           if (type === POLICY_STOP) { this.setPreviousStatement(true); this.setNextStatement(true); }
           else this.setOutput(true);
           this.setTooltip(type === POLICY_ROLLOUT ? "在仿真中运行策略。" : "启动模仿学习任务。");
+          if(type===POLICY_ROLLOUT)PolicyTargetFields.append(this);
         },
       };
       pythonGenerator.forBlock[type] = (block, generator) => {
@@ -58,7 +60,7 @@ export class PolicyBlocks {
         let expression: string;
         if (type === POLICY_TRAIN) expression = `${client}.train(${id}, steps=${block.getFieldValue("STEPS")}, device=${JSON.stringify(block.getFieldValue("DEVICE"))})`;
         else if (type === POLICY_PREDICT) expression = `${client}.predict(${id})`;
-        else if (type === POLICY_ROLLOUT) expression = `${client}.rollout(${id}, steps=${block.getFieldValue("STEPS")})`;
+        else if (type === POLICY_ROLLOUT) expression = `${client}.rollout(${id}, steps=${block.getFieldValue("STEPS")}, ${PolicyTargetFields.arguments(block)})`;
         else if (type === POLICY_JOB) expression = `${client}.job(${id})`;
         else return `${client}.stop(${id})\n`;
         return [expression, Order.FUNCTION_CALL];

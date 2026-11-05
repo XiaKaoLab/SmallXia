@@ -1,5 +1,5 @@
 """供积木显式连接已验证从臂、等待限速动作到位，并在结束时释放控制。
-Created on 2026-11-02; Updated on 2026-11-04
+Created on 2026-11-02; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
 import re
@@ -12,6 +12,7 @@ from ..blocks.workflow import BlockWorkflow
 
 
 class HardwareClient:
+    _heartbeats = {}
     def __init__(self, port):
         if not isinstance(port, str) or not re.fullmatch(r'COM[1-9][0-9]*', port):
             raise ValueError('请选择 COM 口')
@@ -41,6 +42,25 @@ class HardwareClient:
 
     def stop(self):
         return BlockWorkflow.http(self.endpoint + '/stop', {})
+
+    def enable(self, profile='so100.local.yaml'):
+        state = self.ensure_connected(profile)
+        heartbeat = self._heartbeats.pop(self.port, None)
+        if heartbeat: heartbeat.close()
+        from .control_heartbeat import ControlHeartbeat
+        self._heartbeats[self.port] = ControlHeartbeat(self.port).start()
+        return state
+
+    def disable(self):
+        heartbeat = self._heartbeats.pop(self.port, None)
+        if heartbeat: heartbeat.close()
+        state = BlockWorkflow.http(self.endpoint + '/disable', {})
+        while state['status'] in ('connecting', 'ready', 'moving', 'returning_zero'):
+            sleep(.05)
+            state = BlockWorkflow.http(self.endpoint)
+        if state['status'] != 'stopped' or not state.get('release', {}).get('torque_disabled'):
+            raise RuntimeError(state.get('error') or '未确认失能完成')
+        return state
 
 
     def ensure_connected(self, profile='so100.local.yaml'):

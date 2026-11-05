@@ -1,5 +1,5 @@
 /** 功能：简洁示教到推理流程、等待及红球视觉积木，隐藏会话管理细节。
- * Created on 2026-11-02; Updated on 2026-11-03
+ * Created on 2026-11-02; Updated on 2026-11-05
  * @author: https://github.com/Linmoqian
  */
 import * as Blockly from "blockly/core";
@@ -7,6 +7,7 @@ import { pythonGenerator, Order } from "blockly/python";
 import { workflowCatalog } from "./WorkflowCatalog";
 import { armTargetCatalog } from "./ArmTargetCatalog";
 import { cameraCatalog } from "./CameraCatalog";
+import { PolicyTargetFields } from "./PolicyTargetFields";
 
 export const DEMO_BEGIN = "table_demo_begin";
 export const DEMO_RECORD = "table_demo_record";
@@ -50,11 +51,12 @@ export class WorkflowBlocks {
               return workflowCatalog.options('datasets', this.getValue());
             }), 'ID');
           } else if ([DEMO_TRAIN, DEMO_RUN].includes(type)) {
-            this.appendDummyInput().appendField(type === DEMO_TRAIN ? "训练示教模型" : "运行示教模型（仿真）")
+            this.appendDummyInput().appendField(type === DEMO_TRAIN ? "训练示教模型" : "运行示教模型")
               .appendField(new Blockly.FieldDropdown(function () { return workflowCatalog.options(type === DEMO_TRAIN ? "datasets" : "models", this.getValue()); }), "ID");
             this.appendDummyInput().appendField(type === DEMO_TRAIN ? "训练步数" : "运行步数")
               .appendField(new Blockly.FieldNumber(type === DEMO_TRAIN ? 1000 : 20, 1, type === DEMO_TRAIN ? 1000000 : 1000, 1), "STEPS")
               .appendField(new Blockly.FieldDropdown([["CPU", "cpu"], ["CUDA", "cuda"]]), "DEVICE");
+            if(type===DEMO_RUN)PolicyTargetFields.append(this);
           } else if (type === WAIT) {
             this.appendDummyInput().appendField("等待").appendField(new Blockly.FieldNumber(.3, 0, 3600, .1), "SECONDS").appendField("秒");
           } else if (type === WAIT_RESULT) this.appendValueInput("RECEIPT").appendField("等待任务完成");
@@ -95,7 +97,8 @@ export class WorkflowBlocks {
         if (type === DEMO_FINISH) return `${workflow}.finish()\n`;
         if (type === DEMO_PLAY) return `${workflow}.play(${JSON.stringify(block.getFieldValue('ID'))})\n`;
         const method = type === DEMO_TRAIN ? "train" : "run";
-        return `${workflow}.${method}(${JSON.stringify(block.getFieldValue("ID"))}, steps=${block.getFieldValue("STEPS")}, device=${JSON.stringify(block.getFieldValue("DEVICE"))})\n`;
+        const target=type===DEMO_RUN?`, ${PolicyTargetFields.arguments(block)}`:"";
+        return `${workflow}.${method}(${JSON.stringify(block.getFieldValue("ID"))}, steps=${block.getFieldValue("STEPS")}, device=${JSON.stringify(block.getFieldValue("DEVICE"))}${target})\n`;
       };
     }
   }

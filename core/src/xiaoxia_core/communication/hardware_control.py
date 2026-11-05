@@ -1,5 +1,5 @@
 """为已验证坐标配置的从臂提供显式使能、限速运动与失联释放，不自动改写校准。
-Created on 2026-11-02; Updated on 2026-11-04
+Created on 2026-11-02; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
 from copy import deepcopy
@@ -34,13 +34,15 @@ class HardwareControlAPI:
                 raise ValueError('请选择 COM 口')
             port = parts[1]
             with self.lock:
-                if method == 'POST' and len(parts) == 3 and parts[2] == 'connect':
-                    if body.get('enable_motion') is not True:
+                if method == 'POST' and len(parts) == 3 and parts[2] in ('connect', 'enable'):
+                    if parts[2] == 'connect' and body.get('enable_motion') is not True:
                         raise ValueError('请勾选启用真机运动')
                     profile = body.get('profile', 'so100.local.yaml')
                     if not isinstance(profile, str) or Path(profile).name != profile or not profile.endswith('.yaml'):
                         raise ValueError('请选择本机机械臂配置')
                     if port in self.sessions and self.sessions[port].active:
+                        if parts[2] == 'enable' and self.sessions[port].state.get('profile') == profile and self.sessions[port].state['status'] != 'returning_zero':
+                            return 200, self.sessions[port].snapshot(heartbeat=True)
                         raise ValueError('机械臂已在控制中')
                     workflow = HardwareWorkflow(self.core / 'configs' / profile)
                     expected = self.core.parent / 'table/public/robots/so100/so100_mid_calib.urdf'
@@ -63,7 +65,7 @@ class HardwareControlAPI:
                     raise ValueError('请先连接真机控制')
                 if method == 'GET' and len(parts) == 2:
                     return 200, session.snapshot(heartbeat=True)
-                if method == 'POST' and len(parts) == 3 and parts[2] == 'stop':
+                if method == 'POST' and len(parts) == 3 and parts[2] in ('stop', 'disable'):
                     session.stop.set()
                     return 202, session.snapshot()
                 if method == 'POST' and len(parts) == 3 and parts[2] == 'motions':
@@ -111,6 +113,10 @@ class HardwareControlSession:
             if body.get('unit') != 'rad':
                 raise ValueError('仅支持弧度')
             positions = body.get('joint_positions')
+            if body.get('frame', 'control') == 'so100_mid_calib':
+                positions = self.arm.control_positions(positions, self.state['joint_positions'])
+            elif body.get('frame', 'control') != 'control':
+                raise ValueError('未知关节坐标系')
             self.arm.limits.validate(positions)
             if self.target and all(abs(positions[n]-self.target[n])<.000767 for n in positions):
                 self.lease=monotonic()

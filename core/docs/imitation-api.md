@@ -1,6 +1,6 @@
 # 模仿学习 HTTP API
 
-Created on 2026-11-02; Updated on 2026-11-02
+Created on 2026-11-02; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 
 沿用本机 `http://127.0.0.1:8766`、现有 Conda base 和 `lerobot==0.4.4`。所有接口需要 `Authorization: Bearer <XIAOXIA_MOTION_TOKEN>`，POST 使用 JSON 对象。实现复用 `DemonstrationWriter`、`ACTTrainer`、`ACTJointPolicy`，不执行 shell 字符串、不创建环境、不上传 Hub。
@@ -73,7 +73,41 @@ dataset_id = dataset["id"]
 
 当前 API 的关节观测来自 `table_display_target`，不是 WebView 实际渲染到位回执，也不是串口实机反馈。原生数据集标注 `simulated:true`、`robot_type:so101_table_model`。即使 `cameras` 含 real，也只是“模型状态 + 真实相机图像”，不构成真实机械臂示教。相机来源及非同步属性写入数据集附加元数据。
 
-无相机时沿用关节状态模仿基线；有相机时记录 RGB 图像并作为 ACT 视觉特征。当前虚拟相机低帧率、场景和数据质量仍限制策略效果；任务完成、训练 loss 或成功导出都不等于抓取成功率验收。API 回放目标固定为 table，不连接 COM17、不使能力矩。实机流程仍通过已有独立校准和显式授权的 HardwareWorkflow 管理。
+无相机时沿用关节状态模仿基线；有相机时记录 RGB 图像并作为 ACT 视觉特征。当前虚拟相机低帧率、场景和数据质量仍限制策略效果；任务完成、训练 loss 或成功导出都不等于抓取成功率验收。默认回放目标为 table；指定 `target:serial:COM17` 时走下面的真机链路。
+
+## 真机使能、策略和失能
+
+积木按顺序拼接：`使能机械臂 COM17` → `运行示教模型（目标 COM17）` → `失能机械臂 COM17`。原有程序默认仍在仿真运行。
+
+| 方法 | 完整路由 | 行为 |
+| --- | --- | --- |
+| POST | `/api/v1/hardware/arms/COM17/enable` | `{"profile":"so100.local.yaml"}`，显式使能并记录当前姿态作为本次起始位置；返回 202，已有同配置会话复用 |
+| GET | `/api/v1/hardware/arms/COM17` | 查询真实反馈并维持控制心跳 |
+| POST | `/api/v1/imitation/rollouts` | `{"training_job_id":"…","target":"serial:COM17","steps":20,"fps":2,"device":"cpu","camera_source":"opencv_…"}`，创建真机 ACT 闭环任务 |
+| POST | `/api/v1/hardware/arms/COM17/disable` | `{}`，请求缓慢回到本次起始位置再失能，返回 202；继续查询直到 `stopped` 且 `release.torque_disabled:true` |
+
+真机不自动使能。Python `HardwareClient.enable()` 维持心跳，`disable()` 等待回位及力矩关闭确认；直接 HTTP 调用者需在持有控制期间维持心跳。模型加载期间也包含在此期间。
+
+策略读取实测六轴反馈，以 `render_joint_positions` 转到训练模型坐标；预测经过 0.15 rad/s 上限，再由硬件控制器逆转换到编码器控制坐标，沿用现有平滑轨迹。每轮重新读取反馈，最后一步等待实际到位。进度和结果标注 `physical:true`、串口与反馈，不把下发成功当成抓取成功。
+
+视觉策略的 `camera_source` 为所选真实摄像头，按模型尺寸缩放；多相机模型可用 `camera_sources` 显式映射各模型图像键。未提供映射时，仅接受模型本身的真实相机键，不能将虚拟图像当作实拍。仿真训练的视觉策略在实机上的效果尚未验证。此链路面向当前 `so100_mid_calib` 坐标的 ACT 检查点；抓球 SAC/ONNX 的仿真环境观测尚未迁移到真机。
+
+```python
+from xiaoxia_core.communication.hardware_client import HardwareClient
+from xiaoxia_core.imitation.api_client import ImitationClient
+from xiaoxia_core.blocks.workflow import BlockWorkflow
+
+arm = HardwareClient('COM17')
+try:
+    arm.enable('so100.local.yaml')
+    job = ImitationClient().rollout(training_job_id, target='serial:COM17', steps=20,
+                                   camera_source='real')
+    BlockWorkflow().wait_job(job)
+finally:
+    arm.disable()
+```
+
+停止真机策略任务或推理失败会请求回位失能。任务正常完成保留当前使能状态，供后续积木衔接；程序结束仍沿用控制释放清理。失联由已有控制会话处理。故障下是否返回起始位置、是否关闭力矩以实际 `release` 结果为准。
 
 ## 本次轻量检查
 

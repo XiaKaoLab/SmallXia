@@ -1,5 +1,5 @@
 """简化示教、导出、训练及仿真推理，自动解析最近的数据和模型并等待实际完成。
-Created on 2026-11-02; Updated on 2026-11-03
+Created on 2026-11-02; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
 import json
@@ -49,8 +49,8 @@ class BlockWorkflow:
             identity = result.get('session_id') or (result.get('id') if '/sessions' in endpoint or endpoint.startswith('sessions/') else None)
             if identity:
                 cls.track(f'collection/sessions/{identity}/stop')
-        if namespace == 'hardware' and endpoint.endswith('/connect'):
-            cls.track('hardware/' + endpoint.removesuffix('/connect') + '/stop')
+        if namespace == 'hardware' and endpoint.rsplit('/',1)[-1] in ('connect','enable'):
+            cls.track('hardware/' + endpoint.rsplit('/',1)[0] + '/stop')
 
     def cleanup(self, directory, hardware_only=False):
         path = directory / 'children.json'
@@ -206,12 +206,12 @@ class BlockWorkflow:
                 sleep(.02)
         return {'frames': len(poses), 'physical': False}
 
-    def run(self, model_id='latest', steps=20, device='cpu'):
+    def run(self, model_id='latest', steps=20, device='cpu', target='simulation', camera_source=None):
         models = self.catalog()['models']
         model = next((row for row in models if model_id == 'latest' or row['id'] == model_id), None)
         if not model:
             raise ValueError('请先训练示教模型')
-        job = self.client.rollout(model['id'], steps=steps, device=device)
+        job = self.client.rollout(model['id'], steps=steps, device=device, target=target, camera_source=camera_source)
         result = self.wait_job(job)
         self.emit('推理完成')
         return result

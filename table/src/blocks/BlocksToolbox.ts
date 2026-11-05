@@ -1,5 +1,5 @@
 /** 功能：统一 Blockly 工具箱及允许使用的积木目录。
- * Created on 2026-11-02; Updated on 2026-11-04
+ * Created on 2026-11-02; Updated on 2026-11-05
  * @author: https://github.com/Linmoqian
  */
 import { COORDINATE_BLOCK } from "./coordinateBlock";
@@ -40,7 +40,7 @@ export class BlocksToolbox {
           TEXT: { block: { type: QILING_REPLY } }, VALUE: { shadow: { type: "text", fields: { TEXT: "完成" } } },
         } } } } },
       ] },
-      { kind: "category", name: "机械臂", colour: "#638b80", contents: [{ kind: "button", text: "刷新串口", callbackkey: "REFRESH_ARM_PORTS" }, block(BLOCK_TYPE), block(CALIBRATION_BLOCK), block(COORDINATE_BLOCK), block(ARM_MAPPING_BLOCK), ...HARDWARE_TYPES.map(block)] },
+      { kind: "category", name: "机械臂", colour: "#638b80", contents: [{ kind: "button", text: "刷新串口", callbackkey: "REFRESH_ARM_PORTS" }, block(BLOCK_TYPE), ...HARDWARE_TYPES.filter(type=>["table_hardware_enable","table_hardware_disable"].includes(type)).map(block), block(CALIBRATION_BLOCK), block(COORDINATE_BLOCK), block(ARM_MAPPING_BLOCK)] },
       { kind: "category", name: "相机", colour: "#587e9d", contents: [{ kind: "button", text: "刷新相机", callbackkey: "REFRESH_CAMERAS" }, block(CAMERA_BLOCK_TYPE), block(FRAME_CAPTURE), block(RED_DETECT), block(RED_VALUE), block(TEXT_READ), block(CAMERA_CALIBRATION_BLOCK)] },
       { kind: "category", name: "逻辑", colour: "#687f9b", contents: [block(WAIT), block(WAIT_RESULT), {kind:"block",type:TEXT_MATCH,inputs:{TEXT:{shadow:{type:"text",fields:{TEXT:""}}},VALUE:{shadow:{type:"text",fields:{TEXT:""}}}}}, ...LOGIC_TYPES.filter(type => !type.startsWith('procedures_call')).map(block)] },
       { kind: "category", name: "变量", colour: "#9a805c", contents: [

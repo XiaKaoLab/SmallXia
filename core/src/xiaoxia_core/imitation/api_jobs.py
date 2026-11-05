@@ -1,5 +1,5 @@
 """持久化模仿学习子进程任务，提供状态、日志、停止和重启恢复。
-Created on 2026-11-02; Updated on 2026-11-03
+Created on 2026-11-02; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
 import json
@@ -96,6 +96,10 @@ class ImitationJobs:
             state = self.get(job_id)
             process = self._processes.get(job_id)
             if process is not None and process.poll() is None:
+                request = json.loads((self.root / job_id / 'request.json').read_text(encoding='utf-8'))
+                if request.get('physical') is True and request['kind'] == 'rollout':
+                    from ..blocks.workflow import BlockWorkflow
+                    BlockWorkflow.http(f"hardware/arms/{request['target'].removeprefix('serial:')}/disable", {})
                 process.terminate()
                 try:
                     process.wait(timeout=3)

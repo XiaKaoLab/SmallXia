@@ -1,5 +1,5 @@
 """隔离执行 LeRobot 导出、ACT 训练及仅面向 table 的策略推理和回放。
-Created on 2026-11-02; Updated on 2026-11-03
+Created on 2026-11-02; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
 import base64
@@ -94,6 +94,9 @@ class ImitationWorker:
         policy.load(Path(self.request['checkpoint']))
         if policy.metadata.get('model_frame') != 'so100_mid_calib':
             raise ValueError('模型坐标与当前 SO100 仿真不匹配，请使用当前仿真重新采集或完成坐标转换')
+        if self.request.get('physical') is True:
+            from .hardware_rollout import HardwarePolicyRollout
+            return HardwarePolicyRollout(self).run(policy, rollout)
         if 'simulation' in policy.metadata['images']:
             return self.predict_simulation(policy, rollout)
         client = CameraFrameClient()
@@ -184,6 +187,11 @@ class ImitationWorker:
                 raise ValueError('未知任务')
             self.progress(status='succeeded', result=result, finished_at_ns=time_ns())
         except Exception as error:
+            if self.request.get('physical') is True and self.request['kind'] == 'rollout':
+                try:
+                    self.http('/api/v1/hardware/arms/' + self.request['target'].removeprefix('serial:') + '/disable', {})
+                except Exception:
+                    pass  # 失联由硬件控制会话释放，原始推理错误仍保留。
             self.progress(status='failed', error=f'{type(error).__name__}: {error}', finished_at_ns=time_ns())
             raise
 

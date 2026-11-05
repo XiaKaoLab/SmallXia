@@ -1,5 +1,5 @@
 """为 Blockly、Agent 或脚本提供模仿学习 API 客户端。
-Created on 2026-11-02; Updated on 2026-11-03
+Created on 2026-11-02; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
 import json
@@ -40,11 +40,13 @@ class ImitationClient:
     def train(self, dataset_id, **configuration):
         return self.request('trainings', {'dataset_id': dataset_id, **configuration})
 
-    def predict(self, training_job_id, device='cpu'):
-        return self.request('predictions', {'training_job_id': training_job_id, 'device': device})
+    def predict(self, training_job_id, device='cpu', target='table', camera_sources=None):
+        return self.request('predictions', {'training_job_id': training_job_id, 'device': device,
+            'target':target,'camera_sources':camera_sources or {}})
 
-    def rollout(self, training_job_id, steps=10, fps=2, device='cpu'):
-        return self.request('rollouts', {'training_job_id': training_job_id, 'steps': steps, 'fps': fps, 'device': device})
+    def rollout(self, training_job_id, steps=10, fps=2, device='cpu', target='table', camera_sources=None, camera_source=None):
+        return self.request('rollouts', {'training_job_id': training_job_id, 'steps': steps, 'fps': fps, 'device': device,
+            'target':target,'camera_sources':camera_sources or {},'camera_source':camera_source})
 
     def job(self, job_id):
         return self.request(f'jobs/{job_id}')

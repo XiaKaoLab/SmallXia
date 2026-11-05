@@ -68,7 +68,7 @@ with MujocoSimulation(SimulationConfig(urdf_path=urdf)) as simulation:
 
 SO 系列串口、可选 OpenCV 相机、ACT 训练与推理入口已实现。实机运行须先完成设备身份、校准和 URDF 映射确认；当前尚未通过实机示教/抓取验收。操作命令和本次证据见 [模仿学习说明](docs/imitation.md)。
 
-模型服务另提供 [模仿学习 HTTP API](docs/imitation-api.md)：按 episode 记录模型关节与统一相机画面、导出原生 LeRobot 数据集、后台 ACT 训练、预测和 table 回放，以及任务进度与停止接口。复用现有 base；HTTP 回放仅面向模型。
+模型服务另提供 [模仿学习 HTTP API](docs/imitation-api.md)：按 episode 记录模型关节与统一相机画面、导出原生 LeRobot 数据集、后台 ACT 训练、预测与回放，以及任务进度和停止接口。默认在仿真执行；ACT 策略可选择真机串口，配合使能、失能积木闭环执行，实机抓取效果尚未验收。
 
 ## LLM
 

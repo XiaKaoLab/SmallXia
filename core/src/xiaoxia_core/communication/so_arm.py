@@ -1,9 +1,9 @@
 """复用 LeRobot Feetech 总线实现 SO-100/101 主从臂，连接时只读且不自动校准。
-Created on 2026-11-01; Updated on 2026-11-04
+Created on 2026-11-01; Updated on 2026-11-05
 @author: https://github.com/Linmoqian
 """
 
-from math import isfinite
+from math import isfinite, pi, radians
 from time import monotonic, monotonic_ns
 
 from ..contracts import Action, Observation
@@ -84,6 +84,23 @@ class SOArmTransport(RobotTransport):
             from .display_frame import DisplayFrame
             return DisplayFrame.apply(self.calibration.render_angles(positions),self._render_wrist_offset)
         return dict(positions)
+
+    def control_positions(self, positions, current):
+        """将策略的模型绝对角度转回编码器控制坐标，复用显示转换的逆变换。"""
+        if set(positions) != set(JOINTS) or not all(isinstance(v, (int, float)) and not isinstance(v, bool) and isfinite(v) for v in positions.values()):
+            raise ValueError('策略必须给出六轴有限角度')
+        if not hasattr(self.calibration, 'render_angles'):
+            return dict(positions)
+        result = {name: positions[name] - self.calibration.render_offsets[name] for name in JOINTS}
+        result['wrist_roll'] -= radians(self._render_wrist_offset)
+        limits = self.limits.joints['wrist_roll']
+        current = current['wrist_roll']
+        candidates = [result['wrist_roll'] + turns * 2 * pi for turns in range(-2, 3)]
+        candidates = [value for value in candidates if limits.lower <= value <= limits.upper]
+        if not candidates: raise ValueError('腕部策略目标超出实机行程')
+        result['wrist_roll'] = min(candidates, key=lambda value: abs(value - current))
+        self.limits.validate(result)
+        return result
 
     def arm(self) -> None:
         if self.role != "follower":
