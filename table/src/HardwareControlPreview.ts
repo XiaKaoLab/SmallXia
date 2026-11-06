@@ -1,5 +1,5 @@
 /** 功能：统一订阅真机反馈驱动模型，覆盖积木、Agent、API与回位全过程。
- * Created on 2026-11-03; Updated on 2026-11-05
+ * Created on 2026-11-03; Updated on 2026-11-06
  * @author: https://github.com/Linmoqian
  */
 import { JOINTS } from "./blocks/positionBlock";
@@ -47,7 +47,7 @@ export class HardwareControlPreview {
       await agentClient.hardwarePreview<{sessions:Feedback[]}>(this.requestId,state=>{
         if(this.disposed)return;
         const active=state.sessions.filter(s=>s.read_only_following||["ready","moving","returning_zero"].includes(s.status??""));
-        const selected=active.find(s=>`serial:${s.port}`===this.target)??active[0]??state.sessions.find(s=>`serial:${s.port}`===this.target)??state.sessions.at(-1);
+        const selected=active.find(s=>`serial:${s.port}`===this.target)??active[0]??state.sessions.find(s=>`serial:${s.port}`===this.target)??state.sessions[state.sessions.length - 1];
         if(selected&&this.accept(selected))this.streamAt=performance.now();
       });
     }catch{ /* 服务重启后重新订阅；从不重发电机动作。 */ }
