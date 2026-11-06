@@ -1,5 +1,5 @@
 """为 Tauri 提供单请求 JSONL 桥接，复用会话、技能与 Agent 流。
-Created on 2026-11-01; Updated on 2026-11-05
+Created on 2026-11-01; Updated on 2026-11-06
 @author: https://github.com/Linmoqian
 """
 
@@ -30,7 +30,10 @@ class DesktopBridge:
 
     def handle(self, request: dict) -> None:
         action = request.get("action")
-        if action == "qiling_models":
+        if action == "motion_relay":
+            from .motion_relay import MotionRelayPlanner
+            self.emit({"type": "data", "data": MotionRelayPlanner().plan(request)})
+        elif action == "qiling_models":
             from .qiling import QiLingModels
             self.emit({"type":"data","data":QiLingModels.list()})
         elif action == "hardware_preview":

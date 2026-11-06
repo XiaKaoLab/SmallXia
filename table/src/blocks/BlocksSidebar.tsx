@@ -1,7 +1,8 @@
 /** 功能：左侧分类 Blockly 工作区与 Python 后台运行。
- * Created on 2026-11-01; Updated on 2026-11-05
+ * Created on 2026-11-01; Updated on 2026-11-06
  * @author: https://github.com/Linmoqian
  */
+import { MotionRelay } from "./MotionRelay";
 import { registerCoordinateBlock } from "./coordinateBlock";
 import { QiLingBlocks, qiLingCatalog } from "./QiLingBlocks";
 import { UiMessage } from "../shared/UiMessage";
@@ -29,7 +30,7 @@ import { WorkflowTemplate } from "./WorkflowTemplate";
 import { WorkspaceStore } from "./WorkspaceStore";
 import { ProgramLibrary } from "./ProgramLibrary";
 import "blockly/blocks";
-import { Play, Square } from "lucide-react";
+import { Play, Square, WandSparkles } from "lucide-react";
 import { agentClient } from "../chat/AgentClient";
 import * as Blockly from "blockly/core";
 import * as Zh from "blockly/msg/zh-hans";
@@ -45,6 +46,7 @@ export function BlocksSidebar() {
   const [notice, setNotice] = useState("");
   const [running, setRunning] = useState(false);
   const [ready, setReady] = useState(false);
+  const [relaying, setRelaying] = useState(false);
   const runLock = useRef(false);
   const programRef = useRef<ProgramClient | null>(null);
   const liveRef = useRef<LiveJointRunner | null>(null);
@@ -203,6 +205,22 @@ export function BlocksSidebar() {
     if (receipt.limited && receipt.applied_joint_positions) jointPreview.confirm(receipt.applied_joint_positions, jointPreview.revision);
   }
 
+  async function relay() {
+    const workspace = workspaceRef.current;
+    if (!workspace || runLock.current) return;
+    runLock.current = true; setRelaying(true); setError(""); setNotice("器灵在接招…");
+    try {
+      await liveRef.current?.pause();
+      const message = await new MotionRelay().append(workspace, () => workspaceRef.current === workspace);
+      if (workspaceRef.current === workspace) { new WorkspaceStore().save(workspace); setNotice(message); }
+    } catch (failure) {
+      if (workspaceRef.current === workspace) { setError(UiMessage.error(failure)); setNotice(""); }
+    } finally {
+      runLock.current = false;
+      if (workspaceRef.current === workspace) { liveRef.current?.resume(); setRelaying(false); }
+    }
+  }
+
   async function run(strict = false) {
     if (runLock.current) { if (strict) throw new Error("已有程序运行中"); return; }
     const source = workspaceRef.current ? pythonGenerator.workspaceToCode(workspaceRef.current) : code;
@@ -235,7 +253,7 @@ export function BlocksSidebar() {
 
   return <aside className="blocks-sidebar" aria-label="机械臂积木编程">
     <header className="blocks-heading"><h2>积木编程</h2><div className="blocks-heading-actions">
-      <ProgramLibrary disabled={!ready || running} snapshot={() => blocksDebug.exportWorkspace()}
+      <ProgramLibrary disabled={!ready || running || relaying} snapshot={() => blocksDebug.exportWorkspace()}
         open={async snapshot => {
           if (runLock.current) throw new Error("请先停止当前程序");
           await liveRef.current?.pause();
@@ -245,7 +263,11 @@ export function BlocksSidebar() {
           } finally { liveRef.current?.resume(); }
         }}
         notice={message => { setError(""); setNotice(message); }} error={failure => { setNotice(""); setError(UiMessage.error(failure)); }} />
-      <button type="button" className="blocks-run" onClick={() => void run()} disabled={!code || running}
+      <button type="button" className="program-button" onClick={() => void relay()} disabled={!ready || running || relaying}
+        title="器灵接一段动作" aria-label="器灵接一段动作" aria-busy={relaying}>
+        <WandSparkles size={15} /><span>{relaying ? "接招中…" : "接龙"}</span>
+      </button>
+      <button type="button" className="blocks-run" onClick={() => void run()} disabled={!code || running || relaying}
         aria-label={running ? "运行中" : "运行"} aria-busy={running} title="运行">
         <Play size={15} fill="currentColor" /><span>{running ? "运行中" : "运行"}</span>
       </button>
