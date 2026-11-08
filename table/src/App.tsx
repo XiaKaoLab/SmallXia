@@ -1,8 +1,9 @@
 /** 功能：组合机械臂工作区、路由与聊天侧栏。
- * Created on 2026-11-01; Updated on 2026-11-03
+ * Created on 2026-11-01; Updated on 2026-11-08
  * @author: https://github.com/Linmoqian
  */
 import { useEffect, useRef } from "react";
+import { ResizableWorkspace } from "./shared/ResizableWorkspace";
 import { RobotViewer } from "./RobotViewer";
 import { HashRouter, Route, Routes } from "react-router";
 import { MotionConfig } from "motion/react";
@@ -18,9 +19,8 @@ export default function App() {
     const viewer = new RobotViewer(host.current);
     return () => viewer.dispose();
   }, []);
-  return <MotionConfig reducedMotion="user"><HashRouter><div className="app-shell"><Titlebar /><main className="workspace">
-    <BlocksSidebar />
-    <section ref={host} className="robot-viewer" aria-label="机械臂三维视图"><BallTrainingProgress /></section>
-    <Routes><Route path="/" element={<ChatSidebar />} /><Route path="/chat/:sessionId" element={<ChatSidebar />} /><Route path="*" element={<ChatSidebar />} /></Routes>
-  </main></div></HashRouter></MotionConfig>;
+  return <MotionConfig reducedMotion="user"><HashRouter><div className="app-shell"><Titlebar /><ResizableWorkspace left={<BlocksSidebar />}
+    center={<section ref={host} className="robot-viewer" aria-label="机械臂三维视图"><BallTrainingProgress /></section>}
+    right={<Routes><Route path="/" element={<ChatSidebar />} /><Route path="/chat/:sessionId" element={<ChatSidebar />} /><Route path="*" element={<ChatSidebar />} /></Routes>}
+  /></div></HashRouter></MotionConfig>;
 }
