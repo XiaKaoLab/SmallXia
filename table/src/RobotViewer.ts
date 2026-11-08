@@ -1,5 +1,5 @@
 /** 功能：管理机械臂 URDF、场景和交互生命周期。
- * Created on 2026-11-01; Updated on 2026-11-05
+ * Created on 2026-11-01; Updated on 2026-11-08
  * @author: https://github.com/Linmoqian
  */
 import { CoordinateCalibrationDisplay } from "./CoordinateCalibrationDisplay";
@@ -41,6 +41,10 @@ export class RobotViewer {
   private readonly spiritSpeech: QiLingSpeechBubble;
   private readonly controlFeedback: HardwareControlPreview;
   private alignmentVisible = false;
+  private simulationPose:Record<string,number>|null=null;
+  private get hardwarePositions():Record<string,number>|null {
+    return this.controlFeedback?.isHardware ? this.alignment?.positions??this.controlFeedback.positions : null;
+  }
   private playbackId = "";
   private playbackPaused = false;
   private readonly stopPreview: () => void;
@@ -52,17 +56,23 @@ export class RobotViewer {
       window.dispatchEvent(new CustomEvent("table:ball-training", { detail: null }));
     }
     this.modelCamera = camera;
-    if (this.training.active || this.alignment?.positions || this.controlFeedback?.positions) return;
+    if (this.training.active || this.controlFeedback?.isHardware) return;
     this.setJointTargets(jointPreview.reconcile(positions));
     if (this.robot) this.cameraRig.configure(this.robot, camera);
   });
 
   constructor(private readonly host: HTMLElement) {
-    this.controlFeedback = new HardwareControlPreview(host);
+    this.controlFeedback = new HardwareControlPreview(host, hardware => {
+      if(hardware){
+        this.simulationPose=this.robot?Object.fromEntries(Object.entries(this.robot.joints).filter(([,j])=>j.jointType==="revolute").map(([n,j])=>[n,j.jointValue[0]])):null;
+      }else if(this.robot&&this.simulationPose){
+        this.robot.setJointValues(this.simulationPose);this.simulationPose=null;
+      }
+    });
     this.observation = new RobotObservation(this.renderer, this.scene, () => ({
-      robot: this.training.active && !this.alignment.positions && !this.controlFeedback.positions ? this.training.cameraRobot ?? undefined : this.robot,
-      source: this.alignment.positions || this.controlFeedback.positions ? "hardware_mapped_render" : this.training.active ? "training_render_first_environment" : "simulation_render",
-      ready: this.modelReady,
+      robot: this.training.active && !this.controlFeedback.isHardware ? this.training.cameraRobot ?? undefined : this.robot,
+      source: this.controlFeedback.isHardware ? (this.hardwarePositions?"hardware_mapped_render":"hardware_feedback_unavailable") : this.training.active ? "training_render_first_environment" : "simulation_render",
+      ready: this.modelReady && (!this.controlFeedback.isHardware || this.hardwarePositions!==null),
     }));
     this.alignment = new HardwareAlignmentDisplay(host);
     this.coordinateCalibration = new CoordinateCalibrationDisplay(host);
@@ -70,6 +80,7 @@ export class RobotViewer {
     this.spiritSpeech = new QiLingSpeechBubble(host);
     this.cameraRig = new VirtualCameraRig(this.scene, host);
     this.stopPreview = jointPreview.subscribe((name, angle) => {
+      if(this.controlFeedback.isHardware)return angle;
       const joint = this.robot?.joints[name];
       if (!joint || !this.poseGuard) return joint?.jointValue[0] ?? 0;
       const result = this.poseGuard.limit({ [name]: angle });
@@ -99,7 +110,7 @@ export class RobotViewer {
       this.cameraRig.update();
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
-      const speakingRobot = this.training.active && !this.controlFeedback.positions && !this.alignment.positions ? this.training.cameraRobot : this.robot;
+      const speakingRobot = this.training.active && !this.controlFeedback.isHardware ? this.training.cameraRobot : this.robot;
       this.spiritSpeech.update(speakingRobot?.links.gripper_link ?? speakingRobot, this.camera);
       this.cameraRig.renderPreview();
     });
@@ -172,8 +183,8 @@ export class RobotViewer {
 
   private updateJoints(dt: number): void {
     if (!this.robot || !this.modelReady) return;
-    const hardwarePositions=this.alignment.positions??this.controlFeedback.positions;
-    this.training.setHidden(hardwarePositions !== null);
+    const hardwarePositions=this.hardwarePositions;
+    this.training.setHidden(this.controlFeedback.isHardware);
     this.robot.visible = true;
     if (hardwarePositions) {
       if (!this.alignmentVisible) { this.fitTraining(1); this.alignmentVisible = true; }
@@ -188,6 +199,7 @@ export class RobotViewer {
       this.cameraRig.setInferenceFrame(null, false);
       return;
     }
+    if(this.controlFeedback.isHardware)return;
     this.alignmentVisible = false;
     if (this.training.active) {
       this.training.update(this.robot, dt);

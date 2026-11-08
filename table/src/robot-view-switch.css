@@ -1,0 +1,11 @@
+/* 功能：模型视图顶部的仿真与真机只读切换胶囊。
+ * Created on 2026-11-08; Updated on 2026-11-08
+ * @author: https://github.com/Linmoqian
+ */
+.robot-view-switch { position:absolute; z-index:20; top:14px; right:18px; display:flex; align-items:center; gap:10px; max-width:calc(100% - 36px); padding:0; border:1px solid #ffffffb0; border-radius:999px; background:#f4faf5e6; color:#557061; }
+.robot-view-mode { min-height:44px; padding:0 16px; border:0; border-radius:999px; background:transparent; color:inherit; font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.robot-view-mode:hover { background:#dfeee5; }
+.robot-view-mode[aria-pressed="true"] { background:#dfeee5; }
+.robot-view-mode:focus-visible { outline:2px solid #51846b; outline-offset:2px; }
+.robot-view-switch .hardware-control-preview-label { position:static; margin-right:12px; padding:0; border:0; background:transparent; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.robot-view-switch .hardware-control-preview-label[hidden] { display:none; }
