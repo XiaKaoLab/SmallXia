@@ -1,8 +1,12 @@
 /** 功能：将 MCP 工具标识、协议包装与字段转换为简短中文说明。
- * Created on 2026-11-03; Updated on 2026-11-03
+ * Created on 2026-11-03; Updated on 2026-11-08
  * @author: https://github.com/Linmoqian
  */
 const tools: Record<string, [string, string]> = {
+  gesture_list: ["查看已有动作", "挥手、旋转、鞠躬等本地动作与示例"],
+  gesture_play: ["运行动作编排", "按顺序执行已有动作，区分仿真与真机"],
+  gesture_status: ["查看动作进度", "查询后台动作的实际状态与结果"],
+  gesture_stop: ["停止动作", "结束编排并释放真机控制"],
   robot_list_cameras: ["查看摄像头", "区分真实摄像头与虚拟相机，读取设备名称和ID"],
   robot_observe: ["观察机械臂", "读取真实相机或仿真截图，标注来源身份并结合CSV分析"],
   robot_get_environment: ["查看仿真与真机", "识别机械臂串口候选并查看连接状态"],
@@ -86,6 +90,7 @@ const values: Record<string, string> = {
 
 export class ToolPresentation {
   static category(name: string): "查询" | "修改" | "运行" {
+    if (["gesture_list", "gesture_status"].includes(name)) return "查询";
     if (["robot_list_cameras", "robot_observe", "robot_get_environment", "table_get_state", "table_get_limits", "blocks_catalog", "blocks_list", "blocks_export",
       "blocks_command_status", "blocks_programs", "blocks_program_status", "rl_capabilities",
       "rl_get_session", "rl_list_sessions", "rl_get_job", "rl_read_text"].includes(name)) return "查询";

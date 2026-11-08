@@ -1,5 +1,5 @@
 """通过标准 MCP stdio 提供 table 模型、RL 与当前 WebView 积木工具。
-Created on 2026-11-01; Updated on 2026-11-04
+Created on 2026-11-01; Updated on 2026-11-08
 @author: https://github.com/Linmoqian
 """
 
@@ -63,10 +63,14 @@ def main() -> None:
     context={'target':os.environ.get('XIAOXIA_QILING_TARGET','simulation'),
         'profile':os.environ.get('XIAOXIA_QILING_PROFILE','so100.local.yaml'),
         'enable_motion':os.environ.get('XIAOXIA_QILING_MOTION')=='true'}
+    from .gesture_tools import GestureTools
+    gestures = GestureTools(context['target'] if profile == 'qiling' else None, context['enable_motion'], context['profile'])
+    methods.extend([gestures.gesture_list, gestures.gesture_play, gestures.gesture_status, gestures.gesture_stop])
     if profile=='qiling' and context['target']!='simulation':
         from .sim2real_tools import Sim2RealTools
         bound=Sim2RealTools(context['target'],context['profile'],context['enable_motion'])
-        methods=methods[:3]+[bound.arm_get_state,bound.arm_get_limits,bound.arm_move_joints]
+        methods=methods[:3]+[bound.arm_get_state,bound.arm_get_limits,bound.arm_move_joints,
+            gestures.gesture_list, gestures.gesture_play, gestures.gesture_status, gestures.gesture_stop]
     if profile == 'default':
         from .arm_mapping_tools import ArmMappingTools
         mapping=ArmMappingTools()

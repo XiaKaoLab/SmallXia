@@ -1,10 +1,11 @@
 /** 功能：封装 Tauri Channel 与 Python Agent 的请求和取消操作。
- * Created on 2026-11-01; Updated on 2026-11-05
+ * Created on 2026-11-01; Updated on 2026-11-08
  * @author: https://github.com/Linmoqian
  */
 import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
 import type { AgentEvent, Bootstrap } from "./types";
 import { agentCursor } from "../interaction/AgentCursor";
+import { ToolPresentation } from "./ToolPresentation";
 
 export class AgentClient {
   readonly desktop = isTauri();
@@ -101,16 +102,26 @@ export class AgentClient {
   async stream(requestId: string, sessionId: string, text: string, skills: string[], onEvent: (event: AgentEvent) => void): Promise<void> {
     let failure = "";
     let activeTool = "";
+    let activeName = "";
     try {
       await this.dispatch<AgentEvent>(requestId, { action: "run", session_id: sessionId, text, skill_names: skills }, (event) => {
         if (event.type === "error") failure = event.message;
         onEvent(event);
         if (event.type === "tool_started") {
           activeTool = event.call_id;
+          activeName = event.name;
           agentCursor.toolStarted(event.call_id, event.name);
         } else if (event.type === "tool_completed") {
+          if (activeName === "gesture_play" && !event.failed) {
+            const result = ToolPresentation.parse(event.output) as { target?: string; program?: { id?: string } } | null;
+            const target = result?.target;
+            if (result?.program?.id && (target === "simulation" || /^serial:COM[1-9][0-9]*$/.test(target ?? ""))) {
+              window.dispatchEvent(new CustomEvent("table:robot-view-target", { detail: { target } }));
+            }
+          }
           agentCursor.finish(`tool:${event.call_id}`, event.failed);
           activeTool = "";
+          activeName = "";
         }
       }, (event) => event.type === "completed" || event.type === "error");
     } catch (error) { throw new Error(failure || String(error)); }
