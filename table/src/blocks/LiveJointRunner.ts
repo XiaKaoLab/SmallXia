@@ -1,14 +1,13 @@
-/** 功能：合并滑杆修改，以单请求队列运行最新 Python 位置程序。
- * Created on 2026-11-02; Updated on 2026-11-04
+/** 功能：合并仿真滑杆预览请求；真机执行由独立积木程序负责。
+ * Created on 2026-11-02; Updated on 2026-11-08
  * @author: https://github.com/Linmoqian
  */
 import { jointPreview } from "../JointPreview";
 import { agentClient } from "../chat/AgentClient";
 
 export class LiveJointRunner {
-  private pending: { request: Record<string,unknown>; revision: number; hardware?: boolean } | undefined;
+  private pending: { request: Record<string,unknown>; revision: number } | undefined;
   private hardwarePort="";
-  private hardwareKey="";
   private timer: ReturnType<typeof setTimeout> | undefined;
   private busy = false;
   private stopped = false;
@@ -28,32 +27,21 @@ export class LiveJointRunner {
   get controllingHardware():boolean {return !!this.hardwarePort;}
   activateHardware(port:string):void {this.hardwarePort=port;}
   releaseHardware():void {
-    this.hardwarePort="";this.hardwareKey="";
-    if(this.pending?.hardware){this.pending=undefined;clearTimeout(this.timer);this.timer=undefined;}
+    this.hardwarePort="";
   }
-  scheduleHardware(port:string,positions:Record<string,number>):void {
-    if(this.stopped||this.hardwarePort!==port)return;
-    const key=port+JSON.stringify(Object.entries(positions).map(([n,v])=>[n,Math.round(v*4095/(2*Math.PI))]));
-    if(key===this.hardwareKey)return;
-    this.hardwareKey=key;
-    this.pending={request:{action:"hardware_drag",port,positions},revision:jointPreview.revision,hardware:true};
-    if(!this.timer)this.timer=setTimeout(()=>{this.timer=undefined;void this.send();},100);
-  }
-
   private async send(): Promise<void> {
-    if (this.stopped || this.busy || !this.pending || (this.paused&&!this.pending.hardware)) return;
-    const { request, revision, hardware } = this.pending;
+    if (this.stopped || this.busy || !this.pending || this.paused) return;
+    const { request, revision } = this.pending;
     this.pending = undefined;
     this.busy = true;
     try {
       const result = await agentClient.request<{ output?: string; limited?:boolean }>(request);
-      const receipt = hardware?result:JSON.parse((result.output??"").trim().split("\n").slice(-1)[0] || "{}");
+      const receipt = JSON.parse((result.output??"").trim().split("\n").slice(-1)[0] || "{}");
       if (!this.stopped && receipt.limited && receipt.applied_joint_positions) {
         jointPreview.confirm(receipt.applied_joint_positions, revision);
       }
       if (!this.stopped && !this.pending) this.status(receipt.limited ? "已到运动边界" : "已同步");
     } catch (error) {
-      if(hardware)this.hardwareKey="";
       if (!this.stopped) this.status("同步失败，请重试");
     } finally {
       this.busy = false;

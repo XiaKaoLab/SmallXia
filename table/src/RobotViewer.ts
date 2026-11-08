@@ -48,6 +48,7 @@ export class RobotViewer {
   private playbackId = "";
   private playbackPaused = false;
   private readonly stopPreview: () => void;
+  private readonly stopPosePreview: () => void;
   private readonly motion = new ModelMotionClient((positions, camera, playback) => {
     this.playbackPaused = playback?.status === "paused";
     if (playback && ["running", "paused"].includes(playback.status) && (playback.id !== this.playbackId || this.training.active)) {
@@ -79,16 +80,8 @@ export class RobotViewer {
     this.cameraCalibration = new CameraCalibrationDisplay(host);
     this.spiritSpeech = new QiLingSpeechBubble(host);
     this.cameraRig = new VirtualCameraRig(this.scene, host);
-    this.stopPreview = jointPreview.subscribe((name, angle) => {
-      if(this.controlFeedback.isHardware)return angle;
-      const joint = this.robot?.joints[name];
-      if (!joint || !this.poseGuard) return joint?.jointValue[0] ?? 0;
-      const result = this.poseGuard.limit({ [name]: angle });
-      this.robot!.setJointValues(result.pose);
-      this.targets = { ...result.pose };
-      if (result.blocked) window.dispatchEvent(new CustomEvent("table:pose-limit", { detail: result.reason }));
-      return result.pose[name];
-    });
+    this.stopPreview = jointPreview.subscribe((name, angle) => this.previewPose({ [name]: angle })[name] ?? angle);
+    this.stopPosePreview = jointPreview.subscribePose(positions => this.previewPose(positions));
     this.scene.background = new THREE.Color("#e8edf0");
     this.camera.up.set(0, 0, 1);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -151,6 +144,15 @@ export class RobotViewer {
         this.controls.update();
       }).catch((error) => console.error("机械臂网格加载失败", error));
     }, undefined, (error) => console.error("机械臂 URDF 加载失败", error));
+  }
+
+  private previewPose(positions: Record<string, number>): Record<string, number> {
+    if(this.controlFeedback.isHardware || !this.robot || !this.poseGuard)return positions;
+    const result = this.poseGuard.limit(positions);
+    this.robot.setJointValues(result.pose);
+    this.targets = { ...result.pose };
+    if(result.blocked)window.dispatchEvent(new CustomEvent("table:pose-limit", { detail: result.reason }));
+    return result.pose;
   }
 
   private setJointTargets(positions: Record<string, number>): void {
@@ -254,6 +256,7 @@ export class RobotViewer {
     this.coordinateCalibration.dispose();
     this.training.dispose();
     this.stopPreview();
+    this.stopPosePreview();
     this.poseGuard?.dispose();
     this.observer.disconnect();
     this.renderer.setAnimationLoop(null);

@@ -1,11 +1,12 @@
 /** 功能：暂存滑杆的即时模型姿态，防止旧 API 轮询覆盖尚未同步的目标。
- * Created on 2026-11-02; Updated on 2026-11-02
+ * Created on 2026-11-02; Updated on 2026-11-08
  * @author: https://github.com/Linmoqian
  */
 class JointPreview {
   revision = 0;
   displayed: Record<string, number> = {};
   private overrides: Record<string, number> = {};
+  private poseListeners = new Set<(positions: Record<string, number>) => Record<string, number>>();
   private listeners = new Set<(name: string, angle: number) => number>();
 
   stage(name: string, angle: number): number {
@@ -14,6 +15,19 @@ class JointPreview {
     this.revision++;
     this.overrides[name] = accepted;
     return accepted;
+  }
+
+  stagePose(positions: Record<string, number>): Record<string, number> {
+    let accepted = { ...positions };
+    this.poseListeners.forEach(listener => { accepted = listener(accepted); });
+    this.revision++;
+    this.overrides = { ...accepted };
+    return accepted;
+  }
+
+  subscribePose(listener: (positions: Record<string, number>) => Record<string, number>): () => void {
+    this.poseListeners.add(listener);
+    return () => { this.poseListeners.delete(listener); };
   }
 
   confirm(positions: Record<string, number>, revision: number): void {

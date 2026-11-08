@@ -86,13 +86,10 @@ export function BlocksSidebar() {
         if (abort.signal.aborted) return;
         Blockly.setLocale(Object.fromEntries(Object.entries(Zh).filter((entry): entry is [string, string] => typeof entry[1] === "string")));
         registerPositionBlock(limits, (block) => {
-          const target=String(block.getFieldValue("TARGET"));
-          if(target.startsWith("serial:")){
-            live.scheduleHardware(target.slice(7),Object.fromEntries(JOINTS.map(([name])=>[name,Number(block.getFieldValue(name))])));
-          }else{
-            const source = pythonGenerator.forBlock[BLOCK_TYPE](block, pythonGenerator);
-            if (typeof source === "string") live.schedule(source);
-          }
+          // 编辑 COM 目标也只做本地仿真预览；真机动作仅由运行程序下发。
+          if(block.getFieldValue("TARGET")!=="simulation")return;
+          const source = pythonGenerator.forBlock[BLOCK_TYPE](block, pythonGenerator);
+          if (typeof source === "string") live.schedule(source);
         });
         registerCameraBlock();
         registerCalibrationBlock();

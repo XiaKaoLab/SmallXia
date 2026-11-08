@@ -1,5 +1,5 @@
 /** 功能：定义唯一机械臂位置积木并生成调用模型 API 的 Python。
- * Created on 2026-11-01; Updated on 2026-11-04
+ * Created on 2026-11-01; Updated on 2026-11-08
  * @author: https://github.com/Linmoqian
  */
 import * as Blockly from "blockly/core";
@@ -27,15 +27,16 @@ export function registerPositionBlock(limits: Limits, onSlide: (block: Blockly.B
         this.appendDummyInput().appendField(`M${index + 1} ${label}`)
           .appendField(new JointAngleSlider(Math.max(lower, Math.min(0, upper)), lower, upper, `M${index + 1} ${label}`, (angle) => {
             if (this.isInFlyout) return angle;
-            if(this.getFieldValue("TARGET")==="simulation")window.dispatchEvent(new Event("table:hardware-preview-clear"));
-            const accepted = jointPreview.stage(name, angle);
-            this.setFieldValue(String(accepted), name);
+            window.dispatchEvent(new CustomEvent("table:robot-view-target", { detail: { target: "simulation" } }));
+            const positions = Object.fromEntries(JOINTS.map(([joint]) => [joint, joint === name ? angle : Number(this.getFieldValue(joint))]));
+            const accepted = jointPreview.stagePose(positions);
+            for (const [joint, value] of Object.entries(accepted)) this.setFieldValue(String(value), joint);
             onSlide(this);
-            return accepted;
+            return accepted[name];
           }), name);
       }
       this.setColour("#638b80");
-      this.setTooltip("选择机械臂，拖动滑杆设置角度。");
+      this.setTooltip("拖动滑杆预览仿真，点击运行后执行所选机械臂动作。");
       this.setPreviousStatement(true); this.setNextStatement(true);
     },
   };
