@@ -1,17 +1,19 @@
 /** 功能：自适应消息输入框、中文输入保护与发送/停止交互。
- * Created on 2026-11-01; Updated on 2026-11-03
+ * Created on 2026-11-01; Updated on 2026-11-08
  * @author: https://github.com/Linmoqian
  */
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { ArrowUp, Square, X } from "lucide-react";
 import { SlashCommands } from "./SlashCommands";
+import { ChatTargetSelect } from "./ChatTargetSelect";
 
 interface Props {
   value: string; onChange: (value: string) => void; onSend: () => void; onStop: () => void;
   busy: boolean; disabled: boolean;
+  target: string; onTargetChange: (target: string) => void;
 }
 
-export function Composer({ value, onChange, onSend, onStop, busy, disabled }: Props) {
+export function Composer({ value, onChange, onSend, onStop, busy, disabled, target, onTargetChange }: Props) {
   const input = useRef<HTMLTextAreaElement>(null);
   const composing = useRef(false);
   const menuId = useId();
@@ -77,6 +79,7 @@ export function Composer({ value, onChange, onSend, onStop, busy, disabled }: Pr
     }} />
     </div>
     <div className="composer-tools">
+      <ChatTargetSelect value={target} onChange={onTargetChange} disabled={busy || disabled} />
       {busy ? <button type="button" className="send-button" aria-label="停止生成" onClick={onStop}><Square size={13} fill="currentColor" /></button> : <button type="submit" className="send-button" aria-label="发送消息" disabled={disabled || !value.trim()}><ArrowUp size={18} /></button>}
     </div>
   </form>;

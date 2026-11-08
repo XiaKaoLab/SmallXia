@@ -1,5 +1,5 @@
 /** 功能：四分之一宽度的聊天侧栏，整合会话、技能和流式消息。
- * Created on 2026-11-01; Updated on 2026-11-03
+ * Created on 2026-11-01; Updated on 2026-11-08
  * @author: https://github.com/Linmoqian
  */
 import { UiMessage } from "../shared/UiMessage";
@@ -53,7 +53,7 @@ export function ChatSidebar() {
       {notice && <div className="chat-notice error" role="alert"><CircleAlert size={14} /><span>{notice}</span><IconButton label="重新连接" onClick={() => { setRefreshError(""); void chat.refresh().catch((failure: unknown) => setRefreshError(String(failure))); }}><RefreshCw size={14} /></IconButton></div>}
       {!chat.desktop && <p className="chat-notice">请打开桌面应用</p>}
       {chat.skills.length > 0 && <div className="selected-skills">{chat.skills.map((skill) => <button key={skill} disabled={chat.busy} onClick={() => chat.setSkills((values) => values.filter((value) => value !== skill))}><WandSparkles size={11} />{skill}<X size={11} /></button>)}</div>}
-      <Composer value={draft} onChange={setDraft} onSend={send} onStop={() => { void chat.stop(); }} busy={chat.busy} disabled={!chat.desktop || !chat.data.configured || chat.loading} />
+      <Composer value={draft} onChange={setDraft} onSend={send} onStop={() => { void chat.stop(); }} busy={chat.busy} disabled={!chat.desktop || !chat.data.configured || chat.loading} target={chat.target} onTargetChange={chat.setTarget} />
     </footer>
   </aside>;
 }

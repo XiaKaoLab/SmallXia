@@ -1,5 +1,5 @@
 """为 Tauri 提供单请求 JSONL 桥接，复用会话、技能与 Agent 流。
-Created on 2026-11-01; Updated on 2026-11-05
+Created on 2026-11-01; Updated on 2026-11-08
 @author: https://github.com/Linmoqian
 """
 
@@ -144,7 +144,12 @@ class DesktopBridge:
             from ..communication.program_runner import PythonProgramRunner
             self.emit({"type": "data", "data": PythonProgramRunner().run(request.get("source"))})
         elif action == "run":
+            target = request.get('motion_target', 'simulation')
+            import re
+            if target != 'simulation' and (not isinstance(target, str) or not re.fullmatch(r'serial:COM[1-9][0-9]*', target)):
+                raise ValueError('机械臂执行目标无效')
             with OpenAILLM(LLMConfig.from_env(), enable_mcp=True) as llm:
+                llm.motion_target = target
                 agent = SimpleAgent(llm, self.sessions, self.skills)
                 with closing(agent.stream(
                     request["session_id"], request["text"],

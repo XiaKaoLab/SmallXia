@@ -1,5 +1,5 @@
 /** 功能：管理会话恢复、流式消息状态及停止生成。
- * Created on 2026-11-01; Updated on 2026-11-03
+ * Created on 2026-11-01; Updated on 2026-11-08
  * @author: https://github.com/Linmoqian
  */
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -16,6 +16,15 @@ export function useChat() {
   const [data, setData] = useState(empty);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
+  const [target, updateTarget] = useState(() => {
+    try { const saved = localStorage.getItem("xiaoxia.chat-target"); return saved && /^serial:COM[1-9][0-9]*$/.test(saved) ? saved : "simulation"; }
+    catch { return "simulation"; }
+  });
+  const setTarget = (value: string) => {
+    if (value !== "simulation" && !/^serial:COM[1-9][0-9]*$/.test(value)) return;
+    updateTarget(value);
+    try { localStorage.setItem("xiaoxia.chat-target", value); } catch { /* 本轮选择仍有效。 */ }
+  };
   const [busy, setBusy] = useState(false);
   const [bootLoading, setBootLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -105,7 +114,7 @@ export function useChat() {
             return { ...MessageTimeline.text(message, suffix), content: event.result.text, choices: event.result.choices ?? [], status: "completed", result: event.result };
           });
         }
-      });
+      }, target);
       if (!completed && !request.cancelled) throw new Error("回答在完成前结束，请重试");
     } catch (failure) {
       if (!request.cancelled && !completed) {
@@ -126,7 +135,7 @@ export function useChat() {
         }
       }
     }
-  }, [data.configured, loading, navigate, refresh, sessionId, skills]);
+  }, [data.configured, loading, navigate, refresh, sessionId, skills, target]);
 
   const stop = useCallback(async () => {
     const request = active.current;
@@ -146,5 +155,5 @@ export function useChat() {
     } catch (failure) { setError(String(failure)); }
   }, [busy, loading, refresh, sessionId]);
 
-  return { data, messages, skills, setSkills, busy, loading, error, sessionId, send, stop, clear, refresh, desktop: agentClient.desktop };
+  return { data, messages, skills, setSkills, target, setTarget, busy, loading, error, sessionId, send, stop, clear, refresh, desktop: agentClient.desktop };
 }

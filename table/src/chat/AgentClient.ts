@@ -99,12 +99,12 @@ export class AgentClient {
     if (failure) throw new Error(failure);
   }
 
-  async stream(requestId: string, sessionId: string, text: string, skills: string[], onEvent: (event: AgentEvent) => void): Promise<void> {
+  async stream(requestId: string, sessionId: string, text: string, skills: string[], onEvent: (event: AgentEvent) => void, motionTarget = "simulation"): Promise<void> {
     let failure = "";
     let activeTool = "";
     let activeName = "";
     try {
-      await this.dispatch<AgentEvent>(requestId, { action: "run", session_id: sessionId, text, skill_names: skills }, (event) => {
+      await this.dispatch<AgentEvent>(requestId, { action: "run", session_id: sessionId, text, skill_names: skills, motion_target: motionTarget }, (event) => {
         if (event.type === "error") failure = event.message;
         onEvent(event);
         if (event.type === "tool_started") {

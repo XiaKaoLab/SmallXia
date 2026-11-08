@@ -38,6 +38,11 @@ def stream_with_mcp(llm, messages, instructions):
                 "积木程序可能包含真机控制；只有用户明确请求真机运动时，才创建或运行启用真机控制积木。"
                 "真机控制及只读采集遵守既有身份、校准和已验证坐标配置；不得修改 verified 或身份字段绕过检查。")
     profile = getattr(llm, 'mcp_profile', 'default')
+    selected_target = getattr(llm, 'motion_target', None)
+    if selected_target:
+        guidance += (f'\n用户在本轮输入框中选择的执行目标为 {selected_target}。这是本轮明确的目标选择，'
+                     '运动请求未另行指定目标时使用该目标，不要再次询问仿真还是真机。'
+                     '选择本身不触发运动；只有消息请求运动才执行。消息明确指定其他目标时以消息为准。')
     context = getattr(llm,'mcp_context',{})
     extra_guidance = BlockProgrammingGuide.instructions + VisualUnderstandingGuide.instructions
     if profile == 'qiling':
