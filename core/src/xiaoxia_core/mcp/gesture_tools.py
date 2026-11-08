@@ -18,7 +18,7 @@ class GestureTools:
         return {k: catalog[k] for k in ('source', 'revision', 'license', 'representation', 'note', 'actions')}
 
     def gesture_play(self, actions: list[str], target: str = 'simulation', amplitude_deg: float = 15, variant: int = 0) -> dict:
-        """将动作按列表顺序编排为一个后台程序，例如[wave,bow,wave]，可重复名称。target为simulation或serial:COM17。仅在用户要求对应目标运动时调用；真机使用舵机内部轨迹逐关键姿态到位，不复现原30FPS时序。默认相对当前姿态每轴最大变化15度，variant为0起示例编号。先查询动作库；返回任务后用gesture_status确认，超时不重发。"""
+        """将动作按列表顺序编排为一个后台程序，例如[wave,bow,wave]，可重复名称。target为simulation或serial:COM17。真机可从只读状态自动连接使能，无需先做手工映射；使用舵机内部轨迹按关键姿态衔接，不逐帧等严格到位、不复现原30FPS时序。默认相对当前姿态每轴最大变化15度，按可用行程展开并报告实际幅度；variant为0起示例编号。用户要求所选目标运动时直接调用；返回任务后用gesture_status确认，超时不重发。"""
         if self.bound_target is not None:
             if target != self.bound_target: raise ValueError('只能调用器灵绑定目标：'+self.bound_target)
             if target != 'simulation' and not self.motion_enabled: raise ValueError('器灵未启用真机运动')

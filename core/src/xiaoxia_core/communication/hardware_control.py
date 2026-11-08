@@ -1,5 +1,5 @@
 """为已验证坐标配置的从臂提供显式使能、限速运动与失联释放，不自动改写校准。
-Created on 2026-11-02; Updated on 2026-11-05
+Created on 2026-11-02; Updated on 2026-11-08
 @author: https://github.com/Linmoqian
 """
 from copy import deepcopy
@@ -189,7 +189,8 @@ class HardwareControlSession:
                 return
             self.arm.arm()
             with self.lock:
-                self.target = current
+                # 读数可在校准端点外几个刻度；初始目标取最近可达点，实测起始姿态仍保留用于回位。
+                self.target = {name: max(self.arm.limits.joints[name].lower, min(self.arm.limits.joints[name].upper, value)) for name,value in current.items()}
                 self.feedback_at=monotonic()
                 self.state.update(status='ready', joint_positions=current,render_joint_positions=self.arm.render_positions(current),start_joint_positions=dict(current),observed_at_ns=time_ns())
                 self.lease = monotonic()

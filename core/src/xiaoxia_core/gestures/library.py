@@ -57,20 +57,51 @@ class GestureLibrary:
                 model = TableModelTools(); anchor = model.table_get_state()['joint_positions']
                 validate = model.limits.validate
             amplitude = math.radians(amplitude_deg)
+            scales = dict.fromkeys(JOINTS, amplitude)
+            if hardware:
+                # 实测起点可能在校准边界外几个刻度；目标取最近可达点，动作朝可用行程展开。
+                control_anchor = {n: max(arm.limits.joints[n].lower, min(arm.limits.joints[n].upper, state['joint_positions'][n])) for n in JOINTS}
+                anchor = arm.render_positions(control_anchor)
+                for index, name in enumerate(JOINTS):
+                    values = [f['pose'][index] for e in episodes for f in e['frames']]
+                    bounds = arm.limits.joints[name]
+                    positive_room = bounds.upper-control_anchor[name]
+                    negative_room = control_anchor[name]-bounds.lower
+                    candidates = []
+                    for direction in (1, -1):
+                        positive = max(0, max(values)*direction, min(values)*direction)
+                        negative = max(0, -max(values)*direction, -min(values)*direction)
+                        size = min(amplitude, positive_room/positive if positive else amplitude, negative_room/negative if negative else amplitude)
+                        candidates.append((size, direction))
+                    size, direction = max(candidates, key=lambda item: item[0])
+                    scales[name] = max(0, size-1e-7)*direction
+                print(json.dumps({'gesture_retarget': {'source': 'measured_hardware_pose', 'axis_amplitude_deg': {n: math.degrees(s) for n,s in scales.items()}, 'note': '负幅度表示朝可用行程反向摆动，幅度不足的轴缩小'}}, ensure_ascii=False), flush=True)
             # 全序列预检；越界时明确报错，不静默裁剪或改变动作语义。
             for episode in episodes:
                 frames = [*episode['frames'], {'t': episode['duration']+.75, 'pose': [0.0]*6}]
                 for frame in frames:
-                    validate({n: anchor[n]+amplitude*v for n,v in zip(JOINTS, frame['pose'])})
+                    validate({n: anchor[n]+scales[n]*v for n,v in zip(JOINTS, frame['pose'])})
             for name, episode in zip(actions, episodes):
                 print(json.dumps({'gesture': {'name': name, 'target': target, 'physical': hardware is not None, 'source_episode': episode['episode'], 'representation': 'relative_shape_normalized'}}), flush=True)
                 previous = {'t': 0, 'pose': [0.0]*6}
                 frames = [*episode['frames'], {'t': episode['duration']+.75, 'pose': [0.0]*6}]
                 for frame in frames:
                     if self.stopped(): return
-                    pose = {n: anchor[n]+amplitude*v for n,v in zip(JOINTS, frame['pose'])}
+                    pose = {n: anchor[n]+scales[n]*v for n,v in zip(JOINTS, frame['pose'])}
                     if hardware:
-                        hardware.move(pose, frame='so100_mid_calib')
+                        # 示教动作连续衔接，不在每个小关键帧等待严格位置误差或触发停滞判定。
+                        measured = BlockWorkflow.http(hardware.endpoint)
+                        receipt = BlockWorkflow.http(hardware.endpoint+'/motions', {'joint_positions': pose, 'unit': 'rad', 'frame': 'so100_mid_calib'})
+                        accepted = receipt.get('target', measured['joint_positions'])
+                        travel = max(abs(accepted[n]-measured['joint_positions'][n]) for n in JOINTS)
+                        duration = max(frame['t']-previous['t'], travel/max(measured.get('max_velocity', .15), .001)+.15)
+                        deadline = monotonic()+duration
+                        while monotonic()<deadline:
+                            if self.stopped(): return
+                            observed = BlockWorkflow.http(hardware.endpoint)
+                            if observed['status'] not in ('ready', 'moving'):
+                                raise RuntimeError(observed.get('error') or '真机控制已停止')
+                            sleep(.05)
                     else:
                         duration = max(0, frame['t']-previous['t']); began = monotonic()
                         while True:
