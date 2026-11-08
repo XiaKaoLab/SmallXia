@@ -1,5 +1,5 @@
 /** 功能：启动并观察后台积木任务，增量传递回执，刷新后可重新连接或停止。
- * Created on 2026-11-02; Updated on 2026-11-05
+ * Created on 2026-11-02; Updated on 2026-11-08
  * @author: https://github.com/Linmoqian
  */
 import type { QiLingReceipt } from "./QiLingBlocks";
@@ -7,6 +7,7 @@ import { agentClient } from "../chat/AgentClient";
 
 export interface ProgramJob { id: string; status: string; log_tail?: string; error?: string; created_at_ns?: number; process_exited?: boolean }
 export interface ProgramReceipt {
+  robot_view?: {target:string;block_id?:string};
   red_tracking?: {id:string;source:string;physical:boolean};
   qiling?: QiLingReceipt;
   hardware_feedback?: QiLingReceipt & {port:string};
@@ -46,6 +47,10 @@ export class ProgramClient {
         for (const line of lines) {
           try {
             const value = JSON.parse(line) as ProgramReceipt;
+            const target = value.robot_view?.target ?? (["started", "loaded"].includes(value.qiling?.type ?? "") ? value.qiling?.target : undefined);
+            if (target === "simulation" || (typeof target === "string" && /^serial:COM[1-9][0-9]*$/.test(target))) {
+              window.dispatchEvent(new CustomEvent("table:robot-view-target", { detail: { target } }));
+            }
             this.receipt(value);
             if (value.workflow) {
               const phases:Record<string,string>={loading_policy:"加载策略…",warming_policy:"准备动作…",inferencing:"运行策略"};

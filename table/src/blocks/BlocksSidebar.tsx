@@ -1,7 +1,8 @@
 /** 功能：左侧分类 Blockly 工作区与 Python 后台运行。
- * Created on 2026-11-01; Updated on 2026-11-05
+ * Created on 2026-11-01; Updated on 2026-11-08
  * @author: https://github.com/Linmoqian
  */
+import { BlockViewRouting } from "./BlockViewRouting";
 import { registerCoordinateBlock } from "./coordinateBlock";
 import { QiLingBlocks, qiLingCatalog } from "./QiLingBlocks";
 import { UiMessage } from "../shared/UiMessage";
@@ -104,6 +105,7 @@ export function BlocksSidebar() {
         new DataBlocks().register();
         new WorkflowBlocks().register();
         new HardwareBlocks().register();
+        new BlockViewRouting().register();
         pythonGenerator.addReservedWords("CameraFrameClient,virtual_frame,real_frame,_block_wait,_ball_job,_onnx_job");
         workspace = Blockly.inject(element, {
           media: `${import.meta.env.BASE_URL}blockly-media/`,

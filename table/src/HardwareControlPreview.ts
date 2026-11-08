@@ -13,10 +13,20 @@ export class HardwareControlPreview {
   private phase="";private disposed=false;private requestId="";
   private following=false;
   private hardware=false; private generation=0;
+  private requestedTarget="";
+  private readonly route=(raw:Event)=>{
+    const target=(raw as CustomEvent<{target?:string}>).detail?.target;
+    if(target!=="simulation"&&(typeof target!=="string"||!/^serial:COM[1-9][0-9]*$/.test(target)))return;
+    const hardware=target!=="simulation";
+    const changed=hardware&&this.requestedTarget!==target;
+    this.requestedTarget=hardware?target:"";
+    if(hardware!==this.hardware||changed)this.setMode(hardware);
+  };
   private readonly controls=document.createElement("div");
   private readonly modeButton=document.createElement("button");
   get isHardware():boolean { return this.hardware; }
   private setMode(hardware:boolean):void {
+    const modeChanged=this.hardware!==hardware;
     this.hardware=hardware;this.generation++;clearTimeout(this.retry);
     if(this.requestId)void agentClient.cancel(this.requestId).catch(()=>undefined);
     this.requestId="";this.pose=null;this.smoothed=null;this.received=0;this.rendered=0;this.streamAt=0;this.following=false;
@@ -26,7 +36,7 @@ export class HardwareControlPreview {
     this.modeButton.title=hardware?"切换到仿真视图":"切换到真机只读视图";
     this.label.hidden=!hardware;this.label.textContent=hardware?"等待反馈":"";
     delete this.label.dataset.observedAt;delete this.label.dataset.phase;
-    this.changed(hardware);
+    if(modeChanged)this.changed(hardware);
     if(hardware&&agentClient.desktop)void this.stream(this.generation);
   }
   private retry?:ReturnType<typeof setTimeout>;
@@ -41,9 +51,10 @@ export class HardwareControlPreview {
     this.controls.className="robot-view-switch";
     this.modeButton.type="button";this.modeButton.className="robot-view-mode";
     this.modeButton.setAttribute("aria-label","切换仿真与真机只读视图");
-    this.modeButton.onclick=()=>this.setMode(!this.hardware);
+    this.modeButton.onclick=()=>{this.requestedTarget="";this.setMode(!this.hardware);};
     this.label.className="hardware-control-preview-label";this.label.setAttribute("role","status");this.label.setAttribute("aria-live","polite");
     this.controls.append(this.modeButton,this.label);host.append(this.controls);
+    window.addEventListener("table:robot-view-target",this.route);
     window.addEventListener("table:hardware-control-feedback",this.receive);
     window.addEventListener("table:hardware-control-ended",this.ended);
     window.addEventListener("table:hardware-preview-clear",this.clear);
@@ -54,6 +65,7 @@ export class HardwareControlPreview {
   private accept(event:Feedback):boolean{
     if(!this.hardware||this.disposed)return false;
     const target=typeof event.target==="string"?event.target:(event.port?`serial:${event.port}`:"");
+    if(this.requestedTarget&&target!==this.requestedTarget)return false;
     if(target===this.target)this.following=event.read_only_following===true||["ready","moving","returning_zero"].includes(event.status??"");
     if(target===this.target&&["stopped","failed"].includes(event.status??"")){this.phase=event.observation_error?"等待反馈":"已停止";this.label.dataset.phase=this.phase;}
     const positions=event.render_joint_positions;
@@ -74,7 +86,7 @@ export class HardwareControlPreview {
       await agentClient.hardwarePreview<{sessions:Feedback[]}>(requestId,state=>{
         if(this.disposed||generation!==this.generation||!this.hardware)return;
         const active=state.sessions.filter(s=>s.read_only_following||["ready","moving","returning_zero"].includes(s.status??""));
-        const selected=active.find(s=>`serial:${s.port}`===this.target)??active[0]??state.sessions.find(s=>`serial:${s.port}`===this.target)??state.sessions[state.sessions.length - 1];
+        const selected=this.requestedTarget?state.sessions.find(s=>`serial:${s.port}`===this.requestedTarget):active.find(s=>`serial:${s.port}`===this.target)??active[0]??state.sessions.find(s=>`serial:${s.port}`===this.target)??state.sessions[state.sessions.length - 1];
         if(selected&&this.accept(selected))this.streamAt=performance.now();
       });
     }catch{ /* 服务重启后重新订阅；从不重发电机动作。 */ }
@@ -92,6 +104,7 @@ export class HardwareControlPreview {
   }
   dispose():void {
     this.disposed=true;this.generation++;clearTimeout(this.retry);if(this.requestId)void agentClient.cancel(this.requestId).catch(()=>undefined);
+    window.removeEventListener("table:robot-view-target",this.route);
     window.removeEventListener("table:hardware-control-feedback",this.receive);window.removeEventListener("table:hardware-control-ended",this.ended);window.removeEventListener("table:hardware-preview-clear",this.clear);this.controls.remove();
   }
 }
