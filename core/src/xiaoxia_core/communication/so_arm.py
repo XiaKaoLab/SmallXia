@@ -1,5 +1,5 @@
 """复用 LeRobot Feetech 总线实现 SO-100/101 主从臂，连接时只读且不自动校准。
-Created on 2026-11-01; Updated on 2026-11-05
+Created on 2026-11-01; Updated on 2026-11-08
 @author: https://github.com/Linmoqian
 """
 
@@ -173,6 +173,8 @@ class SOArmTransport(RobotTransport):
     @property
     def control_diagnostics(self):
         return {'stabilizer':'pid_deadband', 'last_sent_goal_ticks':dict(self._last_ticks or {}),
+                'pid_load_compensation':self.pid_compensation or {},
+                'pid_moving_joints':[name for name,moving in self._pid.moving.items() if moving] if self._pid else [],
                 'pid_holding_joints':[name for name,locked in self._pid.locked.items() if locked] if self._pid else []}
 
     def disconnect(self) -> None:
