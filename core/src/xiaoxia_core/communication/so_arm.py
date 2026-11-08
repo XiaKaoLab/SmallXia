@@ -15,7 +15,7 @@ from .joint_pid import JointPID
 
 
 class SOArmTransport(RobotTransport):
-    def __init__(self, port: str, calibration: ArmCalibration, role: str, max_velocity: float = 0.25, timeout: float = 0.25, *, identity_confirmed: bool = False, pid_compensation=None) -> None:
+    def __init__(self, port: str, calibration: ArmCalibration, role: str, max_velocity: float = 0.25, timeout: float = 0.25, *, identity_confirmed: bool = False, pid_compensation=None, software_pid_enabled: bool = True) -> None:
         if role not in ("leader", "follower") or not port:
             raise ValueError("需要明确主从角色和串口")
         if not all(isfinite(v) and v > 0 for v in (max_velocity, timeout)):
@@ -26,6 +26,9 @@ class SOArmTransport(RobotTransport):
         self.identity_confirmed = identity_confirmed
         JointPID.validate_compensation(pid_compensation, calibration.limits.joints)
         self.pid_compensation = pid_compensation
+        if type(software_pid_enabled) is not bool:
+            raise ValueError('软件外环开关必须为布尔值')
+        self.software_pid_enabled = software_pid_enabled
         self._bus = None
         self._armed = False
         self._trajectory = None
@@ -124,7 +127,7 @@ class SOArmTransport(RobotTransport):
                 raise RuntimeError("从臂力矩使能回读不完整")
             self._last_command, self._last_sent = dict(current), monotonic()
             self._trajectory=JointTrajectory(current,self.max_velocity)
-            self._pid=JointPID(current,self.max_velocity,compensation=self.pid_compensation)
+            self._pid=JointPID(current,self.max_velocity,compensation=self.pid_compensation) if self.software_pid_enabled else None
             self._last_ticks=dict(ticks)
         except BaseException:
             self.disconnect()
@@ -146,10 +149,10 @@ class SOArmTransport(RobotTransport):
             speed = self.max_velocity if max_velocity is None else min(self.max_velocity, max_velocity)
             if not isfinite(speed) or speed <= 0: raise ValueError('运动速度无效')
             self._trajectory.speed = speed
-            if self._pid is None:self._pid=JointPID(current,speed,compensation=self.pid_compensation)
-            target=self._pid.target(action.joint_positions)
+            if self.software_pid_enabled and self._pid is None:self._pid=JointPID(current,speed,compensation=self.pid_compensation)
+            target=self._pid.target(action.joint_positions) if self._pid else action.joint_positions
             reference=self._trajectory.step(target,max(dt,.0001))
-            pose=self._pid.step(reference,current,max(dt,.0001),speed)
+            pose=self._pid.step(reference,current,max(dt,.0001),speed) if self._pid else reference
             # 修正不可越过已确认行程；从行程外起步时保留平滑恢复轨迹。
             pose={name:max(min(reference[name],self.limits.joints[name].lower),
                   min(max(reference[name],self.limits.joints[name].upper),value)) for name,value in pose.items()}
@@ -172,8 +175,10 @@ class SOArmTransport(RobotTransport):
 
     @property
     def control_diagnostics(self):
-        return {'stabilizer':'pid_deadband', 'last_sent_goal_ticks':dict(self._last_ticks or {}),
-                'pid_load_compensation':self.pid_compensation or {},
+        return {'stabilizer':'pid_deadband' if self.software_pid_enabled else 'trajectory_only',
+                'software_pid_enabled':self.software_pid_enabled,
+                'last_sent_goal_ticks':dict(self._last_ticks or {}),
+                'pid_load_compensation':(self.pid_compensation or {}) if self.software_pid_enabled else {},
                 'pid_moving_joints':[name for name,moving in self._pid.moving.items() if moving] if self._pid else [],
                 'pid_holding_joints':[name for name,locked in self._pid.locked.items() if locked] if self._pid else []}
 
@@ -185,7 +190,7 @@ class SOArmTransport(RobotTransport):
                     if self._armed:
                         from .slow_zero_release import SlowZeroRelease
                         try:
-                            self.release_result=SlowZeroRelease(self.calibration,self.max_velocity,self.release_feedback,target=self._return_pose,pid_compensation=self.pid_compensation).run(bus)
+                            self.release_result=SlowZeroRelease(self.calibration,self.max_velocity,self.release_feedback,target=self._return_pose,pid_compensation=self.pid_compensation,software_pid_enabled=self.software_pid_enabled).run(bus)
                         except Exception as error:
                             self.release_result={'zero_reached':False,'error':str(error)}
                             raise

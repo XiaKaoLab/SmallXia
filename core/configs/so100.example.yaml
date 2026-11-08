@@ -1,5 +1,5 @@
 # SO-100/101 共用后端；填写真实主从端口和分别校准的文件。
-# Created on 2026-11-01; Updated on 2026-11-05
+# Created on 2026-11-01; Updated on 2026-11-08
 # @author: https://github.com/Linmoqian
 robot: so100
 device_identity_confirmed: false
@@ -16,6 +16,8 @@ follower:
   port: null
   calibration: null
   mapping: null
+  # false 时仅下发限速平滑轨迹，完全旁路软件位置外环；回位也使用同一模式。
+  software_pid_enabled: true
   # 逐轴实测后再填写，例如 shoulder_lift: {ki: 0.4, max_trim_deg: 2}。
   # 为空时保持无积分外环，不能把其他机械臂的负载补偿直接套用。
   pid_load_compensation: {}
