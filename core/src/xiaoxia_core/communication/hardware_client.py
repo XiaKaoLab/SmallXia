@@ -1,5 +1,5 @@
 """供积木显式连接已验证从臂、等待限速动作到位，并在结束时释放控制。
-Created on 2026-11-02; Updated on 2026-11-05
+Created on 2026-11-02; Updated on 2026-11-08
 @author: https://github.com/Linmoqian
 """
 import re
@@ -42,8 +42,8 @@ class HardwareClient:
                     raise
             sleep(.05)
 
-    def move(self, positions):
-        receipt = BlockWorkflow.http(self.endpoint + '/motions', {'joint_positions': positions, 'unit': 'rad'})
+    def move(self, positions, frame='control'):
+        receipt = BlockWorkflow.http(self.endpoint + '/motions', {'joint_positions': positions, 'unit': 'rad', 'frame': frame})
         return self.wait(motion_id=receipt['motion_id'])
 
     def stop(self):
@@ -87,12 +87,12 @@ class HardwareClient:
             raise ValueError('；'.join(check['blockers']))
         return self.connect(profile,enable_motion=True)
 
-    def move_connected(self, positions):
+    def move_connected(self, positions, frame='control'):
         self.ensure_connected()
-        return self.move(positions)
+        return self.move(positions, frame=frame)
 
-    def interactive(self, positions):
-        """单独运行位置积木时保持控制，滑条只更新该已有会话。"""
+    def interactive(self, positions, frame='control'):
+        """运行指定坐标系的绝对位置并保持控制；编辑滑条只作仿真预览。"""
         try:self.ensure_connected()
         except ValueError as error:
             if str(error)!='请先完成关节映射':raise
@@ -112,7 +112,7 @@ class HardwareClient:
                     BlockWorkflow.http('sim2real/calibrations/'+calibration['id']+'/cancel',{})
             self.ensure_connected()
         try:
-            BlockWorkflow.http(self.endpoint+'/motions',{'joint_positions':positions,'unit':'rad'})
+            BlockWorkflow.http(self.endpoint+'/motions',{'joint_positions':positions,'unit':'rad','frame':frame})
             while True:
                 directory=os.environ.get('XIAOXIA_PROGRAM_DIR')
                 if directory and (Path(directory)/'stop').exists():break

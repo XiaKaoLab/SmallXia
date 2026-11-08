@@ -52,7 +52,7 @@ export function registerPositionBlock(limits: Limits, onSlide: (block: Blockly.B
     if (target !== "simulation") {
       if (!/^serial:COM[1-9][0-9]*$/.test(target)) throw new Error("请选择 COM 口");
       const standalone=block.workspace.getTopBlocks(false).filter(item=>item.isEnabled()).length===1&&!block.getPreviousBlock()&&!block.getNextBlock();
-      return `__import__('xiaoxia_core.communication.hardware_client', fromlist=['HardwareClient']).HardwareClient(${JSON.stringify(target.slice(7))}).${standalone?"interactive":"move_connected"}({\n${positions}\n})\n`;
+      return `__import__('xiaoxia_core.communication.hardware_client', fromlist=['HardwareClient']).HardwareClient(${JSON.stringify(target.slice(7))}).${standalone?"interactive":"move_connected"}({\n${positions}\n}, frame="so100_mid_calib")\n`;
     }
     return `# 功能：通过本机 API 设置 table 模型六轴目标。\n# Created on 2026-11-01; Updated on 2026-11-02\n# @author: https://github.com/Linmoqian\nimport json\nimport os\nimport time\nimport uuid\nfrom urllib.request import Request, urlopen\n\njoint_positions = {\n${positions}\n}\n\nrequest = Request(\n    "http://127.0.0.1:8766/api/v1/robots/table/motions",\n    data=json.dumps({\n        "request_id": str(uuid.uuid4()),\n        "expires_at_ms": int(time.time() * 1000) + 200,\n        "unit": "rad",\n        "joint_positions": joint_positions,\n    }, allow_nan=False).encode("utf-8"),\n    headers={\n        "Content-Type": "application/json",\n        "Authorization": "Bearer " + os.environ["XIAOXIA_MOTION_TOKEN"],\n    },\n    method="POST",\n)\n# 不自动重试：超时后先查询模型状态。\nwith urlopen(request, timeout=1) as response:\n    print(json.dumps(json.loads(response.read()), ensure_ascii=False))\n`;
   };
