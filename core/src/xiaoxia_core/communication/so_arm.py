@@ -15,7 +15,7 @@ from .joint_pid import JointPID
 
 
 class SOArmTransport(RobotTransport):
-    def __init__(self, port: str, calibration: ArmCalibration, role: str, max_velocity: float = 0.25, timeout: float = 0.25, *, identity_confirmed: bool = False, pid_compensation=None, software_pid_enabled: bool = True) -> None:
+    def __init__(self, port: str, calibration: ArmCalibration, role: str, max_velocity: float = 0.25, timeout: float = 0.25, *, identity_confirmed: bool = False, pid_compensation=None, software_pid_enabled: bool = True, trajectory_mode='servo') -> None:
         if role not in ("leader", "follower") or not port:
             raise ValueError("需要明确主从角色和串口")
         if not all(isfinite(v) and v > 0 for v in (max_velocity, timeout)):
@@ -29,6 +29,9 @@ class SOArmTransport(RobotTransport):
         if type(software_pid_enabled) is not bool:
             raise ValueError('软件外环开关必须为布尔值')
         self.software_pid_enabled = software_pid_enabled
+        if trajectory_mode not in ('servo', 'software'): raise ValueError('未知运动轨迹模式')
+        self.trajectory_mode = trajectory_mode
+        self._servo_trajectory = None
         self._bus = None
         self._armed = False
         self._trajectory = None
@@ -115,6 +118,9 @@ class SOArmTransport(RobotTransport):
         bus = self._connected()
         current = self.read_observation().joint_positions
         self._return_pose=dict(current)
+        if self.trajectory_mode == 'servo':
+            from .servo_trajectory import ServoTrajectory
+            self._servo_trajectory = ServoTrajectory(bus, self.calibration)
         ticks = self.calibration.ticks(current)
         bus.sync_write("Goal_Position", ticks, normalize=False)
         if bus.sync_read("Goal_Position", normalize=False) != ticks:
@@ -127,7 +133,7 @@ class SOArmTransport(RobotTransport):
                 raise RuntimeError("从臂力矩使能回读不完整")
             self._last_command, self._last_sent = dict(current), monotonic()
             self._trajectory=JointTrajectory(current,self.max_velocity)
-            self._pid=JointPID(current,self.max_velocity,compensation=self.pid_compensation) if self.software_pid_enabled else None
+            self._pid=JointPID(current,self.max_velocity,compensation=self.pid_compensation) if self.software_pid_enabled and self.trajectory_mode == 'software' else None
             self._last_ticks=dict(ticks)
         except BaseException:
             self.disconnect()
@@ -145,6 +151,13 @@ class SOArmTransport(RobotTransport):
             current = self.read_observation().joint_positions
             dt = min(elapsed, 1 / 30)
             self.limits.validate(action.joint_positions)
+            if self._servo_trajectory:
+                speed = self.max_velocity if max_velocity is None else min(self.max_velocity, max_velocity)
+                self._servo_trajectory.send(action.joint_positions, speed)
+                self._last_ticks = self.calibration.ticks(action.joint_positions)
+                self._last_command = dict(action.joint_positions)
+                self._last_sent = now
+                return
             if self._trajectory is None:self._trajectory=JointTrajectory(current,self.max_velocity)
             speed = self.max_velocity if max_velocity is None else min(self.max_velocity, max_velocity)
             if not isfinite(speed) or speed <= 0: raise ValueError('运动速度无效')
@@ -175,8 +188,11 @@ class SOArmTransport(RobotTransport):
 
     @property
     def control_diagnostics(self):
-        return {'stabilizer':'pid_deadband' if self.software_pid_enabled else 'trajectory_only',
-                'software_pid_enabled':self.software_pid_enabled,
+        return {'stabilizer':'servo_profile' if self._servo_trajectory else 'pid_deadband' if self.software_pid_enabled else 'trajectory_only',
+                'trajectory_mode': self.trajectory_mode,
+                'servo_goal_writes': self._servo_trajectory.goal_writes if self._servo_trajectory else 0,
+                'servo_speed_registers': self._servo_trajectory.speed_registers if self._servo_trajectory else {},
+                'software_pid_enabled':self.software_pid_enabled and self.trajectory_mode == 'software',
                 'last_sent_goal_ticks':dict(self._last_ticks or {}),
                 'pid_load_compensation':(self.pid_compensation or {}) if self.software_pid_enabled else {},
                 'pid_moving_joints':[name for name,moving in self._pid.moving.items() if moving] if self._pid else [],
@@ -190,7 +206,7 @@ class SOArmTransport(RobotTransport):
                     if self._armed:
                         from .slow_zero_release import SlowZeroRelease
                         try:
-                            self.release_result=SlowZeroRelease(self.calibration,self.max_velocity,self.release_feedback,target=self._return_pose,pid_compensation=self.pid_compensation,software_pid_enabled=self.software_pid_enabled).run(bus)
+                            self.release_result=SlowZeroRelease(self.calibration,self.max_velocity,self.release_feedback,target=self._return_pose,pid_compensation=self.pid_compensation,software_pid_enabled=self.software_pid_enabled,servo_trajectory=self._servo_trajectory).run(bus)
                         except Exception as error:
                             self.release_result={'zero_reached':False,'error':str(error)}
                             raise
@@ -201,7 +217,11 @@ class SOArmTransport(RobotTransport):
                             self.release_result['torque_disabled']=not any(torque.values())
                             if any(torque.values()):raise RuntimeError("部分电机力矩尚未关闭")
                 finally:
-                    bus.disconnect(disable_torque=False)
+                    try:
+                        if self._servo_trajectory and not any(bus.sync_read('Torque_Enable', normalize=False).values()):
+                            self._servo_trajectory.restore()
+                    finally:
+                        bus.disconnect(disable_torque=False)
         finally:
             self._armed = False
             self._last_command = None
@@ -209,3 +229,4 @@ class SOArmTransport(RobotTransport):
             self._pid = None
             self._last_ticks = None
             self._return_pose = None
+            self._servo_trajectory = None

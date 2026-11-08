@@ -117,6 +117,7 @@ class JointMotionDiagnostic:
         self.arm = HardwareWorkflow(CORE / 'configs' / self.args.profile).arm('follower')
         if self.arm.port != self.args.port: raise ValueError('配置串口不匹配')
         self.arm.software_pid_enabled = enabled
+        self.arm.trajectory_mode = self.args.trajectory
         self.arm.max_velocity = min(self.arm.max_velocity, .08)
         self.arm.connect(); bus = self.arm._connected()
         if self.p_value is not None:
@@ -207,6 +208,7 @@ def main():
     parser.add_argument('--hold', type=float, default=4); parser.add_argument('--mode', choices=('off','on','compare'), default='off'); parser.add_argument('--camera', default='auto')
     parser.add_argument('--compare-p', action='store_true', help='对比原始参数与 M3/M4 P=16、8；每轮结束恢复原参数')
     parser.add_argument('--p-values', type=int, nargs='+', default=[16, 8])
+    parser.add_argument('--trajectory', choices=('software', 'servo'), default='software', help='默认保留原软件轨迹对照；servo 为一次终点指令')
     args = parser.parse_args()
     if any(value < 1 or value > 254 for value in args.p_values): parser.error('P 必须在 1–254 之间')
     if not math.isfinite(args.degrees) or args.degrees <= 0 or not math.isfinite(args.hold) or args.hold < 1 or args.cycles < 1: parser.error('角度、循环次数及停留时长无效')

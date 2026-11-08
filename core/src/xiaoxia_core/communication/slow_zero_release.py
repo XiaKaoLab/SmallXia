@@ -3,22 +3,33 @@ Created on 2026-11-04; Updated on 2026-11-08
 @author: https://github.com/Linmoqian
 """
 from math import ceil
-from time import sleep
+from time import sleep, monotonic
 from ..safety import JOINTS
 from .joint_trajectory import JointTrajectory
 from .joint_pid import JointPID
 
 class SlowZeroRelease:
-    def __init__(self,calibration,speed,feedback=None,target=None,pid_compensation=None,software_pid_enabled=True):
+    def __init__(self,calibration,speed,feedback=None,target=None,pid_compensation=None,software_pid_enabled=True,servo_trajectory=None):
         self.calibration=calibration;self.speed=speed;self.feedback=feedback
         self.pid_compensation=pid_compensation
         self.software_pid_enabled=software_pid_enabled
+        self.servo_trajectory=servo_trajectory
         self.target=dict(target) if target is not None else dict.fromkeys(JOINTS,0.0)
 
     def run(self,bus):
         zero=self.target
         self.calibration.ticks(zero)
         start=self.calibration.angles(bus.sync_read('Present_Position',normalize=False))
+        if self.servo_trajectory:
+            self.servo_trajectory.send(zero, self.speed)
+            deadline=monotonic()+max(abs(start[n]-zero[n]) for n in JOINTS)/self.speed*2+5
+            while monotonic()<deadline:
+                sleep(1/30)
+                measured=self.calibration.angles(bus.sync_read('Present_Position',normalize=False))
+                if self.feedback:self.feedback(measured)
+                if max(abs(measured[n]-zero[n]) for n in JOINTS)<.025:
+                    return {'zero_reached':True,'start_reached':True,'reference':'run_start','target_joint_positions':dict(zero),'joint_positions':measured}
+            raise RuntimeError('未返回起始位置，舵机内部轨迹未到位')
         count=max(1,ceil((max(abs(start[n]-zero[n]) for n in JOINTS)/self.speed+2*self.speed/.3+1)*30))
         trajectory=JointTrajectory(start,self.speed)
         pid=JointPID(start,self.speed,compensation=self.pid_compensation) if self.software_pid_enabled else None

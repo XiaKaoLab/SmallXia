@@ -16,7 +16,9 @@ follower:
   port: null
   calibration: null
   mapping: null
-  # false 时仅下发限速平滑轨迹，完全旁路软件位置外环；回位也使用同一模式。
+  # servo 一次发送终点，舵机内部限速加减速；software 使用原上位机插值。
+  trajectory_mode: servo
+  # 仅 software 模式使用该外环开关；servo 始终旁路软件 PID。
   software_pid_enabled: true
   # 逐轴实测后再填写，例如 shoulder_lift: {ki: 0.4, max_trim_deg: 2}。
   # 为空时保持无积分外环，不能把其他机械臂的负载补偿直接套用。

@@ -116,7 +116,8 @@ class HardwareWorkflow:
         return SOArmTransport(item["port"], calibration, role,
                               max_velocity=self.config.get("max_velocity_rad_s", 0.25), identity_confirmed=True,
                               pid_compensation=item.get('pid_load_compensation'),
-                              software_pid_enabled=item.get('software_pid_enabled', True))
+                                software_pid_enabled=item.get('software_pid_enabled', True),
+                                trajectory_mode=item.get('trajectory_mode', 'servo'))
 
     def inspect(self) -> dict:
         follower = self.arm("follower")

@@ -121,6 +121,10 @@ finally:
 
 2026-11-08 真机排查状态：COM17 的本机配置已设 `follower.software_pid_enabled: false`，运动和回位均完全旁路软件 P/I/D，只下发限速、限加速度的位置轨迹。原补偿参数保留，修改配置在下次连接时生效；会话 `software_pid_enabled`、`stabilizer: trajectory_only` 可核对实际模式。外环关闭的 M4 30° 往返仍由操作者确认明显抖动，真机运动尚未验收，不应将停稳误差或仿真策略成功记录作为上真机策略的依据。
 
+后续按要求切换为 `follower.trajectory_mode: servo`（缺省亦为 servo）：每次新终点只写一次 Goal_Position，由舵机内部速度、加速度执行；相同终点与速度不重复写入，反馈读取继续。会话显示 `stabilizer: servo_profile`、`servo_goal_writes`、`servo_speed_registers`。软件 PID 在此模式不生效。使能时保存 SRAM 速度/加速度，回位同样发送起始终点并等待实测到位，失能后恢复 SRAM；不改 EEPROM Phase 或 PID。速度按 Phase BIT2 对应的单位换算，向下量化，低于舵机有效分辨率报错，不能用速度 0 冒充慢速；多轴同步发出，不保证同一时刻到达。
+
+2026-11-08 `20261108-154245` 完成内部轨迹 M4 45° 往返，`servo_goal_writes=2`（去程、回程各一次），往返各阶段内 Goal_Position 不再逐帧改变；回位失能成功。外伸端静态误差约 0.78°，最大编码器单步仍为 8 格，尚未确认肉眼平滑度改善。重复该模式使用 `python core/scripts/diagnose_joint_motion.py --trajectory servo --degrees 45 --cycles 1 --hold 17`；诊断脚本默认仍为 software，便于与旧数据对照。
+
 `python core/scripts/diagnose_joint_motion.py --mode off --degrees 30 --cycles 2 --hold 14` 可重复这组基础运动；`--mode compare` 对照外环关闭/开启。脚本独占串口采集原始目标寄存器、编码器、速度、电流、负载代理、电压和状态，结束回位失能后恢复后台只读连接。结果与腕部相机录像位于 `core/data/motion_diagnostics/`；相机和总线按主机接收时间对齐，非硬件同步，低帧率录像不能证明高频振动不存在。
 
 `--compare-p --degrees 45 --cycles 1 --hold 17` 对比原参数与 M3/M4 内部 P=16、8；`--p-values 8` 只比较原参数和 8，`--joint elbow_flex` 改测 M3。调参前保存原始 P，仅在失能时解锁、写入并读回，保留原 Lock，每轮回位失能后恢复原始 P；不改 I、D、死区和最小启动力。`parameters` 与 `parameters_after` 比较的是该轮实验参数；正常清理恢复后的参数需再次读回核实。日志包含最小启动力原始寄存器值，不把社区帖子中的“5N”当作可直接写入的物理单位。
