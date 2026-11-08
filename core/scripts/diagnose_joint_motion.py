@@ -69,13 +69,29 @@ class CameraRecorder:
 
 class JointMotionDiagnostic:
     fields = ('Present_Position', 'Goal_Position', 'Present_Velocity', 'Present_Load', 'Present_Current', 'Present_Voltage', 'Status')
-    parameters = ('P_Coefficient', 'I_Coefficient', 'D_Coefficient', 'CW_Dead_Zone', 'CCW_Dead_Zone', 'Operating_Mode')
+    parameters = ('P_Coefficient', 'I_Coefficient', 'D_Coefficient', 'Minimum_Startup_Force', 'CW_Dead_Zone', 'CCW_Dead_Zone', 'Operating_Mode')
 
     def __init__(self, args):
         self.args = args; self.arm = None; self.phase = {'mode': 'preparing', 'stage': -1}
         self.directory = CORE / 'data/motion_diagnostics' / datetime.now().strftime('%Y%m%d-%H%M%S')
         self.directory.mkdir(parents=True)
         self.report = {'port': args.port, 'joint': args.joint, 'degrees': args.degrees, 'cycles': args.cycles, 'physical': True, 'trials': [], 'timestamp_basis': 'host_receive_time', 'register_units': 'raw SDK decoded; load is PWM proxy, not measured torque'}
+        self.parameter_backup = None
+        self.p_value = None
+
+    @staticmethod
+    def write_p(bus, values):
+        if any(bus.sync_read('Torque_Enable', normalize=False).values()):
+            raise RuntimeError('内部参数只能在失能时调整')
+        for joint, value in values.items():
+            lock = bus.read('Lock', joint, normalize=False)
+            try:
+                bus.write('Lock', joint, 0, normalize=False)
+                bus.write('P_Coefficient', joint, value, normalize=False)
+                if bus.read('P_Coefficient', joint, normalize=False) != value:
+                    raise RuntimeError('内部 P 读回不一致')
+            finally:
+                bus.write('Lock', joint, lock, normalize=False)
 
     def save(self):
         (self.directory / 'report.json').write_text(json.dumps(self.report, ensure_ascii=False, indent=2), encoding='utf8')
@@ -84,16 +100,30 @@ class JointMotionDiagnostic:
         if self.arm:
             arm = self.arm; self.arm = None
             arm.disconnect()
+            if self.parameter_backup is not None:
+                arm.connect()
+                try:
+                    self.write_p(arm._connected(), self.parameter_backup)
+                    self.parameter_backup = None
+                finally:
+                    arm._connected().disconnect(disable_torque=False)
+                    arm._bus = None
             return arm.release_result
 
     def trial(self, enabled, origin):
         mode = 'outer_on' if enabled else 'outer_off'
+        if self.p_value is not None: mode += f'_p{self.p_value}'
         self.phase.update(mode=mode, stage=-1)
         self.arm = HardwareWorkflow(CORE / 'configs' / self.args.profile).arm('follower')
         if self.arm.port != self.args.port: raise ValueError('配置串口不匹配')
         self.arm.software_pid_enabled = enabled
         self.arm.max_velocity = min(self.arm.max_velocity, .08)
         self.arm.connect(); bus = self.arm._connected()
+        if self.p_value is not None:
+            self.parameter_backup = {n: bus.read('P_Coefficient', n, normalize=False) for n in ('elbow_flex', 'wrist_flex')}
+            self.report.setdefault('original_p', self.parameter_backup.copy())
+            self.save()
+            self.write_p(bus, {n: self.p_value for n in self.parameter_backup})
         before = {field: bus.sync_read(field, normalize=False) for field in self.parameters}
         start = dict(self.arm.read_observation().joint_positions)
         if origin is None: origin = dict(start)
@@ -148,7 +178,11 @@ class JointMotionDiagnostic:
             else: self.report['camera'] = {'error': '未找到指定真实相机'}
             BlockWorkflow.http(f'hardware/arms/{self.args.port}/observe-stop', {}); paused = True
             origin = None
-            for enabled in ([False, True] if self.args.mode == 'compare' else [self.args.mode == 'on']): origin = self.trial(enabled, origin)
+            if self.args.compare_p:
+                origin = self.trial(False, origin)
+                for self.p_value in self.args.p_values: origin = self.trial(False, origin)
+            else:
+                for enabled in ([False, True] if self.args.mode == 'compare' else [self.args.mode == 'on']): origin = self.trial(enabled, origin)
         except KeyboardInterrupt: self.report['cancelled'] = True
         except Exception as error: self.report['error'] = str(error)
         finally:
@@ -171,7 +205,10 @@ def main():
     parser.add_argument('--joint', default='wrist_flex', choices=('shoulder_pan','shoulder_lift','elbow_flex','wrist_flex','wrist_roll','gripper'))
     parser.add_argument('--degrees', type=float, default=4); parser.add_argument('--cycles', type=int, default=3)
     parser.add_argument('--hold', type=float, default=4); parser.add_argument('--mode', choices=('off','on','compare'), default='off'); parser.add_argument('--camera', default='auto')
+    parser.add_argument('--compare-p', action='store_true', help='对比原始参数与 M3/M4 P=16、8；每轮结束恢复原参数')
+    parser.add_argument('--p-values', type=int, nargs='+', default=[16, 8])
     args = parser.parse_args()
+    if any(value < 1 or value > 254 for value in args.p_values): parser.error('P 必须在 1–254 之间')
     if not math.isfinite(args.degrees) or args.degrees <= 0 or not math.isfinite(args.hold) or args.hold < 1 or args.cycles < 1: parser.error('角度、循环次数及停留时长无效')
     EnvironmentSettings.load(); return JointMotionDiagnostic(args).run()
 
