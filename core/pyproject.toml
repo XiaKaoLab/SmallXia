@@ -3,7 +3,7 @@
 # @author: https://github.com/Linmoqian
 [project]
 name = "xiaoxia-core"
-version = "0.1.0"
+version = "1.0.0"
 description = "小虾台采集、通信、训练与推理核心"
 requires-python = ">=3.11"
 dependencies = [
